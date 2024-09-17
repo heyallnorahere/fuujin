@@ -2,6 +2,8 @@
 
 namespace fuujin {
     class View;
+    class Event;
+    class Layer;
 
     struct ApplicationData;
     class Application {
@@ -13,6 +15,11 @@ namespace fuujin {
 
         Application(const Application&) = delete;
         Application& operator=(const Application&) = delete;
+
+        void ProcessEvent(Event& event);
+
+        View& GetView();
+        const View& GetView() const;
 
     private:
         Application();

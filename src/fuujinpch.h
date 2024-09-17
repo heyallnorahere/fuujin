@@ -4,6 +4,8 @@
 #include <memory>
 #include <vector>
 #include <stdexcept>
+#include <chrono>
+#include <mutex>
 
 #include <stddef.h>
 #include <cstdint>
@@ -18,6 +20,8 @@
 #endif
 
 namespace fuujin {
+    using Duration = std::chrono::duration<double>;
+
 #ifdef FUUJIN_HAS_FS
     namespace fs = std::filesystem;
 #else
