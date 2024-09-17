@@ -1,0 +1,26 @@
+cmake_minimum_required(VERSION 3.21)
+project(fuujin)
+
+if(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
+    list(APPEND FUUJIN_PLATFORMS windows)
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
+    list(APPEND FUUJIN_PLATFORMS linux)
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
+    list(APPEND FUUJIN_PLATFORMS osx)
+endif()
+
+set(DESKTOP_PLATFORMS windows linux osx)
+foreach(PLATFORM ${FUUJIN_PLATFORMS})
+    list(FIND DESKTOP_PLATFORMS ${PLATFORM} INDEX)
+    if(${INDEX} GREATER_EQUAL 0)
+        list(APPEND FUUJIN_PLATFORMS desktop)
+        break()
+    endif()
+endforeach()
+
+foreach(PLATFORM ${FUUJIN_PLATFORMS})
+    set(FUUJIN_PLATFORM_${PLATFORM} ON)
+endforeach()
+
+add_subdirectory("vendor")
+add_subdirectory("src")
