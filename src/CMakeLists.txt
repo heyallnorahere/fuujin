@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 list(APPEND FUUJIN_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR})
-list(APPEND FUUJIN_LIBRARIES TracyClient)
+list(APPEND FUUJIN_LIBRARIES TracyClient spdlog::spdlog)
 
 if(${FUUJIN_PLATFORM_desktop})
 list(APPEND FUUJIN_LIBRARIES glfw)
@@ -28,7 +28,7 @@ foreach(PLATFORM ${FUUJIN_PLATFORMS})
 endforeach()
 
 add_library(fuujin STATIC ${FUUJIN_SOURCE})
-target_compile_definitions(fuujin PUBLIC ${FUUJIN_DEFINES} $<$<CONFIG:Debug>:FUUJIN_DEBUG>)
+target_compile_definitions(fuujin PUBLIC ${FUUJIN_DEFINES} $<$<CONFIG:Debug>:FUUJIN_IS_DEBUG>)
 target_link_libraries(fuujin PUBLIC ${FUUJIN_LIBRARIES})
 target_include_directories(fuujin PUBLIC ${FUUJIN_INCLUDE})
 target_precompile_headers(fuujin PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/fuujinpch.h")

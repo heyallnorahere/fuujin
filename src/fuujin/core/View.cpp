@@ -10,6 +10,7 @@ namespace fuujin {
 #ifdef FUUJIN_PLATFORM_desktop
         return new DesktopWindow(title, size);
 #else
+        FUUJIN_ERROR("No window platforms are supported!");
         return nullptr;
 #endif
     }

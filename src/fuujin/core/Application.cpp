@@ -5,8 +5,12 @@
 #include "fuujin/core/Layer.h"
 #include "fuujin/core/View.h"
 
+#include <spdlog/sinks/stdout_color_sinks.h>
+
 namespace fuujin {
     static std::unique_ptr<Application> s_App;
+
+    spdlog::logger s_Logger = spdlog::logger("fuujin");
 
     Application& Application::Get() {
         if (!s_App) {
@@ -18,18 +22,37 @@ namespace fuujin {
 
     int Application::Run(const std::function<void()>& initialization) {
         ZoneScoped;
+
+        spdlog::level::level_enum level;
+#ifdef FUUJIN_IS_DEBUG
+        level = spdlog::level::trace;
+#else
+        level = spdlog::level::warn;
+#endif
+
+        auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        consoleSink->set_level(level);
+        consoleSink->set_pattern("[%s:%#] [%^%l%$] %v");
+        
+        s_Logger.sinks().push_back(consoleSink);
+        s_Logger.set_level(spdlog::level::trace);
+
         if (s_App) {
+            FUUJIN_INFO("App already running; aborting second launch");
             return -1;
         }
 
         s_App = std::unique_ptr<Application>(new Application);
         initialization();
 
+        FUUJIN_INFO("Initialized. Launching...");
         while (!s_App->GetView().IsClosed()) {
             s_App->Update();
         }
 
+        FUUJIN_INFO("Exiting...");
         s_App.reset();
+
         return 0;
     }
 

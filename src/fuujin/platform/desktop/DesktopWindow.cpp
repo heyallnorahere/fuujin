@@ -11,6 +11,11 @@ namespace fuujin {
     static std::mutex s_WindowMutex;
 
     static void FramebufferResizedGLFW(GLFWwindow* window, int width, int height) {
+        ZoneScoped;
+
+        const char* windowTitle = glfwGetWindowTitle(window);
+        FUUJIN_INFO("GLFW window {} resized to ({}, {})", windowTitle, width, height);
+
         ViewSize size;
         size.Width = (uint32_t)std::max(0, width);
         size.Height = (uint32_t)std::max(0, height);
@@ -29,6 +34,7 @@ namespace fuujin {
 
     DesktopWindow::DesktopWindow(const std::string& title, const ViewSize& size) {
         ZoneScoped;
+        FUUJIN_DEBUG("Creating GLFW window: {} ({}, {})", title.c_str(), size.Width, size.Height);
 
         std::lock_guard lock(s_WindowMutex);
         if (s_WindowCount++ == 0 && glfwInit() != GLFW_TRUE) {

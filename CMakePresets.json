@@ -11,7 +11,8 @@
             "binaryDir": "build",
             "cacheVariables": {
                 "BUILD_SHARED_LIBS": "OFF",
-                "TRACY_ENABLE": "OFF"
+                "TRACY_ENABLE": "OFF",
+                "SPDLOG_LEVEL": "0"
             }
         },
         {
