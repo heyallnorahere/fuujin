@@ -9,7 +9,15 @@ namespace fuujin {
     class Application {
     public:
         static Application& Get();
-        static int Run(int argc, const char** argv);
+        static int Run(const std::function<void()>& initialization);
+
+        template <typename _Ty, typename... Args>
+        static void PushLayer(Args&&... args) {
+            auto layer = new _Ty(std::forward<Args>(args)...);
+
+            auto& app = Get();
+            app.PushLayer(layer);
+        }
 
         ~Application();
 
@@ -23,6 +31,8 @@ namespace fuujin {
 
     private:
         Application();
+
+        void PushLayer(Layer* layer);
 
         void Update();
 

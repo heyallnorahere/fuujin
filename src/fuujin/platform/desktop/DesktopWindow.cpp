@@ -1,8 +1,8 @@
 #include "fuujinpch.h"
 #include "fuujin/platform/desktop/DesktopWindow.h"
 
-#include "fuujin/Application.h"
-#include "fuujin/Events.h"
+#include "fuujin/core/Application.h"
+#include "fuujin/core/Events.h"
 
 #include <GLFW/glfw3.h>
 
@@ -10,18 +10,21 @@ namespace fuujin {
     static uint32_t s_WindowCount = 0;
     static std::mutex s_WindowMutex;
 
-    static void FramebufferResized(GLFWwindow* window, int width, int height) {
+    static void FramebufferResizedGLFW(GLFWwindow* window, int width, int height) {
         ViewSize size;
         size.Width = (uint32_t)std::max(0, width);
         size.Height = (uint32_t)std::max(0, height);
 
         FramebufferResizedEvent event(size);
+        Application* app = nullptr;
+
         try {
-            auto& app = Application::Get();
-            app.ProcessEvent(event);
+            app = &Application::Get();
         } catch (const std::runtime_error&) {
-            // nothing
+            return;
         }
+
+        app->ProcessEvent(event);
     }
 
     DesktopWindow::DesktopWindow(const std::string& title, const ViewSize& size) {
@@ -41,7 +44,7 @@ namespace fuujin {
         }
 
         glfwSetWindowUserPointer(m_Window, this);
-        glfwSetFramebufferSizeCallback(m_Window, FramebufferResized);
+        glfwSetFramebufferSizeCallback(m_Window, FramebufferResizedGLFW);
     }
 
     DesktopWindow::~DesktopWindow() {
@@ -67,7 +70,7 @@ namespace fuujin {
 
     ViewSize&& DesktopWindow::GetSize() const {
         ZoneScoped;
-        
+
         int width, height;
         glfwGetWindowSize(m_Window, &width, &height);
 

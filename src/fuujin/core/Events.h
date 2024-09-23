@@ -1,7 +1,7 @@
 #pragma once
-#include "fuujin/Event.h"
+#include "fuujin/core/Event.h"
 
-#include "fuujin/View.h"
+#include "fuujin/core/View.h"
 
 namespace fuujin {
     class FramebufferResizedEvent : public Event {
@@ -9,7 +9,7 @@ namespace fuujin {
         FramebufferResizedEvent(const ViewSize& size)
             : Event(EventType::FramebufferResized), m_Size(size) {}
 
-        const ViewSize& GetSize() { return m_Size; }
+        const ViewSize& GetSize() const { return m_Size; }
 
     private:
         ViewSize m_Size;

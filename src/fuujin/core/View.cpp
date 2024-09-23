@@ -1,5 +1,5 @@
 #include "fuujinpch.h"
-#include "fuujin/View.h"
+#include "fuujin/core/View.h"
 
 #ifdef FUUJIN_PLATFORM_desktop
 #include "fuujin/platform/desktop/DesktopWindow.h"

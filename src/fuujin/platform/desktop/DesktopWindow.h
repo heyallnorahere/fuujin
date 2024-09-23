@@ -1,5 +1,5 @@
 #pragma once
-#include "fuujin/View.h"
+#include "fuujin/core/View.h"
 
 struct GLFWwindow;
 

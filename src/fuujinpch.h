@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <chrono>
 #include <mutex>
+#include <functional>
+#include <type_traits>
 
 #include <stddef.h>
 #include <cstdint>

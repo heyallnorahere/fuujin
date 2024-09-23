@@ -1,9 +1,9 @@
 #include "fuujinpch.h"
-#include "fuujin/Application.h"
+#include "fuujin/core/Application.h"
 
-#include "fuujin/Event.h"
-#include "fuujin/Layer.h"
-#include "fuujin/View.h"
+#include "fuujin/core/Event.h"
+#include "fuujin/core/Layer.h"
+#include "fuujin/core/View.h"
 
 namespace fuujin {
     static std::unique_ptr<Application> s_App;
@@ -16,13 +16,15 @@ namespace fuujin {
         return *s_App;
     }
 
-    int Application::Run(int argc, const char** argv) {
+    int Application::Run(const std::function<void()>& initialization) {
         ZoneScoped;
         if (s_App) {
             return -1;
         }
 
         s_App = std::unique_ptr<Application>(new Application);
+        initialization();
+
         while (!s_App->GetView().IsClosed()) {
             s_App->Update();
         }
@@ -38,18 +40,10 @@ namespace fuujin {
         std::chrono::high_resolution_clock::time_point LastTimestamp;
     };
 
-    template <typename _Ty, typename... Args>
-    static void PushLayer(ApplicationData* data, Args... args) {
-        auto instance = std::make_shared(std::forward(args)...);
-        data->LayerStack.insert(data->LayerStack.begin(), std::move(instance));
-    }
-
     Application::Application() {
         m_Data = new ApplicationData;
         m_Data->LastTimestamp = std::chrono::high_resolution_clock::now();
         m_Data->AppView = std::unique_ptr<View>(View::Create("風神", { 1600, 900 }));
-
-        // todo: push layers
     }
 
     Application::~Application() { delete m_Data; }
@@ -60,12 +54,20 @@ namespace fuujin {
         // todo: process through special utils
 
         for (const auto& layer : m_Data->LayerStack) {
+            if (event.IsProcessed()) {
+                return;
+            }
+
             event.SetProcessed(layer->ProcessEvent(event));
         }
     }
 
     View& Application::GetView() { return *m_Data->AppView; }
     const View& Application::GetView() const { return *m_Data->AppView; }
+
+    void Application::PushLayer(Layer* layer) {
+        m_Data->LayerStack.insert(m_Data->LayerStack.begin(), std::unique_ptr<Layer>(layer));
+    }
 
     void Application::Update() {
         ZoneScoped;

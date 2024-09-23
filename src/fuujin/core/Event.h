@@ -1,8 +1,5 @@
 #pragma once
 
-#include <functional>
-#include <type_traits>
-
 namespace fuujin {
     enum class EventType {
         FramebufferResized
@@ -46,6 +43,8 @@ namespace fuujin {
                 }
             }
         }
+
+        operator bool() const { return m_DidProcess; }
 
     private:
         Event* m_Event;
