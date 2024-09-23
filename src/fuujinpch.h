@@ -8,6 +8,7 @@
 #include <mutex>
 #include <functional>
 #include <type_traits>
+#include <optional>
 
 #include <stddef.h>
 #include <cstdint>

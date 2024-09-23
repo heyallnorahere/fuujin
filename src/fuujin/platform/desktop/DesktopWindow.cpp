@@ -14,7 +14,7 @@ namespace fuujin {
         ZoneScoped;
 
         const char* windowTitle = glfwGetWindowTitle(window);
-        FUUJIN_INFO("GLFW window {} resized to ({}, {})", windowTitle, width, height);
+        FUUJIN_DEBUG("GLFW window {} resized to ({}, {})", windowTitle, width, height);
 
         ViewSize size;
         size.Width = (uint32_t)std::max(0, width);

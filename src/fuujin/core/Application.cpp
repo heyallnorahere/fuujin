@@ -4,12 +4,15 @@
 #include "fuujin/core/Event.h"
 #include "fuujin/core/Layer.h"
 #include "fuujin/core/View.h"
+#include "fuujin/renderer/Renderer.h"
 
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/rotating_file_sink.h>
 
 namespace fuujin {
     static std::unique_ptr<Application> s_App;
 
+    static const std::string s_LogPattern = "[%s:%#] [%^%l%$] %v";
     spdlog::logger s_Logger = spdlog::logger("fuujin");
 
     Application& Application::Get() {
@@ -25,16 +28,21 @@ namespace fuujin {
 
         spdlog::level::level_enum level;
 #ifdef FUUJIN_IS_DEBUG
-        level = spdlog::level::trace;
+        level = spdlog::level::debug;
 #else
         level = spdlog::level::warn;
 #endif
 
         auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
         consoleSink->set_level(level);
-        consoleSink->set_pattern("[%s:%#] [%^%l%$] %v");
-        
-        s_Logger.sinks().push_back(consoleSink);
+        consoleSink->set_pattern(s_LogPattern);
+
+        auto fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/fuujin.log", 10 * 1024 * 1024, 3);
+        consoleSink->set_level(spdlog::level::trace);
+        consoleSink->set_pattern("[%x %X] " + s_LogPattern);
+
+        auto& sinks = s_Logger.sinks();
+        sinks.insert(sinks.end(), { consoleSink, fileSink });
         s_Logger.set_level(spdlog::level::trace);
 
         if (s_App) {
@@ -67,9 +75,15 @@ namespace fuujin {
         m_Data = new ApplicationData;
         m_Data->LastTimestamp = std::chrono::high_resolution_clock::now();
         m_Data->AppView = std::unique_ptr<View>(View::Create("風神", { 1600, 900 }));
+
+        Renderer::Init();
     }
 
-    Application::~Application() { delete m_Data; }
+    Application::~Application() {
+        Renderer::Shutdown();
+
+        delete m_Data;
+    }
 
     void Application::ProcessEvent(Event& event) {
         ZoneScoped;

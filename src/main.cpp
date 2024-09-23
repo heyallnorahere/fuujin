@@ -1,9 +1,12 @@
 #include "fuujin.h"
+#include "fuujin/renderer/Renderer.h"
+
+using namespace std::chrono_literals;
 
 class TestLayer : public fuujin::Layer {
 public:
     TestLayer(const std::string& name) : m_Name(name) {
-        FUUJIN_INFO("Test layer added with name: {}", name.c_str());
+        FUUJIN_DEBUG("Test layer added with name: {}", name.c_str());
     }
 
     virtual bool ProcessEvent(fuujin::Event& event) override {
@@ -17,9 +20,9 @@ public:
 
 private:
     bool ViewResized(const fuujin::FramebufferResizedEvent& event) {
-        FUUJIN_INFO("Layer {} received resize event:", m_Name.c_str());
-        FUUJIN_INFO("\tWidth: {}", event.GetSize().Width);
-        FUUJIN_INFO("\tHeight: {}", event.GetSize().Height);
+        FUUJIN_TRACE("Layer {} received resize event:", m_Name.c_str());
+        FUUJIN_TRACE("\tWidth: {}", event.GetSize().Width);
+        FUUJIN_TRACE("\tHeight: {}", event.GetSize().Height);
 
         return false;
     }
