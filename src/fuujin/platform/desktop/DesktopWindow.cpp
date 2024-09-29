@@ -78,7 +78,7 @@ namespace fuujin {
         return glfwWindowShouldClose(m_Window) == GLFW_TRUE;
     }
 
-    ViewSize&& DesktopWindow::GetSize() const {
+    ViewSize DesktopWindow::GetSize() const {
         ZoneScoped;
 
         int width, height;
@@ -91,7 +91,7 @@ namespace fuujin {
         return std::move(size);
     }
 
-    ViewSize&& DesktopWindow::GetFramebufferSize() const {
+    ViewSize DesktopWindow::GetFramebufferSize() const {
         ZoneScoped;
 
         int width, height;

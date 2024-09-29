@@ -12,8 +12,8 @@ namespace fuujin {
         virtual void Update() override;
         virtual bool IsClosed() const override;
 
-        virtual ViewSize&& GetSize() const override;
-        virtual ViewSize&& GetFramebufferSize() const override;
+        virtual ViewSize GetSize() const override;
+        virtual ViewSize GetFramebufferSize() const override;
         virtual void RequestSize(const ViewSize& size) override;
 
         virtual void GetRequiredVulkanExtensions(std::vector<std::string>& extensions) override;

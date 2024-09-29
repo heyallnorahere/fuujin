@@ -80,6 +80,10 @@ namespace fuujin {
                 VK_SUCCESS) {
                 throw std::runtime_error("Failed to create instance!");
             }
+
+            FUUJIN_DEBUG("Instance created with API version: {}.{}.{}",
+                         VK_VERSION_MAJOR(m_Spec.API), VK_VERSION_MINOR(m_Spec.API),
+                         VK_VERSION_PATCH(m_Spec.API));
         });
     }
 
@@ -91,5 +95,15 @@ namespace fuujin {
             ZoneScoped;
             vkDestroyInstance(instance, &VulkanContext::GetAllocCallbacks());
         });
+    }
+
+    void VulkanInstance::GetDevices(std::vector<VkPhysicalDevice>& devices) const {
+        ZoneScoped;
+
+        uint32_t deviceCount = 0;
+        vkEnumeratePhysicalDevices(m_Instance, &deviceCount, nullptr);
+
+        devices.resize(deviceCount);
+        vkEnumeratePhysicalDevices(m_Instance, &deviceCount, devices.data());
     }
 }

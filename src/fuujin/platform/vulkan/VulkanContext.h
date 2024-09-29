@@ -2,6 +2,9 @@
 #include "fuujin/renderer/GraphicsContext.h"
 #include "fuujin/platform/vulkan/Vulkan.h"
 
+#include "fuujin/platform/vulkan/VulkanInstance.h"
+#include "fuujin/platform/vulkan/VulkanDevice.h"
+
 namespace fuujin {
     struct ContextData;
 
@@ -11,6 +14,11 @@ namespace fuujin {
         static VkAllocationCallbacks& GetAllocCallbacks();
 
         virtual ~VulkanContext() override;
+
+        Ref<VulkanInstance> GetInstance() const;
+        Ref<VulkanDevice> GetVulkanDevice(const std::optional<std::string>& deviceName = {}) const;
+
+        virtual Ref<GraphicsDevice> GetDevice() const override;
 
     private:
         VulkanContext(const std::optional<std::string>& deviceName);

@@ -39,6 +39,9 @@ namespace fuujin {
             other.m_Instance = nullptr;
         }
 
+        Ref(const Ref<_Ty>& other) : m_Instance(other.m_Instance) { IncreaseRefCount(); }
+        Ref(Ref<_Ty>&& other) : m_Instance(other.m_Instance) { other.m_Instance = nullptr; }
+
         ~Ref() { DecreaseRefCount(); }
 
         Ref& operator=(std::nullptr_t) {
@@ -120,7 +123,6 @@ namespace fuujin {
             if (m_Instance == nullptr) {
                 return;
             }
-
 
             if (--m_Instance->m_RefCount == 0) {
                 delete m_Instance;

@@ -30,7 +30,7 @@ namespace fuujin {
 #ifdef FUUJIN_IS_DEBUG
         level = spdlog::level::debug;
 #else
-        level = spdlog::level::warn;
+        level = spdlog::level::info;
 #endif
 
         auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();

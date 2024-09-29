@@ -29,6 +29,8 @@ namespace fuujin {
         const Spec& GetSpec() const { return m_Spec; }
         VkInstance GetInstance() const { return m_Instance; }
 
+        void GetDevices(std::vector<VkPhysicalDevice>& devices) const;
+
     private:
         Spec m_Spec;
         VkInstance m_Instance;
