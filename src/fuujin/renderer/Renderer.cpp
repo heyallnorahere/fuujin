@@ -1,5 +1,6 @@
 #include "fuujinpch.h"
 #include "fuujin/renderer/Renderer.h"
+#include "fuujin/renderer/GraphicsContext.h"
 
 #include <thread>
 #include <queue>
@@ -16,8 +17,9 @@ namespace fuujin {
             std::thread Thread;
             std::mutex Mutex;
             std::queue<std::function<void()>> Queue;
-            bool Running;
         } RenderThread;
+
+        Ref<GraphicsContext> Context;
     };
 
     static std::unique_ptr<RendererData> s_Data;
@@ -27,29 +29,23 @@ namespace fuujin {
         ZoneScoped;
         FUUJIN_DEBUG("Render thread starting...");
 
-        while (true) {
-            std::optional<std::function<void()>> callback;
+        while (s_Data) {
+            bool doSleep = false;
 
             {
                 std::lock_guard lock(s_Data->RenderThread.Mutex);
-
                 auto& queue = s_Data->RenderThread.Queue;
+
                 if (!queue.empty()) {
-                    callback = queue.front();
+                    queue.front()();
+                    queue.pop();
+                } else {
+                    doSleep = true;
                 }
             }
 
-            if (callback.has_value()) {
-                callback.value()();
-
-                std::lock_guard lock(s_Data->RenderThread.Mutex);
-                s_Data->RenderThread.Queue.pop();
-            } else {
+            if (doSleep) {
                 std::this_thread::sleep_for(1ms);
-            }
-
-            if (!s_Data->RenderThread.Running) {
-                break;
             }
         }
     }
@@ -63,11 +59,10 @@ namespace fuujin {
         }
 
         s_Data = std::make_unique<RendererData>();
-        s_Data->RenderThread.Running = true;
         s_Data->RenderThread.Thread = std::thread(RenderThread);
         s_Data->RenderThread.Thread.detach();
 
-        // todo: initialize
+        s_Data->Context = GraphicsContext::Get();
     }
 
     void Renderer::Shutdown() {
@@ -77,7 +72,7 @@ namespace fuujin {
             return;
         }
 
-        // todo: shut down
+        s_Data->Context.Reset();
 
         Wait();
         s_Data.reset();
@@ -86,7 +81,7 @@ namespace fuujin {
     void Renderer::Submit(const std::function<void()>& callback) {
         ZoneScoped;
 
-        std::lock_guard(s_Data->RenderThread.Mutex);
+        std::lock_guard lock(s_Data->RenderThread.Mutex);
         s_Data->RenderThread.Queue.push(callback);
     }
 

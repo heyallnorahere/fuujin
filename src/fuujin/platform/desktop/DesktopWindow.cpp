@@ -4,6 +4,10 @@
 #include "fuujin/core/Application.h"
 #include "fuujin/core/Events.h"
 
+#ifdef FUUJIN_PLATFORM_vulkan
+#include "fuujin/platform/vulkan/VulkanContext.h"
+#endif
+
 #include <GLFW/glfw3.h>
 
 namespace fuujin {
@@ -103,5 +107,33 @@ namespace fuujin {
     void DesktopWindow::RequestSize(const ViewSize& size) {
         ZoneScoped;
         glfwSetWindowSize(m_Window, size.Width, size.Height);
+    }
+
+    void DesktopWindow::GetRequiredVulkanExtensions(std::vector<std::string>& extensions) {
+        ZoneScoped;
+        extensions.clear();
+
+#ifdef FUUJIN_PLATFORM_vulkan
+        uint32_t extensionCount = 0;
+        const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&extensionCount);
+
+        for (uint32_t i = 0; i < extensionCount; i++) {
+            extensions.push_back(glfwExtensions[i]);
+        }
+#endif
+    }
+
+    void* DesktopWindow::CreateVulkanSurface(void* instance) {
+        ZoneScoped;
+
+#ifdef FUUJIN_PLATFORM_vulkan
+        VkSurfaceKHR surface = nullptr;
+        if (glfwCreateWindowSurface((VkInstance)instance, m_Window,
+                                    &VulkanContext::GetAllocCallbacks(), &surface) == VK_SUCCESS) {
+            return surface;
+        }
+#endif
+
+        return nullptr;
     }
 } // namespace fuujin

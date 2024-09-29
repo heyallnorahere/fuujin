@@ -16,6 +16,9 @@ namespace fuujin {
         virtual ViewSize&& GetFramebufferSize() const override;
         virtual void RequestSize(const ViewSize& size) override;
 
+        virtual void GetRequiredVulkanExtensions(std::vector<std::string>& extensions) override;
+        virtual void* CreateVulkanSurface(void* instance) override;
+
     private:
         GLFWwindow* m_Window;
     };

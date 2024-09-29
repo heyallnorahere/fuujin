@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
-project(fuujin)
+project(fuujin LANGUAGES CXX C)
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
     list(APPEND FUUJIN_PLATFORMS windows)

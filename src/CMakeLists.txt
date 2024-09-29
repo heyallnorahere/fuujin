@@ -3,10 +3,6 @@ cmake_minimum_required(VERSION 3.21)
 list(APPEND FUUJIN_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR})
 list(APPEND FUUJIN_LIBRARIES TracyClient spdlog::spdlog)
 
-if(${FUUJIN_PLATFORM_desktop})
-list(APPEND FUUJIN_LIBRARIES glfw)
-endif()
-
 file(GLOB_RECURSE FUUJIN_SOURCE CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
@@ -27,6 +23,26 @@ foreach(PLATFORM ${FUUJIN_PLATFORMS})
     list(APPEND FUUJIN_DEFINES FUUJIN_PLATFORM_${PLATFORM})
 endforeach()
 
+if(${FUUJIN_PLATFORM_desktop})
+    list(APPEND FUUJIN_LIBRARIES glfw)
+endif()
+
+if(${FUUJIN_PLATFORM_vulkan})
+    set(VENDOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../vendor")
+    set(VOLK_DIR "${VENDOR_DIR}/volk")
+
+    add_library(fuujin_vulkan STATIC "${VOLK_DIR}/volk.c" "${VOLK_DIR}/volk.h")
+    target_link_libraries(fuujin_vulkan PUBLIC Vulkan::Headers)
+    target_include_directories(fuujin_vulkan PUBLIC ${VOLK_DIR})
+    list(APPEND FUUJIN_LIBRARIES fuujin_vulkan)
+endif()
+
+foreach(SOURCE ${FUUJIN_SOURCE})
+    cmake_path(RELATIVE_PATH SOURCE BASE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE RELATIVE)
+    cmake_path(GET RELATIVE PARENT_PATH SOURCE_GROUP)
+    source_group(${SOURCE_GROUP} FILES ${SOURCE})
+endforeach()
+
 add_library(fuujin STATIC ${FUUJIN_SOURCE})
 target_compile_definitions(fuujin PUBLIC ${FUUJIN_DEFINES} $<$<CONFIG:Debug>:FUUJIN_IS_DEBUG>)
 target_link_libraries(fuujin PUBLIC ${FUUJIN_LIBRARIES})
@@ -36,6 +52,6 @@ target_precompile_headers(fuujin PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/fuujinpch.
 add_executable(fuujin_exe ${FUUJIN_MAIN_SOURCE})
 target_link_libraries(fuujin_exe PRIVATE fuujin)
 
-set_target_properties(fuujin fuujin_exe PROPERTIES
-    CXX_STANDARD 17
-    OUTPUT_NAME "fuujin")
+set_target_properties(fuujin fuujin_exe fuujin_vulkan PROPERTIES
+    CXX_STANDARD 20
+    FOLDER "fuujin")

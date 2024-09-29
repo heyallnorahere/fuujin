@@ -6,9 +6,9 @@
 #endif
 
 namespace fuujin {
-    View* View::Create(const std::string& title, const ViewSize& size) {
+    Ref<View> View::Create(const std::string& title, const ViewSize& size) {
 #ifdef FUUJIN_PLATFORM_desktop
-        return new DesktopWindow(title, size);
+        return Ref<DesktopWindow>::Create(title, size);
 #else
         FUUJIN_ERROR("No window platforms are supported!");
         return nullptr;

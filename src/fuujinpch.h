@@ -9,6 +9,9 @@
 #include <functional>
 #include <type_traits>
 #include <optional>
+#include <atomic>
+#include <unordered_set>
+#include <unordered_map>
 
 #include <stddef.h>
 #include <cstdint>

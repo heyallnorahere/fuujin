@@ -11,4 +11,4 @@ namespace fuujin {
         static void Submit(const std::function<void()>& callback);
         static void Wait();
     };
-}; // namespace fuujin
+} // namespace fuujin

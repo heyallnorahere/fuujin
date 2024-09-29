@@ -10,7 +10,7 @@
 #include <spdlog/sinks/rotating_file_sink.h>
 
 namespace fuujin {
-    static std::unique_ptr<Application> s_App;
+    static Application* s_App = nullptr;
 
     static const std::string s_LogPattern = "[%s:%#] [%^%l%$] %v";
     spdlog::logger s_Logger = spdlog::logger("fuujin");
@@ -50,31 +50,31 @@ namespace fuujin {
             return -1;
         }
 
-        s_App = std::unique_ptr<Application>(new Application);
+        Application app;
         initialization();
 
         FUUJIN_INFO("Initialized. Launching...");
-        while (!s_App->GetView().IsClosed()) {
-            s_App->Update();
+        while (!app.GetView().IsClosed()) {
+            app.Update();
         }
 
         FUUJIN_INFO("Exiting...");
-        s_App.reset();
-
         return 0;
     }
 
     struct ApplicationData {
-        std::unique_ptr<View> AppView;
+        Ref<View> AppView;
         std::vector<std::unique_ptr<Layer>> LayerStack;
 
         std::chrono::high_resolution_clock::time_point LastTimestamp;
     };
 
     Application::Application() {
+        s_App = this;
+
         m_Data = new ApplicationData;
         m_Data->LastTimestamp = std::chrono::high_resolution_clock::now();
-        m_Data->AppView = std::unique_ptr<View>(View::Create("風神", { 1600, 900 }));
+        m_Data->AppView = View::Create("風神", { 1600, 900 });
 
         Renderer::Init();
     }
@@ -83,6 +83,7 @@ namespace fuujin {
         Renderer::Shutdown();
 
         delete m_Data;
+        s_App = nullptr;
     }
 
     void Application::ProcessEvent(Event& event) {
