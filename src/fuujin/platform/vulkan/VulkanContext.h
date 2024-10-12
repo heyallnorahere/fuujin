@@ -23,6 +23,8 @@ namespace fuujin {
     private:
         VulkanContext(const std::optional<std::string>& deviceName);
 
+        void EnumerateDevices(const std::optional<std::string>& deviceName);
+
         ContextData* m_Data;
     };
 } // namespace fuujin

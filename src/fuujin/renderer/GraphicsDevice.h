@@ -4,12 +4,7 @@
 namespace fuujin {
     class GraphicsDevice : public RefCounted {
     public:
-        enum class DeviceType {
-            Discrete,
-            CPU,
-            Integrated,
-            Other
-        };
+        enum class DeviceType { Discrete, CPU, Integrated, Other };
 
         struct Properties {
             std::string Name, API;
@@ -20,4 +15,4 @@ namespace fuujin {
 
         virtual void GetProperties(Properties& props) const = 0;
     };
-}
+} // namespace fuujin

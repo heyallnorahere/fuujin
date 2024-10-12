@@ -38,7 +38,29 @@ namespace fuujin {
 #else
     namespace fs = std::experimental::filesystem;
 #endif
+
+    inline void* allocate(size_t size) {
+        void* block = std::malloc(size);
+        TracyAlloc(block, size);
+        return block;
+    }
+
+    inline void* reallocate(void* block, size_t size) {
+        TracyFree(block);
+
+        void* newBlock = std::realloc(block, size);
+        TracyAlloc(newBlock, size);
+        return newBlock;
+    }
+
+    inline void freemem(void* block) {
+        TracyFree(block);
+        std::free(block);
+    }
 } // namespace fuujin
+
+inline void* operator new(size_t size) { return fuujin::allocate(size); }
+inline void operator delete(void* block) { return fuujin::freemem(block); }
 
 #define FUUJIN_TRACE(...) SPDLOG_LOGGER_TRACE(&::fuujin::s_Logger, __VA_ARGS__)
 #define FUUJIN_DEBUG(...) SPDLOG_LOGGER_DEBUG(&::fuujin::s_Logger, __VA_ARGS__)

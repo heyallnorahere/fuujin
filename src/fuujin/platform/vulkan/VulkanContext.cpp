@@ -8,6 +8,8 @@
 namespace fuujin {
     static void* VKAPI_CALL VulkanAlloc(void* pUserData, size_t size, size_t alignment,
                                         VkSystemAllocationScope allocationScope) {
+        ZoneScoped;
+
         void* block = std::malloc(size);
         TracyAlloc(block, size);
         return block;
@@ -16,6 +18,7 @@ namespace fuujin {
     static void* VKAPI_CALL VulkanRealloc(void* pUserData, void* pOriginal, size_t size,
                                           size_t alignment,
                                           VkSystemAllocationScope allocationScope) {
+        ZoneScoped;
         TracyFree(pOriginal);
 
         void* newBlock = std::realloc(pOriginal, size);
@@ -25,6 +28,8 @@ namespace fuujin {
     }
 
     static void VKAPI_CALL VulkanFree(void* pUserData, void* pMemory) {
+        ZoneScoped;
+
         TracyFree(pMemory);
         std::free(pMemory);
     }
@@ -110,8 +115,10 @@ namespace fuujin {
 
     VulkanContext::VulkanContext(const std::optional<std::string>& deviceName) {
         ZoneScoped;
-        volkInitialize();
-        FUUJIN_DEBUG("Global functions loaded");
+        Renderer::Submit([]() {
+            volkInitialize();
+            FUUJIN_DEBUG("Global functions loaded");
+        });
 
         s_CurrentContext = this;
         m_Data = new ContextData;
@@ -137,10 +144,37 @@ namespace fuujin {
         }
 
         m_Data->Instance = Ref<VulkanInstance>::Create(spec);
-        Renderer::Wait();
+        Renderer::Submit([&]() {
+            volkLoadInstanceOnly(m_Data->Instance->GetInstance());
+            FUUJIN_DEBUG("Instance functions loaded");
 
-        volkLoadInstanceOnly(m_Data->Instance->GetInstance());
-        FUUJIN_DEBUG("Instance functions loaded");
+            EnumerateDevices(deviceName);
+        });
+
+        Renderer::Wait();
+        
+        auto selectedDevice = m_Data->Devices[m_Data->UsedDevice];
+    }
+
+    VulkanContext::~VulkanContext() {
+        delete m_Data;
+        s_CurrentContext = nullptr;
+    }
+
+    Ref<VulkanInstance> VulkanContext::GetInstance() const { return m_Data->Instance; }
+
+    Ref<VulkanDevice> VulkanContext::GetVulkanDevice(
+        const std::optional<std::string>& deviceName) const {
+        auto name = deviceName.value_or(m_Data->UsedDevice);
+        return m_Data->Devices[name];
+    }
+
+    Ref<GraphicsDevice> VulkanContext::GetDevice() const {
+        return m_Data->Devices[m_Data->UsedDevice];
+    };
+
+    void VulkanContext::EnumerateDevices(const std::optional<std::string>& deviceName) {
+        ZoneScoped;
 
         std::vector<VkPhysicalDevice> devices;
         m_Data->Instance->GetDevices(devices);
@@ -175,22 +209,4 @@ namespace fuujin {
             FUUJIN_INFO("Selected Vulkan device: {}", m_Data->UsedDevice.c_str());
         }
     }
-
-    VulkanContext::~VulkanContext() {
-        delete m_Data;
-        s_CurrentContext = nullptr;
-    }
-
-    Ref<VulkanInstance> VulkanContext::GetInstance() const { return m_Data->Instance; }
-
-    Ref<VulkanDevice> VulkanContext::GetVulkanDevice(
-        const std::optional<std::string>& deviceName) const {
-        auto name = deviceName.value_or(m_Data->UsedDevice);
-        return m_Data->Devices[name];
-    }
-
-    Ref<GraphicsDevice> VulkanContext::GetDevice() const {
-        return m_Data->Devices[m_Data->UsedDevice];
-    };
-
 } // namespace fuujin

@@ -12,7 +12,6 @@
 namespace fuujin {
     static Application* s_App = nullptr;
 
-    static const std::string s_LogPattern = "[%s:%#] [%^%l%$] %v";
     spdlog::logger s_Logger = spdlog::logger("fuujin");
 
     Application& Application::Get() {
@@ -35,11 +34,11 @@ namespace fuujin {
 
         auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
         consoleSink->set_level(level);
-        consoleSink->set_pattern(s_LogPattern);
+        consoleSink->set_pattern("[%s:%# %!] [%^%l%$] %v");
 
         auto fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/fuujin.log", 10 * 1024 * 1024, 3);
-        consoleSink->set_level(spdlog::level::trace);
-        consoleSink->set_pattern("[%x %X] " + s_LogPattern);
+        fileSink->set_level(spdlog::level::trace);
+        fileSink->set_pattern("[%x %X] [%g:%# %!] [%l] %v");
 
         auto& sinks = s_Logger.sinks();
         sinks.insert(sinks.end(), { consoleSink, fileSink });

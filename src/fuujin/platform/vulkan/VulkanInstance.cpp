@@ -106,4 +106,4 @@ namespace fuujin {
         devices.resize(deviceCount);
         vkEnumeratePhysicalDevices(m_Instance, &deviceCount, devices.data());
     }
-}
+} // namespace fuujin
