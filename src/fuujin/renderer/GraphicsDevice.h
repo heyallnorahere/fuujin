@@ -2,13 +2,18 @@
 #include "fuujin/core/Ref.h"
 
 namespace fuujin {
+    enum class QueueType { Graphics, Transfer, Compute };
+    enum class GraphicsDeviceType { Discrete, CPU, Integrated, Other };
+
     class GraphicsDevice : public RefCounted {
     public:
-        enum class DeviceType { Discrete, CPU, Integrated, Other };
-
         struct Properties {
-            std::string Name, API;
-            DeviceType Type;
+            std::string Name;
+            Version DriverVersion;
+            GraphicsDeviceType Type;
+
+            std::string API;
+            Version APIVersion;
         };
 
         virtual ~GraphicsDevice() = default;

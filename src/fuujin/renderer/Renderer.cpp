@@ -12,11 +12,16 @@
 using namespace std::chrono_literals;
 
 namespace fuujin {
+    struct QueueCallback {
+        std::function<void()> Callback;
+        std::string Label;
+    };
+
     struct RendererData {
         struct {
             std::thread Thread;
             std::mutex Mutex;
-            std::queue<std::function<void()>> Queue;
+            std::queue<QueueCallback> Queue;
         } RenderThread;
 
         Ref<GraphicsContext> Context;
@@ -37,7 +42,11 @@ namespace fuujin {
                 auto& queue = s_Data->RenderThread.Queue;
 
                 if (!queue.empty()) {
-                    queue.front()();
+                    auto callback = queue.front();
+                    
+                    FUUJIN_TRACE("Render thread: {}", callback.Label.c_str());
+                    callback.Callback();
+
                     queue.pop();
                 } else {
                     doSleep = true;
@@ -78,11 +87,15 @@ namespace fuujin {
         s_Data.reset();
     }
 
-    void Renderer::Submit(const std::function<void()>& callback) {
+    void Renderer::Submit(const std::function<void()>& callback, const std::optional<std::string>& label) {
         ZoneScoped;
 
+        QueueCallback data;
+        data.Callback = callback;
+        data.Label = label.value_or("<unnamed render task>");
+
         std::lock_guard lock(s_Data->RenderThread.Mutex);
-        s_Data->RenderThread.Queue.push(callback);
+        s_Data->RenderThread.Queue.push(data);
     }
 
     void Renderer::Wait() {

@@ -123,27 +123,30 @@ namespace fuujin {
         s_CurrentContext = this;
         m_Data = new ContextData;
 
-        VulkanInstance::Spec spec;
-        spec.API = VK_API_VERSION_1_2;
-        spec.ApplicationName = "???";
-        spec.ApplicationVersion = VK_MAKE_API_VERSION(0, 0, 0, 1);
-        spec.EngineName = "fuujin";
-        spec.EngineVersion = VK_MAKE_API_VERSION(0, 0, 0, 1);
+        {
+            VulkanInstance::Spec spec;
+            spec.API = VK_API_VERSION_1_2;
+            spec.ApplicationName = "???";
+            spec.ApplicationVersion = VK_MAKE_API_VERSION(0, 0, 0, 1);
+            spec.EngineName = "fuujin";
+            spec.EngineVersion = VK_MAKE_API_VERSION(0, 0, 0, 1);
 
-        View* view = nullptr;
-        try {
-            view = &Application::Get().GetView();
-        } catch (const std::runtime_error& exc) {
-            view = nullptr;
+            View* view = nullptr;
+            try {
+                view = &Application::Get().GetView();
+            } catch (const std::runtime_error& exc) {
+                view = nullptr;
+            }
+
+            if (view != nullptr) {
+                std::vector<std::string> viewExtensions;
+                view->GetRequiredVulkanExtensions(viewExtensions);
+                spec.Extensions.insert(viewExtensions.begin(), viewExtensions.end());
+            }
+
+            m_Data->Instance = Ref<VulkanInstance>::Create(spec);
         }
 
-        if (view != nullptr) {
-            std::vector<std::string> viewExtensions;
-            view->GetRequiredVulkanExtensions(viewExtensions);
-            spec.Extensions.insert(viewExtensions.begin(), viewExtensions.end());
-        }
-
-        m_Data->Instance = Ref<VulkanInstance>::Create(spec);
         Renderer::Submit([&]() {
             volkLoadInstanceOnly(m_Data->Instance->GetInstance());
             FUUJIN_DEBUG("Instance functions loaded");
@@ -152,8 +155,20 @@ namespace fuujin {
         });
 
         Renderer::Wait();
-        
         auto selectedDevice = m_Data->Devices[m_Data->UsedDevice];
+
+        {
+            VulkanDevice::Spec spec;
+            spec.RequestedQueues = { QueueType::Graphics, QueueType::Transfer };
+            spec.Extensions = { "VK_KHR_swapchain" };
+
+            selectedDevice->Initialize(spec);
+        }
+
+        Renderer::Submit([this]() mutable {
+            volkLoadDevice(m_Data->Devices[m_Data->UsedDevice]->GetDevice());
+            FUUJIN_DEBUG("Device functions loaded");
+        });
     }
 
     VulkanContext::~VulkanContext() {

@@ -31,6 +31,15 @@
 namespace fuujin {
     using Duration = std::chrono::duration<double>;
 
+    struct Version {
+        uint32_t Major, Minor, Patch;
+
+        inline operator std::string() {
+            return std::to_string(Major) + "." + std::to_string(Minor) + "." +
+                   std::to_string(Patch);
+        }
+    };
+
     extern spdlog::logger s_Logger;
 
 #ifdef FUUJIN_HAS_FS

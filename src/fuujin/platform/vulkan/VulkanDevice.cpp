@@ -5,6 +5,37 @@
 #include "fuujin/platform/vulkan/VulkanContext.h"
 
 namespace fuujin {
+    VkQueueFlagBits VulkanDevice::ConvertQueueType(QueueType type) {
+        ZoneScoped;
+
+        switch (type) {
+        case QueueType::Graphics:
+            return VK_QUEUE_GRAPHICS_BIT;
+        case QueueType::Transfer:
+            return VK_QUEUE_TRANSFER_BIT;
+        case QueueType::Compute:
+            return VK_QUEUE_COMPUTE_BIT;
+        default:
+            return VK_QUEUE_FLAG_BITS_MAX_ENUM;
+        }
+    }
+
+    VkQueueFlags VulkanDevice::ConvertQueueFlags(const std::vector<QueueType>& types) {
+        ZoneScoped;
+
+        VkQueueFlags flags = 0;
+        for (auto type : types) {
+            auto flag = ConvertQueueType(type);
+            if (flag == VK_QUEUE_FLAG_BITS_MAX_ENUM) {
+                continue;
+            }
+
+            flags |= flag;
+        }
+
+        return flags;
+    }
+
     VulkanDevice::VulkanDevice(Ref<VulkanInstance> instance, VkPhysicalDevice physicalDevice)
         : m_Instance(instance), m_PhysicalDevice(physicalDevice), m_Device(VK_NULL_HANDLE),
           m_Initialized(false) {
@@ -16,9 +47,11 @@ namespace fuujin {
     VulkanDevice::~VulkanDevice() {
         ZoneScoped;
 
-        VkDevice device = m_Device;
-        Renderer::Submit(
-            [device] { vkDestroyDevice(device, &VulkanContext::GetAllocCallbacks()); });
+        if (m_Initialized) {
+            VkDevice device = m_Device;
+            Renderer::Submit(
+                [device] { vkDestroyDevice(device, &VulkanContext::GetAllocCallbacks()); });
+        }
     }
 
     void VulkanDevice::GetProperties(Properties& props) const {
@@ -28,20 +61,23 @@ namespace fuujin {
         GetProperties(properties);
 
         props.Name = properties.properties.deviceName;
+        props.DriverVersion = FromVulkanVersion(properties.properties.driverVersion);
+
         props.API = "Vulkan";
+        props.APIVersion = FromVulkanVersion(properties.properties.apiVersion);
 
         switch (properties.properties.deviceType) {
         case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
-            props.Type = DeviceType::Discrete;
+            props.Type = GraphicsDeviceType::Discrete;
             break;
         case VK_PHYSICAL_DEVICE_TYPE_CPU:
-            props.Type = DeviceType::CPU;
+            props.Type = GraphicsDeviceType::CPU;
             break;
         case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
-            props.Type = DeviceType::Integrated;
+            props.Type = GraphicsDeviceType::Integrated;
             break;
         default:
-            props.Type = DeviceType::Other;
+            props.Type = GraphicsDeviceType::Other;
         }
     }
 
@@ -67,20 +103,34 @@ namespace fuujin {
         }
     }
 
-    void VulkanDevice::GetExtensions(std::vector<VkExtensionProperties>& extensions) const {
+    void VulkanDevice::GetExtensions(std::unordered_set<std::string>& extensions) const {
         ZoneScoped;
 
         uint32_t extensionCount = 0;
         vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionCount, nullptr);
 
-        extensions.resize(extensionCount);
+        std::vector<VkExtensionProperties> available(extensionCount);
         vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionCount,
-                                             extensions.data());
+                                             available.data());
+
+        for (const auto& extension : available) {
+            extensions.insert(extension.extensionName);
+        }
     }
 
     void VulkanDevice::GetMemoryProperties(VkPhysicalDeviceMemoryProperties& properties) const {
         ZoneScoped;
         vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &properties);
+    }
+
+    void VulkanDevice::GetQueueFamilies(std::vector<VkQueueFamilyProperties>& families) const {
+        ZoneScoped;
+
+        uint32_t familyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &familyCount, nullptr);
+
+        families.resize(familyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &familyCount, families.data());
     }
 
     bool VulkanDevice::Initialize(const Spec& spec, void* next, size_t nextSize) {
@@ -92,19 +142,22 @@ namespace fuujin {
         m_Spec = spec;
         m_Initialized = true;
 
-        void* nextBlock = allocate(nextSize);
-        std::memcpy(nextBlock, next, nextSize);
+        void* nextBlock = nullptr;
+        if (next != nullptr && nextSize != 0) {
+            nextBlock = allocate(nextSize);
+            std::memcpy(nextBlock, next, nextSize);
+        }
 
-        Renderer::Submit([&]() {
-            SelectQueues();
-            DoInitialize(nextBlock);
-        });
+        Renderer::Submit([this, nextBlock]() mutable { DoInitialize(nextBlock); });
 
         return true;
     }
 
     void VulkanDevice::DoInitialize(void* next) {
         ZoneScoped;
+
+        VkPhysicalDeviceProperties2 properties{};
+        GetProperties(properties);
 
         VkPhysicalDeviceFeatures2 features{};
         uint32_t api = m_Instance->GetSpec().API;
@@ -117,6 +170,7 @@ namespace fuujin {
                 sizeof(VkPhysicalDeviceVulkan11Features));
             blocks.push_back(features11);
 
+            FUUJIN_DEBUG("Enabling Vulkan 1.1 features");
             features11->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
             features.pNext = features11;
 
@@ -125,6 +179,7 @@ namespace fuujin {
                     sizeof(VkPhysicalDeviceVulkan12Features));
                 blocks.push_back(features12);
 
+                FUUJIN_DEBUG("Enabling Vulkan 1.2 features");
                 features12->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
                 features11->pNext = features12;
 
@@ -133,6 +188,7 @@ namespace fuujin {
                         sizeof(VkPhysicalDeviceVulkan13Features));
                     blocks.push_back(features13);
 
+                    FUUJIN_DEBUG("Enabling Vulkan 1.3 features");
                     features13->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
                     features13->pNext = next;
                     features12->pNext = features13;
@@ -145,6 +201,9 @@ namespace fuujin {
 
             advancedFeatures = true;
         }
+
+        GetFeatures(features);
+        SelectQueues();
 
         std::unordered_set<uint32_t> queues(m_Spec.AdditionalQueues);
         for (auto [type, index] : m_Queues) {
@@ -162,28 +221,29 @@ namespace fuujin {
             queueCreateInfo.pQueuePriorities = &priority;
 
             queueInfo.push_back(std::move(queueCreateInfo));
+            FUUJIN_DEBUG("Creating device queue on family {}", index);
         }
 
-        std::vector<VkExtensionProperties> availableExtensions;
+        std::unordered_set<std::string> availableExtensions;
         GetExtensions(availableExtensions);
+
+        spdlog::enable_backtrace(availableExtensions.size());
+        for (const auto& extension : availableExtensions) {
+            FUUJIN_TRACE("Device extension: {}", extension.c_str());
+        }
 
         std::vector<const char*> extensions;
         for (const auto& extension : m_Spec.Extensions) {
-            const char* allocated = nullptr;
-            for (const auto& available : availableExtensions) {
-                if (available.extensionName == extension) {
-                    allocated = available.extensionName;
-                    break;
-                }
+            if (!availableExtensions.contains(extension)) {
+                s_Logger.dump_backtrace();
+
+                FUUJIN_ERROR("Extension " + extension + " is not present on this device!");
             }
 
-            if (allocated == nullptr) {
-                throw std::runtime_error("Extension " + extension +
-                                         " is not present on this device!");
-            }
-
-            extensions.push_back(allocated);
+            extensions.push_back(extension.c_str());
         }
+
+        spdlog::disable_backtrace();
 
         VkDeviceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -198,22 +258,81 @@ namespace fuujin {
 
         if (vkCreateDevice(m_PhysicalDevice, &createInfo, &VulkanContext::GetAllocCallbacks(),
                            &m_Device) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to acquire device!");
+            FUUJIN_CRITICAL("Failed to acquire device!");
+
+            return;
         }
 
+        FUUJIN_INFO("Successfully acquired device: ", properties.properties.deviceName);
         for (void* block : blocks) {
             freemem(block);
         }
     }
 
+    static std::optional<uint32_t> FindQueueFamily(
+        QueueType type, const std::vector<VkQueueFamilyProperties>& families) {
+        ZoneScoped;
+
+        static const auto relevantFlags = VulkanDevice::ConvertQueueFlags(
+            { QueueType::Graphics, QueueType::Transfer, QueueType::Compute });
+
+        std::string queueName;
+        switch (type) {
+        case QueueType::Graphics:
+            queueName = "graphics";
+            break;
+        case QueueType::Transfer:
+            queueName = "transfer";
+            break;
+        case QueueType::Compute:
+            queueName = "compute";
+            break;
+        default:
+            queueName = "other";
+            break;
+        }
+
+        FUUJIN_DEBUG("Finding {} family...", queueName.c_str());
+        auto flag = VulkanDevice::ConvertQueueType(type);
+
+        std::optional<uint32_t> family;
+        for (uint32_t i = 0; i < families.size(); i++) {
+            const auto& properties = families[i];
+
+            if ((properties.queueFlags & flag) != flag) {
+                continue;
+            }
+
+            if (!family.has_value()) {
+                family = i;
+            }
+
+            if ((properties.queueFlags & relevantFlags) == flag) {
+                FUUJIN_DEBUG("Found exclusive {} queue: {}", queueName.c_str(), i);
+                return i;
+            }
+        }
+
+        if (family.has_value()) {
+            FUUJIN_DEBUG("Found non-exclusive {} queue: {}", queueName.c_str(), family.value());
+        } else {
+            FUUJIN_WARN("No {} family found!", queueName.c_str());
+        }
+
+        return family;
+    }
+
     void VulkanDevice::SelectQueues() {
         ZoneScoped;
 
-        uint32_t familyCount = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &familyCount, nullptr);
+        std::vector<VkQueueFamilyProperties> families;
+        GetQueueFamilies(families);
 
-        std::vector<VkQueueFamilyProperties> queueFamilies(familyCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &familyCount,
-                                                 queueFamilies.data());
+        for (auto type : m_Spec.RequestedQueues) {
+            auto family = FindQueueFamily(type, families);
+            if (family.has_value()) {
+                m_Queues[type] = family.value();
+            }
+        }
     }
 } // namespace fuujin

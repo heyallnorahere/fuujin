@@ -43,22 +43,41 @@ namespace fuujin {
             GetExtensions(availableExtensions);
             GetLayers(availableLayers);
 
-            std::vector<const char*> extensions, layers;
+            spdlog::enable_backtrace(availableExtensions.size());
+            for (const auto& extension : availableExtensions) {
+                FUUJIN_TRACE("Instance extension: {}", extension.c_str());
+            }
+
+            std::vector<const char*> extensions;
             for (const auto& extension : m_Spec.Extensions) {
                 if (!availableExtensions.contains(extension)) {
-                    throw std::runtime_error("Extension " + extension + " is not supported!");
+                    s_Logger.dump_backtrace();
+
+                    FUUJIN_ERROR("Extension {} is not supported!", extension.c_str());
                 }
 
                 extensions.push_back(extension.c_str());
             }
 
+            spdlog::disable_backtrace();
+            spdlog::enable_backtrace(availableLayers.size());
+
+            for (const auto& layer : availableLayers) {
+                FUUJIN_TRACE("Instance layer: {}", layer.c_str());
+            }
+
+            std::vector<const char*> layers;
             for (const auto& layer : m_Spec.Layers) {
                 if (!availableLayers.contains(layer)) {
-                    throw std::runtime_error("Layer " + layer + " is not supported!");
+                    s_Logger.dump_backtrace();
+
+                    FUUJIN_ERROR("Layer {} is not supported!", layer.c_str());
                 }
 
                 layers.push_back(layer.c_str());
             }
+
+            spdlog::disable_backtrace();
 
             VkApplicationInfo appInfo{};
             appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -78,7 +97,9 @@ namespace fuujin {
 
             if (vkCreateInstance(&createInfo, &VulkanContext::GetAllocCallbacks(), &m_Instance) !=
                 VK_SUCCESS) {
-                throw std::runtime_error("Failed to create instance!");
+                FUUJIN_CRITICAL("Failed to create instance!");
+
+                return;
             }
 
             FUUJIN_DEBUG("Instance created with API version: {}.{}.{}",

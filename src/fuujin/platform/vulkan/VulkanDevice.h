@@ -5,18 +5,16 @@
 #include "fuujin/platform/vulkan/VulkanInstance.h"
 
 namespace fuujin {
-    enum class QueueType {
-        Graphics,
-        Transfer,
-        Compute
-    };
-
     class VulkanDevice : public GraphicsDevice {
     public:
         struct Spec {
             std::vector<std::string> Extensions;
             std::unordered_set<uint32_t> AdditionalQueues;
+            std::unordered_set<QueueType> RequestedQueues;
         };
+
+        static VkQueueFlagBits ConvertQueueType(QueueType type);
+        static VkQueueFlags ConvertQueueFlags(const std::vector<QueueType>& types);
 
         VulkanDevice(Ref<VulkanInstance> instance, VkPhysicalDevice physicalDevice);
         virtual ~VulkanDevice() override;
@@ -25,8 +23,9 @@ namespace fuujin {
 
         void GetProperties(VkPhysicalDeviceProperties2& properties) const;
         void GetFeatures(VkPhysicalDeviceFeatures2& features) const;
-        void GetExtensions(std::vector<VkExtensionProperties>& extensions) const;
+        void GetExtensions(std::unordered_set<std::string>& extensions) const;
         void GetMemoryProperties(VkPhysicalDeviceMemoryProperties& properties) const;
+        void GetQueueFamilies(std::vector<VkQueueFamilyProperties>& families) const;
 
         Ref<VulkanInstance> GetInstance() const { return m_Instance; }
 
@@ -34,6 +33,7 @@ namespace fuujin {
         VkDevice GetDevice() const { return m_Device; }
 
         const Spec& GetSpec() const { return m_Spec; }
+        const std::unordered_map<QueueType, uint32_t>& GetQueues() const { return m_Queues; }
 
         bool Initialize(const Spec& spec, void* next = nullptr, size_t nextSize = 0);
 

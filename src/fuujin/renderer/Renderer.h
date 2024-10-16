@@ -8,7 +8,9 @@ namespace fuujin {
         static void Init();
         static void Shutdown();
 
-        static void Submit(const std::function<void()>& callback);
+        static void Submit(const std::function<void()>& callback,
+                           const std::optional<std::string>& label = {});
+                           
         static void Wait();
     };
 } // namespace fuujin
