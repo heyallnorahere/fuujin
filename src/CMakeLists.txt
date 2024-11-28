@@ -23,6 +23,10 @@ foreach(PLATFORM ${FUUJIN_PLATFORMS})
     list(APPEND FUUJIN_DEFINES FUUJIN_PLATFORM_${PLATFORM})
 endforeach()
 
+if(${FUUJIN_PLATFORM_linux})
+    list(APPEND FUUJIN_LIBRARIES stdc++fs pthread)
+endif()
+
 if(${FUUJIN_PLATFORM_desktop})
     list(APPEND FUUJIN_LIBRARIES glfw)
 endif()
@@ -30,10 +34,19 @@ endif()
 if(${FUUJIN_PLATFORM_vulkan})
     set(VENDOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../vendor")
     set(VOLK_DIR "${VENDOR_DIR}/volk")
+    set(VMA_DIR "${VENDOR_DIR}/VulkanMemoryAllocator")
 
-    add_library(fuujin_vulkan STATIC "${VOLK_DIR}/volk.c" "${VOLK_DIR}/volk.h")
+    file(GLOB VOLK_SOURCE CONFIGURE_DEPENDS "${VOLK_DIR}/volk.*")
+    file(GLOB VMA_SOURCE CONFIGURE_DEPENDS "${VMA_DIR}/src/VmaUsage.*")
+    list(APPEND VMA_SOURCE "${VMA_DIR}/include/vk_mem_alloc.h")
+
+    if(${CMAKE_GENERATOR} MATCHES "Visual Studio.*")
+        list(APPEND VMA_SOURCE "${VMA_DIR}/src/vk_mem_alloc.natvis")
+    endif()
+
+    add_library(fuujin_vulkan STATIC ${VOLK_SOURCE} ${VMA_SOURCE})
     target_link_libraries(fuujin_vulkan PUBLIC Vulkan::Headers)
-    target_include_directories(fuujin_vulkan PUBLIC ${VOLK_DIR})
+    target_include_directories(fuujin_vulkan PUBLIC ${VOLK_DIR} "${VMA_DIR}/include")
     list(APPEND FUUJIN_LIBRARIES fuujin_vulkan)
 endif()
 

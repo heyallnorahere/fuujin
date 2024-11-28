@@ -109,7 +109,7 @@ namespace fuujin {
         glfwSetWindowSize(m_Window, size.Width, size.Height);
     }
 
-    void DesktopWindow::GetRequiredVulkanExtensions(std::vector<std::string>& extensions) {
+    void DesktopWindow::GetRequiredVulkanExtensions(std::vector<std::string>& extensions) const {
         ZoneScoped;
         extensions.clear();
 
@@ -123,17 +123,19 @@ namespace fuujin {
 #endif
     }
 
-    void* DesktopWindow::CreateVulkanSurface(void* instance) {
+    void* DesktopWindow::CreateVulkanSurface(void* instance) const {
         ZoneScoped;
 
 #ifdef FUUJIN_PLATFORM_vulkan
-        VkSurfaceKHR surface = nullptr;
+        VkSurfaceKHR surface = VK_NULL_HANDLE;
         if (glfwCreateWindowSurface((VkInstance)instance, m_Window,
                                     &VulkanContext::GetAllocCallbacks(), &surface) == VK_SUCCESS) {
             return surface;
+        } else {
+            return VK_NULL_HANDLE;
         }
-#endif
-
+#else
         return nullptr;
+#endif
     }
 } // namespace fuujin

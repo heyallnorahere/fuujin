@@ -2,7 +2,6 @@
 #include "fuujin/platform/vulkan/VulkanContext.h"
 
 #include "fuujin/core/Application.h"
-#include "fuujin/core/View.h"
 #include "fuujin/renderer/Renderer.h"
 
 namespace fuujin {
@@ -50,8 +49,11 @@ namespace fuujin {
 
     struct ContextData {
         Ref<VulkanInstance> Instance;
+
         std::unordered_map<std::string, Ref<VulkanDevice>> Devices;
         std::string UsedDevice;
+
+        VmaAllocator Allocator = VK_NULL_HANDLE;
     };
 
     static VulkanContext* s_CurrentContext = nullptr;
@@ -120,6 +122,13 @@ namespace fuujin {
             FUUJIN_DEBUG("Global functions loaded");
         });
 
+        Ref<View> view;
+        try {
+            view = Application::Get().GetView();
+        } catch (const std::runtime_error& exc) {
+            view = nullptr;
+        }
+
         s_CurrentContext = this;
         m_Data = new ContextData;
 
@@ -131,14 +140,7 @@ namespace fuujin {
             spec.EngineName = "fuujin";
             spec.EngineVersion = VK_MAKE_API_VERSION(0, 0, 0, 1);
 
-            View* view = nullptr;
-            try {
-                view = &Application::Get().GetView();
-            } catch (const std::runtime_error& exc) {
-                view = nullptr;
-            }
-
-            if (view != nullptr) {
+            if (view) {
                 std::vector<std::string> viewExtensions;
                 view->GetRequiredVulkanExtensions(viewExtensions);
                 spec.Extensions.insert(viewExtensions.begin(), viewExtensions.end());
@@ -157,8 +159,32 @@ namespace fuujin {
         Renderer::Wait();
         auto selectedDevice = m_Data->Devices[m_Data->UsedDevice];
 
+        VkSurfaceKHR surface;
+        std::unordered_set<uint32_t> additionalQueues;
+
+        if (view) {
+            surface = (VkSurfaceKHR)view->CreateVulkanSurface(m_Data->Instance->GetInstance());
+
+            if (surface != nullptr) {
+                auto physicalDevice = selectedDevice->GetPhysicalDevice();
+                uint32_t queueCount = 0;
+                vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, nullptr);
+
+                for (uint32_t i = 0; i < queueCount; i++) {
+                    VkBool32 supported = VK_FALSE;
+                    vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &supported);
+
+                    if (supported == VK_TRUE) {
+                        additionalQueues.insert(i);
+                        break;
+                    }
+                }
+            }
+        }
+
         {
             VulkanDevice::Spec spec;
+            spec.AdditionalQueues = additionalQueues;
             spec.RequestedQueues = { QueueType::Graphics, QueueType::Transfer };
             spec.Extensions = { "VK_KHR_swapchain" };
 
@@ -168,6 +194,26 @@ namespace fuujin {
         Renderer::Submit([this]() mutable {
             volkLoadDevice(m_Data->Devices[m_Data->UsedDevice]->GetDevice());
             FUUJIN_DEBUG("Device functions loaded");
+        });
+
+        Renderer::Submit([this]() mutable {
+            auto device = m_Data->Devices[m_Data->UsedDevice];
+
+            VmaVulkanFunctions functions;
+            functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+            functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+
+            VmaAllocatorCreateInfo allocatorInfo{};
+            allocatorInfo.vulkanApiVersion = m_Data->Instance->GetSpec().API;
+            allocatorInfo.instance = m_Data->Instance->GetInstance();
+            allocatorInfo.physicalDevice = device->GetPhysicalDevice();
+            allocatorInfo.device = device->GetDevice();
+            allocatorInfo.pAllocationCallbacks = &GetAllocCallbacks();
+            allocatorInfo.pVulkanFunctions = &functions;
+            
+            if (vmaCreateAllocator(&allocatorInfo, &m_Data->Allocator) != VK_SUCCESS) {
+                throw std::runtime_error("Failed to create allocator!");
+            }
         });
     }
 

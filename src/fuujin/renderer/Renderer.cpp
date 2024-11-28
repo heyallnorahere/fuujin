@@ -38,17 +38,26 @@ namespace fuujin {
             bool doSleep = false;
 
             {
-                std::lock_guard lock(s_Data->RenderThread.Mutex);
                 auto& queue = s_Data->RenderThread.Queue;
+                std::optional<QueueCallback> callback;
 
-                if (!queue.empty()) {
-                    auto callback = queue.front();
-                    
-                    FUUJIN_TRACE("Render thread: {}", callback.Label.c_str());
-                    callback.Callback();
+                {
+                    std::lock_guard lock(s_Data->RenderThread.Mutex);
+                    if (!queue.empty()) {
+                        callback = queue.front();
+                    }
+                }
 
-                    queue.pop();
+                if (callback.has_value()) {
+                    FUUJIN_TRACE("Render thread: {}", callback->Label.c_str());
+                    callback->Callback();
+
+                    {
+                        std::lock_guard lock(s_Data->RenderThread.Mutex);
+                        queue.pop();
+                    }
                 } else {
+                    FUUJIN_TRACE("Render queue empty, sleeping 1ms...");
                     doSleep = true;
                 }
             }
@@ -87,7 +96,8 @@ namespace fuujin {
         s_Data.reset();
     }
 
-    void Renderer::Submit(const std::function<void()>& callback, const std::optional<std::string>& label) {
+    void Renderer::Submit(const std::function<void()>& callback,
+                          const std::optional<std::string>& label) {
         ZoneScoped;
 
         QueueCallback data;

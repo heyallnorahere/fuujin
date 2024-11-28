@@ -4,6 +4,7 @@
 
 #include "fuujin/platform/vulkan/VulkanInstance.h"
 #include "fuujin/platform/vulkan/VulkanDevice.h"
+#include "fuujin/platform/vulkan/VulkanSwapchain.h"
 
 namespace fuujin {
     struct ContextData;

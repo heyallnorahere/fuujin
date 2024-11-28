@@ -37,6 +37,29 @@ namespace fuujin {
 
         bool Initialize(const Spec& spec, void* next = nullptr, size_t nextSize = 0);
 
+        template <typename _Ty>
+        VkSharingMode GetSharingMode(const _Ty& ownership, std::vector<uint32_t>& indices) const {
+            ZoneScoped;
+
+            std::unordered_set<uint32_t> queueIndices;
+            for (QueueType type : ownership) {
+                if (!m_Queues.contains(type)) {
+                    continue;
+                }
+
+                queueIndices.insert(m_Queues[type]);
+            }
+
+            if (queueIndices.size() <= 1) {
+                return VK_SHARING_MODE_EXCLUSIVE;
+            } else {
+                indices.resize(queueIndices.size());
+                std::copy(queueIndices.begin(), queueIndices.end(), indices.begin());
+
+                return VK_SHARING_MODE_CONCURRENT;
+            }
+        }
+
     private:
         void DoInitialize(void* next);
         void SelectQueues();

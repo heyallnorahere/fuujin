@@ -3,7 +3,6 @@
 
 #include "fuujin/core/Event.h"
 #include "fuujin/core/Layer.h"
-#include "fuujin/core/View.h"
 #include "fuujin/renderer/Renderer.h"
 
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -36,7 +35,8 @@ namespace fuujin {
         consoleSink->set_level(level);
         consoleSink->set_pattern("[%s:%# %!] [%^%l%$] %v");
 
-        auto fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/fuujin.log", 10 * 1024 * 1024, 3);
+        auto fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/fuujin.log",
+                                                                               10 * 1024 * 1024, 3);
         fileSink->set_level(spdlog::level::trace);
         fileSink->set_pattern("[%x %X] [%g:%# %!] [%l] %v");
 
@@ -53,7 +53,7 @@ namespace fuujin {
         initialization();
 
         FUUJIN_INFO("Initialized. Launching...");
-        while (!app.GetView().IsClosed()) {
+        while (!app.GetView()->IsClosed()) {
             app.Update();
         }
 
@@ -95,12 +95,11 @@ namespace fuujin {
                 return;
             }
 
-            event.SetProcessed(layer->ProcessEvent(event));
+            layer->ProcessEvent(event);
         }
     }
 
-    View& Application::GetView() { return *m_Data->AppView; }
-    const View& Application::GetView() const { return *m_Data->AppView; }
+    Ref<View> Application::GetView() const { return m_Data->AppView; }
 
     void Application::PushLayer(Layer* layer) {
         m_Data->LayerStack.insert(m_Data->LayerStack.begin(), std::unique_ptr<Layer>(layer));

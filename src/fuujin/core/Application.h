@@ -1,7 +1,7 @@
 #pragma once
+#include "fuujin/core/View.h"
 
 namespace fuujin {
-    class View;
     class Event;
     class Layer;
 
@@ -26,8 +26,7 @@ namespace fuujin {
 
         void ProcessEvent(Event& event);
 
-        View& GetView();
-        const View& GetView() const;
+        Ref<View> GetView() const;
 
     private:
         Application();

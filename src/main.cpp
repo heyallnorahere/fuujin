@@ -9,13 +9,11 @@ public:
         FUUJIN_DEBUG("Test layer added with name: {}", name.c_str());
     }
 
-    virtual bool ProcessEvent(fuujin::Event& event) override {
+    virtual void ProcessEvent(fuujin::Event& event) override {
         fuujin::EventDispatcher dispatcher(event);
         dispatcher.Dispatch<fuujin::FramebufferResizedEvent>(
             fuujin::EventType::FramebufferResized,
             std::bind(&TestLayer::ViewResized, this, std::placeholders::_1));
-
-        return dispatcher;
     }
 
 private:

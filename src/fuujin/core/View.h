@@ -19,7 +19,7 @@ namespace fuujin {
         virtual ViewSize GetFramebufferSize() const = 0;
         virtual void RequestSize(const ViewSize& size) = 0;
 
-        virtual void GetRequiredVulkanExtensions(std::vector<std::string>& extensions) = 0;
-        virtual void* CreateVulkanSurface(void* instance) = 0;
+        virtual void GetRequiredVulkanExtensions(std::vector<std::string>& extensions) const = 0;
+        virtual void* CreateVulkanSurface(void* instance) const = 0;
     };
 } // namespace fuujin

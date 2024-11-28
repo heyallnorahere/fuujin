@@ -11,7 +11,7 @@ namespace fuujin {
         Layer(const Layer&) = delete;
         Layer& operator=(const Layer&) = delete;
 
-        virtual bool ProcessEvent(Event& event) { return false; }
+        virtual void ProcessEvent(Event& event) {}
         virtual void Update(Duration delta) {}
     };
 } // namespace fuujin
