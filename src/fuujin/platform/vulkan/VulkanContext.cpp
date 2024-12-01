@@ -53,6 +53,7 @@ namespace fuujin {
         std::unordered_map<std::string, Ref<VulkanDevice>> Devices;
         std::string UsedDevice;
 
+        Ref<VulkanSwapchain> Swapchain;
         VmaAllocator Allocator = VK_NULL_HANDLE;
     };
 
@@ -71,17 +72,17 @@ namespace fuujin {
         return Ref<VulkanContext>(context);
     }
 
-    static uint64_t ScoreDevice(Ref<VulkanDevice> device) {
+    static uint64_t RT_ScoreDevice(Ref<VulkanDevice> device) {
         ZoneScoped;
 
         VkPhysicalDeviceProperties2 properties{};
-        device->GetProperties(properties);
+        device->RT_GetProperties(properties);
 
         VkPhysicalDeviceFeatures2 features{};
-        device->GetFeatures(features);
+        device->RT_GetFeatures(features);
 
         VkPhysicalDeviceMemoryProperties memoryProperties{};
-        device->GetMemoryProperties(memoryProperties);
+        device->RT_GetMemoryProperties(memoryProperties);
 
         uint64_t score = 0;
         if (properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
@@ -98,14 +99,14 @@ namespace fuujin {
         return score;
     }
 
-    static void SelectDevice(ContextData* data) {
+    static void RT_SelectDevice(ContextData* data) {
         ZoneScoped;
 
         std::string highestScoreDevice;
         uint64_t highestScore = 0;
 
         for (auto [name, device] : data->Devices) {
-            uint64_t score = ScoreDevice(device);
+            uint64_t score = RT_ScoreDevice(device);
             if (score > highestScore) {
                 highestScore = score;
                 highestScoreDevice = name;
@@ -149,75 +150,47 @@ namespace fuujin {
             m_Data->Instance = Ref<VulkanInstance>::Create(spec);
         }
 
-        Renderer::Submit([&]() {
-            volkLoadInstanceOnly(m_Data->Instance->GetInstance());
-            FUUJIN_DEBUG("Instance functions loaded");
+        Renderer::Submit([&]() { RT_LoadInstance(); }, "Load instance functions");
+        Renderer::Submit([&]() { RT_EnumerateDevices(deviceName); }, "Enumerate devices");
 
-            EnumerateDevices(deviceName);
-        });
-
+        // one of the few times we sync - we want the device handles
+        // specific calls like creating window surfaces are costly
+        // so we want to minimize use of this function
         Renderer::Wait();
-        auto selectedDevice = m_Data->Devices[m_Data->UsedDevice];
-
-        VkSurfaceKHR surface;
-        std::unordered_set<uint32_t> additionalQueues;
-
-        if (view) {
-            surface = (VkSurfaceKHR)view->CreateVulkanSurface(m_Data->Instance->GetInstance());
-
-            if (surface != nullptr) {
-                auto physicalDevice = selectedDevice->GetPhysicalDevice();
-                uint32_t queueCount = 0;
-                vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, nullptr);
-
-                for (uint32_t i = 0; i < queueCount; i++) {
-                    VkBool32 supported = VK_FALSE;
-                    vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &supported);
-
-                    if (supported == VK_TRUE) {
-                        additionalQueues.insert(i);
-                        break;
-                    }
-                }
-            }
-        }
+        auto device = m_Data->Devices[m_Data->UsedDevice];
 
         {
-            VulkanDevice::Spec spec;
-            spec.AdditionalQueues = additionalQueues;
-            spec.RequestedQueues = { QueueType::Graphics, QueueType::Transfer };
-            spec.Extensions = { "VK_KHR_swapchain" };
-
-            selectedDevice->Initialize(spec);
+            auto& deviceSpec = device->GetSpec();
+            deviceSpec.RequestedQueues = { QueueType::Graphics, QueueType::Transfer };
         }
 
-        Renderer::Submit([this]() mutable {
-            volkLoadDevice(m_Data->Devices[m_Data->UsedDevice]->GetDevice());
-            FUUJIN_DEBUG("Device functions loaded");
-        });
+        if (view) {
+            m_Data->Swapchain = Ref<VulkanSwapchain>::Create(view, device);
+            Renderer::Submit([&]() { RT_QueryPresentQueue(); }, "Query present queue");
+        }
 
-        Renderer::Submit([this]() mutable {
-            auto device = m_Data->Devices[m_Data->UsedDevice];
+        device->Initialize();
+        Renderer::Submit([&]() { RT_LoadDevice(); }, "Load device functions");
+        Renderer::Submit([&]() { RT_CreateAllocator(); }, "Create allocator");
 
-            VmaVulkanFunctions functions;
-            functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
-            functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
-
-            VmaAllocatorCreateInfo allocatorInfo{};
-            allocatorInfo.vulkanApiVersion = m_Data->Instance->GetSpec().API;
-            allocatorInfo.instance = m_Data->Instance->GetInstance();
-            allocatorInfo.physicalDevice = device->GetPhysicalDevice();
-            allocatorInfo.device = device->GetDevice();
-            allocatorInfo.pAllocationCallbacks = &GetAllocCallbacks();
-            allocatorInfo.pVulkanFunctions = &functions;
-            
-            if (vmaCreateAllocator(&allocatorInfo, &m_Data->Allocator) != VK_SUCCESS) {
-                throw std::runtime_error("Failed to create allocator!");
-            }
-        });
+        // passes by reference to the allocator pointer
+        // so the value only matters when the render thread catches up
+        // incidentally, this can only happen after the allocator has been created
+        // so it's not a race condition, but it is kind of hacky
+        m_Data->Swapchain->Initialize(m_Data->Allocator);
     }
 
     VulkanContext::~VulkanContext() {
+        ZoneScoped;
+
+        m_Data->Swapchain.Reset();
+
+        auto allocator = m_Data->Allocator;
+        Renderer::Submit([allocator]() mutable { vmaDestroyAllocator(allocator); });
+
+        m_Data->Devices.clear();
+        m_Data->Instance.Reset();
+
         delete m_Data;
         s_CurrentContext = nullptr;
     }
@@ -234,11 +207,62 @@ namespace fuujin {
         return m_Data->Devices[m_Data->UsedDevice];
     };
 
-    void VulkanContext::EnumerateDevices(const std::optional<std::string>& deviceName) {
+    void VulkanContext::RT_LoadInstance() const {
+        ZoneScoped;
+
+        volkLoadInstanceOnly(m_Data->Instance->GetInstance());
+        FUUJIN_DEBUG("Instance functions loaded");
+    }
+
+    void VulkanContext::RT_LoadDevice() const {
+        ZoneScoped;
+
+        volkLoadDevice(m_Data->Devices[m_Data->UsedDevice]->GetDevice());
+        FUUJIN_DEBUG("Device functions loaded");
+    }
+
+    void VulkanContext::RT_QueryPresentQueue() {
+        ZoneScoped;
+
+        auto queue = m_Data->Swapchain->RT_FindDeviceQueue();
+        if (queue.has_value()) {
+            auto device = m_Data->Devices[m_Data->UsedDevice];
+            auto& spec = device->GetSpec();
+
+            uint32_t renderQueue = queue.value();
+            FUUJIN_DEBUG("Swapchain render queue found: {}", renderQueue);
+
+            spec.AdditionalQueues.insert(renderQueue);
+            spec.Extensions.insert("VK_KHR_swapchain");
+        }
+    }
+
+    void VulkanContext::RT_CreateAllocator() {
+        ZoneScoped;
+        auto device = m_Data->Devices[m_Data->UsedDevice];
+
+        VmaVulkanFunctions functions{};
+        functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+        functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+
+        VmaAllocatorCreateInfo allocatorInfo{};
+        allocatorInfo.vulkanApiVersion = m_Data->Instance->GetSpec().API;
+        allocatorInfo.instance = m_Data->Instance->GetInstance();
+        allocatorInfo.physicalDevice = device->GetPhysicalDevice();
+        allocatorInfo.device = device->GetDevice();
+        allocatorInfo.pAllocationCallbacks = &GetAllocCallbacks();
+        allocatorInfo.pVulkanFunctions = &functions;
+
+        if (vmaCreateAllocator(&allocatorInfo, &m_Data->Allocator) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create allocator!");
+        }
+    }
+
+    void VulkanContext::RT_EnumerateDevices(const std::optional<std::string>& deviceName) {
         ZoneScoped;
 
         std::vector<VkPhysicalDevice> devices;
-        m_Data->Instance->GetDevices(devices);
+        m_Data->Instance->RT_GetDevices(devices);
         FUUJIN_DEBUG("{} devices found", devices.size());
 
         for (size_t i = 0; i < devices.size(); i++) {
@@ -266,7 +290,7 @@ namespace fuujin {
         }
 
         if (!usingRequested) {
-            SelectDevice(m_Data);
+            RT_SelectDevice(m_Data);
             FUUJIN_INFO("Selected Vulkan device: {}", m_Data->UsedDevice.c_str());
         }
     }

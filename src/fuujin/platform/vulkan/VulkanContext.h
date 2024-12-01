@@ -24,7 +24,13 @@ namespace fuujin {
     private:
         VulkanContext(const std::optional<std::string>& deviceName);
 
-        void EnumerateDevices(const std::optional<std::string>& deviceName);
+        void RT_LoadInstance() const;
+        void RT_LoadDevice() const;
+
+        void RT_QueryPresentQueue();
+        void RT_CreateAllocator();
+
+        void RT_EnumerateDevices(const std::optional<std::string>& deviceName);
 
         ContextData* m_Data;
     };

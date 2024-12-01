@@ -34,6 +34,9 @@ namespace fuujin {
         const VulkanSpec& GetSpec() const { return m_Spec; }
 
     private:
+        void RT_CreateImage();
+        void RT_CreateView();
+
         Ref<VulkanDevice> m_Device;
 
         VulkanSpec m_Spec;

@@ -17,8 +17,8 @@ namespace fuujin {
             std::unordered_set<std::string> Extensions, Layers;
         };
 
-        static void GetExtensions(std::unordered_set<std::string>& extensions);
-        static void GetLayers(std::unordered_set<std::string>& layers);
+        static void RT_GetExtensions(std::unordered_set<std::string>& extensions);
+        static void RT_GetLayers(std::unordered_set<std::string>& layers);
 
         VulkanInstance(const Spec& spec);
         virtual ~VulkanInstance() override;
@@ -29,9 +29,11 @@ namespace fuujin {
         const Spec& GetSpec() const { return m_Spec; }
         VkInstance GetInstance() const { return m_Instance; }
 
-        void GetDevices(std::vector<VkPhysicalDevice>& devices) const;
+        void RT_GetDevices(std::vector<VkPhysicalDevice>& devices) const;
 
     private:
+        void RT_Create();
+
         Spec m_Spec;
         VkInstance m_Instance;
     };

@@ -48,6 +48,13 @@ if(${FUUJIN_PLATFORM_vulkan})
     target_link_libraries(fuujin_vulkan PUBLIC Vulkan::Headers)
     target_include_directories(fuujin_vulkan PUBLIC ${VOLK_DIR} "${VMA_DIR}/include")
     list(APPEND FUUJIN_LIBRARIES fuujin_vulkan)
+    target_compile_definitions(fuujin_vulkan PRIVATE VMA_STATIC_VULKAN_FUNCTIONS=0
+        VMA_DYNAMIC_VULKAN_FUNCTIONS=1
+        VMA_DEBUG_ALWAYS_DEDICATED_MEMORY=0
+        VMA_DEBUG_INITIALIZE_ALLOCATIONS=0
+        VMA_DEBUG_GLOBAL_MUTEX=0
+        VMA_DEBUG_DONT_EXCEED_MAX_MEMORY_ALLOCATION_COUNT=0
+        VMA_RECORDING_ENABLED=0)
 endif()
 
 foreach(SOURCE ${FUUJIN_SOURCE})

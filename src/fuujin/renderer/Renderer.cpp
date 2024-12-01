@@ -20,6 +20,7 @@ namespace fuujin {
     struct RendererData {
         struct {
             std::thread Thread;
+            std::thread::id ID;
             std::mutex Mutex;
             std::queue<QueueCallback> Queue;
         } RenderThread;
@@ -29,7 +30,8 @@ namespace fuujin {
 
     static std::unique_ptr<RendererData> s_Data;
     static void RenderThread() {
-        tracy::SetThreadName("Fuujin render thread");
+        tracy::SetThreadName("Render thread");
+        s_Data->RenderThread.ID = std::this_thread::get_id();
 
         ZoneScoped;
         FUUJIN_DEBUG("Render thread starting...");
@@ -100,15 +102,23 @@ namespace fuujin {
                           const std::optional<std::string>& label) {
         ZoneScoped;
 
+        auto jobLabel = label.value_or("<unnamed render task>");
+        if (IsRenderThread()) {
+            FUUJIN_TRACE("Render thread: sub-job {}", jobLabel.c_str());
+            callback();
+            
+            return;
+        }
+
         QueueCallback data;
         data.Callback = callback;
-        data.Label = label.value_or("<unnamed render task>");
+        data.Label = jobLabel;
 
         std::lock_guard lock(s_Data->RenderThread.Mutex);
         s_Data->RenderThread.Queue.push(data);
     }
 
-    void Renderer::Wait() {
+    bool Renderer::Wait(std::optional<std::chrono::milliseconds> timeout) {
         ZoneScoped;
 
         FUUJIN_DEBUG("Waiting for render queue to finish...");
@@ -122,10 +132,21 @@ namespace fuujin {
                 }
             }
 
+            if (timeout.has_value() && timer.elapsed() >= timeout.value()) {
+                FUUJIN_DEBUG("Waited {} to clear render queue - timed out", timer.elapsed_ms());
+                return false;
+            }
+
             std::this_thread::sleep_for(1ms);
         }
 
-        FUUJIN_DEBUG("Waited {} to clear render queue",
-                     std::chrono::duration_cast<std::chrono::milliseconds>(timer.elapsed()));
+        FUUJIN_DEBUG("Waited {} to clear render queue", timer.elapsed_ms());
+        return true;
+    }
+
+    bool Renderer::IsRenderThread() {
+        ZoneScoped;
+
+        return std::this_thread::get_id() == s_Data->RenderThread.ID;
     }
 }; // namespace fuujin

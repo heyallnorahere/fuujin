@@ -41,7 +41,7 @@ namespace fuujin {
           m_Initialized(false) {
         ZoneScoped;
 
-        // ????
+        Renderer::Submit([&]() { RT_GetProperties(); });
     }
 
     VulkanDevice::~VulkanDevice() {
@@ -54,34 +54,7 @@ namespace fuujin {
         }
     }
 
-    void VulkanDevice::GetProperties(Properties& props) const {
-        ZoneScoped;
-
-        VkPhysicalDeviceProperties2 properties{};
-        GetProperties(properties);
-
-        props.Name = properties.properties.deviceName;
-        props.DriverVersion = FromVulkanVersion(properties.properties.driverVersion);
-
-        props.API = "Vulkan";
-        props.APIVersion = FromVulkanVersion(properties.properties.apiVersion);
-
-        switch (properties.properties.deviceType) {
-        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
-            props.Type = GraphicsDeviceType::Discrete;
-            break;
-        case VK_PHYSICAL_DEVICE_TYPE_CPU:
-            props.Type = GraphicsDeviceType::CPU;
-            break;
-        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
-            props.Type = GraphicsDeviceType::Integrated;
-            break;
-        default:
-            props.Type = GraphicsDeviceType::Other;
-        }
-    }
-
-    void VulkanDevice::GetProperties(VkPhysicalDeviceProperties2& properties) const {
+    void VulkanDevice::RT_GetProperties(VkPhysicalDeviceProperties2& properties) const {
         ZoneScoped;
 
         if (vkGetPhysicalDeviceProperties2 != nullptr) {
@@ -92,7 +65,7 @@ namespace fuujin {
         }
     }
 
-    void VulkanDevice::GetFeatures(VkPhysicalDeviceFeatures2& features) const {
+    void VulkanDevice::RT_GetFeatures(VkPhysicalDeviceFeatures2& features) const {
         ZoneScoped;
 
         if (vkGetPhysicalDeviceFeatures2 != nullptr) {
@@ -103,7 +76,7 @@ namespace fuujin {
         }
     }
 
-    void VulkanDevice::GetExtensions(std::unordered_set<std::string>& extensions) const {
+    void VulkanDevice::RT_GetExtensions(std::unordered_set<std::string>& extensions) const {
         ZoneScoped;
 
         uint32_t extensionCount = 0;
@@ -118,12 +91,12 @@ namespace fuujin {
         }
     }
 
-    void VulkanDevice::GetMemoryProperties(VkPhysicalDeviceMemoryProperties& properties) const {
+    void VulkanDevice::RT_GetMemoryProperties(VkPhysicalDeviceMemoryProperties& properties) const {
         ZoneScoped;
         vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &properties);
     }
 
-    void VulkanDevice::GetQueueFamilies(std::vector<VkQueueFamilyProperties>& families) const {
+    void VulkanDevice::RT_GetQueueFamilies(std::vector<VkQueueFamilyProperties>& families) const {
         ZoneScoped;
 
         uint32_t familyCount = 0;
@@ -133,13 +106,12 @@ namespace fuujin {
         vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &familyCount, families.data());
     }
 
-    bool VulkanDevice::Initialize(const Spec& spec, void* next, size_t nextSize) {
+    bool VulkanDevice::Initialize(void* next, size_t nextSize) {
         ZoneScoped;
         if (m_Initialized) {
             return true;
         }
 
-        m_Spec = spec;
         m_Initialized = true;
 
         void* nextBlock = nullptr;
@@ -148,16 +120,13 @@ namespace fuujin {
             std::memcpy(nextBlock, next, nextSize);
         }
 
-        Renderer::Submit([this, nextBlock]() mutable { DoInitialize(nextBlock); });
+        Renderer::Submit([this, nextBlock]() mutable { RT_Initialize(nextBlock); });
 
         return true;
     }
 
-    void VulkanDevice::DoInitialize(void* next) {
+    void VulkanDevice::RT_Initialize(void* next) {
         ZoneScoped;
-
-        VkPhysicalDeviceProperties2 properties{};
-        GetProperties(properties);
 
         VkPhysicalDeviceFeatures2 features{};
         uint32_t api = m_Instance->GetSpec().API;
@@ -202,8 +171,8 @@ namespace fuujin {
             advancedFeatures = true;
         }
 
-        GetFeatures(features);
-        SelectQueues();
+        RT_GetFeatures(features);
+        RT_SelectQueues();
 
         std::unordered_set<uint32_t> queues(m_Spec.AdditionalQueues);
         for (auto [type, index] : m_Queues) {
@@ -225,7 +194,7 @@ namespace fuujin {
         }
 
         std::unordered_set<std::string> availableExtensions;
-        GetExtensions(availableExtensions);
+        RT_GetExtensions(availableExtensions);
 
         spdlog::enable_backtrace(availableExtensions.size());
         for (const auto& extension : availableExtensions) {
@@ -263,7 +232,7 @@ namespace fuujin {
             return;
         }
 
-        FUUJIN_INFO("Successfully acquired device: ", properties.properties.deviceName);
+        FUUJIN_INFO("Successfully acquired Vulkan device: ", m_Properties.Name.c_str());
         for (void* block : blocks) {
             freemem(block);
         }
@@ -322,17 +291,44 @@ namespace fuujin {
         return family;
     }
 
-    void VulkanDevice::SelectQueues() {
+    void VulkanDevice::RT_SelectQueues() {
         ZoneScoped;
 
         std::vector<VkQueueFamilyProperties> families;
-        GetQueueFamilies(families);
+        RT_GetQueueFamilies(families);
 
         for (auto type : m_Spec.RequestedQueues) {
             auto family = FindQueueFamily(type, families);
             if (family.has_value()) {
                 m_Queues[type] = family.value();
             }
+        }
+    }
+
+    void VulkanDevice::RT_GetProperties() {
+        ZoneScoped;
+
+        VkPhysicalDeviceProperties2 properties{};
+        RT_GetProperties(properties);
+
+        m_Properties.Name = properties.properties.deviceName;
+        m_Properties.DriverVersion = FromVulkanVersion(properties.properties.driverVersion);
+
+        m_Properties.API = "Vulkan";
+        m_Properties.APIVersion = FromVulkanVersion(properties.properties.apiVersion);
+
+        switch (properties.properties.deviceType) {
+        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+            m_Properties.Type = GraphicsDeviceType::Discrete;
+            break;
+        case VK_PHYSICAL_DEVICE_TYPE_CPU:
+            m_Properties.Type = GraphicsDeviceType::CPU;
+            break;
+        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+            m_Properties.Type = GraphicsDeviceType::Integrated;
+            break;
+        default:
+            m_Properties.Type = GraphicsDeviceType::Other;
         }
     }
 } // namespace fuujin
