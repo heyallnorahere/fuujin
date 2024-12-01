@@ -190,6 +190,10 @@ namespace fuujin {
             throw std::runtime_error("Failed to create swapchain!");
         }
 
+        FUUJIN_INFO("Swapchain {} at size {}x{}",
+                    createInfo.oldSwapchain != VK_NULL_HANDLE ? "recreated" : "created",
+                    m_Extent.width, m_Extent.height);
+                    
         return createInfo.oldSwapchain;
     }
 

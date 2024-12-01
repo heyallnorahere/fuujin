@@ -232,7 +232,7 @@ namespace fuujin {
             return;
         }
 
-        FUUJIN_INFO("Successfully acquired Vulkan device: ", m_Properties.Name.c_str());
+        FUUJIN_INFO("Successfully acquired Vulkan device: {}", m_Properties.Name.c_str());
         for (void* block : blocks) {
             freemem(block);
         }

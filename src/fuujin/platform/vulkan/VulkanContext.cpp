@@ -85,15 +85,19 @@ namespace fuujin {
         device->RT_GetMemoryProperties(memoryProperties);
 
         uint64_t score = 0;
-        if (properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-            score += 1000000;
-        }
-
         for (uint32_t i = 0; i < memoryProperties.memoryHeapCount; i++) {
             const auto& heap = memoryProperties.memoryHeaps[i];
             if ((heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) != 0) {
-                score += heap.size * 10;
+                score += heap.size;
             }
+        }
+
+        if (properties.properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_CPU) {
+            score *= 100; // we want to avoid cpu-based devices (i.e. llvmpipe)
+        }
+
+        if (properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+            score *= 10;
         }
 
         return score;
