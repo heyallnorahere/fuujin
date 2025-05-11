@@ -56,6 +56,8 @@ namespace fuujin {
         createInfo.arrayLayers = m_Spec.ArrayLayers;
         createInfo.extent = m_Spec.Extent;
         createInfo.usage = m_Spec.Usage;
+        createInfo.samples = m_Spec.Samples;
+        createInfo.tiling = m_Spec.Tiling;
 
         std::vector<uint32_t> indices;
         createInfo.sharingMode = m_Device->GetSharingMode(m_Spec.QueueOwnership, indices);

@@ -28,6 +28,12 @@ namespace fuujin {
         void RT_GetMemoryProperties(VkPhysicalDeviceMemoryProperties& properties) const;
         void RT_GetQueueFamilies(std::vector<VkQueueFamilyProperties>& families) const;
 
+        VkSampleCountFlagBits RT_GetMaxSampleCount() const;
+        VkFormatFeatureFlags RT_GetFormatFeatureFlags(VkFormat format, VkImageTiling tiling) const;
+        std::optional<VkFormat> RT_FindSupportedFormat(const std::vector<VkFormat>& candidates,
+                                                       VkImageTiling tiling,
+                                                       VkFormatFeatureFlags features) const;
+
         Ref<VulkanInstance> GetInstance() const { return m_Instance; }
 
         VkPhysicalDevice GetPhysicalDevice() const { return m_PhysicalDevice; }

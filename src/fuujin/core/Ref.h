@@ -81,7 +81,10 @@ namespace fuujin {
             return *this;
         }
 
-        operator bool() const { return m_Instance != nullptr; }
+        bool IsPresent() const { return m_Instance != nullptr; }
+        bool IsEmpty() const { return m_Instance == nullptr; }
+
+        operator bool() const { return IsPresent(); }
 
         _Ty* operator->() const { return m_Instance; }
         _Ty& operator*() const { return *m_Instance; }

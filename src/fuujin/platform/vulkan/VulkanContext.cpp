@@ -145,7 +145,7 @@ namespace fuujin {
             spec.EngineName = "fuujin";
             spec.EngineVersion = VK_MAKE_API_VERSION(0, 0, 0, 1);
 
-            if (view) {
+            if (view.IsPresent()) {
                 std::vector<std::string> viewExtensions;
                 view->GetRequiredVulkanExtensions(viewExtensions);
                 spec.Extensions.insert(viewExtensions.begin(), viewExtensions.end());
@@ -168,7 +168,7 @@ namespace fuujin {
             deviceSpec.RequestedQueues = { QueueType::Graphics, QueueType::Transfer };
         }
 
-        if (view) {
+        if (view.IsPresent()) {
             m_Data->Swapchain = Ref<VulkanSwapchain>::Create(view, device);
             Renderer::Submit([&]() { RT_QueryPresentQueue(); }, "Query present queue");
         }
@@ -177,11 +177,13 @@ namespace fuujin {
         Renderer::Submit([&]() { RT_LoadDevice(); }, "Load device functions");
         Renderer::Submit([&]() { RT_CreateAllocator(); }, "Create allocator");
 
-        // passes by reference to the allocator pointer
-        // so the value only matters when the render thread catches up
-        // incidentally, this can only happen after the allocator has been created
-        // so it's not a race condition, but it is kind of hacky
-        m_Data->Swapchain->Initialize(m_Data->Allocator);
+        if (m_Data->Swapchain.IsPresent()) {
+            // passes by reference to the allocator pointer
+            // so the value only matters when the render thread catches up
+            // incidentally, this can only happen after the allocator has been created
+            // so it's not a race condition, but it is kind of hacky
+            m_Data->Swapchain->Initialize(m_Data->Allocator);
+        }
     }
 
     VulkanContext::~VulkanContext() {
@@ -210,6 +212,8 @@ namespace fuujin {
     Ref<GraphicsDevice> VulkanContext::GetDevice() const {
         return m_Data->Devices[m_Data->UsedDevice];
     };
+
+    Ref<Swapchain> VulkanContext::GetSwapchain() const { return m_Data->Swapchain; }
 
     void VulkanContext::RT_LoadInstance() const {
         ZoneScoped;

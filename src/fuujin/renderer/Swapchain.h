@@ -11,5 +11,6 @@ namespace fuujin {
         virtual Ref<GraphicsDevice> GetDevice() const = 0;
 
         virtual ViewSize GetSize() const = 0;
+        virtual void RequestResize(const ViewSize& viewSize) = 0;
     };
 } // namespace fuujin

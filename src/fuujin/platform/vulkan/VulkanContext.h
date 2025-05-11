@@ -20,6 +20,7 @@ namespace fuujin {
         Ref<VulkanDevice> GetVulkanDevice(const std::optional<std::string>& deviceName = {}) const;
 
         virtual Ref<GraphicsDevice> GetDevice() const override;
+        virtual Ref<Swapchain> GetSwapchain() const override;
 
     private:
         VulkanContext(const std::optional<std::string>& deviceName);

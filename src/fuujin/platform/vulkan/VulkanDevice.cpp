@@ -106,6 +106,54 @@ namespace fuujin {
         vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &familyCount, families.data());
     }
 
+    VkSampleCountFlagBits VulkanDevice::RT_GetMaxSampleCount() const {
+        ZoneScoped;
+
+        VkPhysicalDeviceProperties2 properties;
+        RT_GetProperties(properties);
+
+        auto flags = properties.properties.limits.framebufferColorSampleCounts;
+        for (uint32_t i = 6; i > 0; i--) {
+            auto sampleCount = (VkSampleCountFlagBits)(1 << i);
+            if ((flags & sampleCount) == sampleCount) {
+                return sampleCount;
+            }
+        }
+
+        return VK_SAMPLE_COUNT_1_BIT;
+    }
+
+    VkFormatFeatureFlags VulkanDevice::RT_GetFormatFeatureFlags(VkFormat format,
+                                                                VkImageTiling tiling) const {
+        ZoneScoped;
+
+        VkFormatProperties properties{};
+        vkGetPhysicalDeviceFormatProperties(m_PhysicalDevice, format, &properties);
+
+        switch (tiling) {
+        case VK_IMAGE_TILING_LINEAR:
+            return properties.linearTilingFeatures;
+        case VK_IMAGE_TILING_OPTIMAL:
+            return properties.optimalTilingFeatures;
+        default:
+            return 0;
+        }
+    }
+
+    std::optional<VkFormat> VulkanDevice::RT_FindSupportedFormat(
+        const std::vector<VkFormat>& candidates, VkImageTiling tiling,
+        VkFormatFeatureFlags features) const {
+        ZoneScoped;
+        for (VkFormat format : candidates) {
+            auto flags = RT_GetFormatFeatureFlags(format, tiling);
+            if ((flags & features) == features) {
+                return format;
+            }
+        }
+
+        return {};
+    }
+
     bool VulkanDevice::Initialize(void* next, size_t nextSize) {
         ZoneScoped;
         if (m_Initialized) {

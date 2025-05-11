@@ -13,12 +13,14 @@ namespace fuujin {
             VkImageViewType ViewType;
             VkImageUsageFlags Usage;
 
+            VkSampleCountFlagBits Samples = VK_SAMPLE_COUNT_1_BIT;
             uint32_t MipLevels = 1;
             uint32_t ArrayLayers = 1;
             VkImage ExistingImage = VK_NULL_HANDLE;
             VkImageCreateFlags Flags = 0;
             VkImageViewCreateFlags ViewFlags = 0;
             VkImageAspectFlags AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+            VkImageTiling Tiling = VK_IMAGE_TILING_OPTIMAL;
             std::unordered_set<QueueType> QueueOwnership;
             
             VmaAllocator Allocator = VK_NULL_HANDLE;
