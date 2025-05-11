@@ -109,7 +109,7 @@ namespace fuujin {
     VkSampleCountFlagBits VulkanDevice::RT_GetMaxSampleCount() const {
         ZoneScoped;
 
-        VkPhysicalDeviceProperties2 properties;
+        VkPhysicalDeviceProperties2 properties{};
         RT_GetProperties(properties);
 
         auto flags = properties.properties.limits.framebufferColorSampleCounts;

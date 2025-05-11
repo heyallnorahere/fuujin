@@ -31,6 +31,7 @@ namespace fuujin {
         void RT_QueryPresentQueue();
         void RT_CreateAllocator();
 
+        void RT_CreateDebugMessenger();
         void RT_EnumerateDevices(const std::optional<std::string>& deviceName);
 
         ContextData* m_Data;

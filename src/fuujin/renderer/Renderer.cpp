@@ -2,6 +2,8 @@
 #include "fuujin/renderer/Renderer.h"
 #include "fuujin/renderer/GraphicsContext.h"
 
+#include "fuujin/core/Events.h"
+
 #include <thread>
 #include <queue>
 #include <mutex>
@@ -96,6 +98,18 @@ namespace fuujin {
 
         Wait();
         s_Data.reset();
+    }
+
+    void Renderer::ProcessEvent(Event& event) {
+        ZoneScoped;
+        
+        if (event.GetType() == EventType::FramebufferResized) {
+            auto swapchain = s_Data->Context->GetSwapchain();
+            if (swapchain.IsPresent()) {
+                auto& resizeEvent = (FramebufferResizedEvent&)event;
+                swapchain->RequestResize(resizeEvent.GetSize());
+            }
+        }
     }
 
     void Renderer::Submit(const std::function<void()>& callback,

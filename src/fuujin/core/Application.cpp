@@ -88,7 +88,10 @@ namespace fuujin {
     void Application::ProcessEvent(Event& event) {
         ZoneScoped;
 
-        // todo: process through special utils
+        Renderer::ProcessEvent(event);
+        if (event.IsProcessed()) {
+            return;
+        }
 
         for (const auto& layer : m_Data->LayerStack) {
             if (event.IsProcessed()) {

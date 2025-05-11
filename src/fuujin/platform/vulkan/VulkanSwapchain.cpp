@@ -248,6 +248,8 @@ namespace fuujin {
         createInfo.imageExtent = m_Extent;
         createInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
         createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        createInfo.imageArrayLayers = 1;
+        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
         std::unordered_set<uint32_t> imageQueues;
         auto presentQueue = RT_FindDeviceQueue();
@@ -271,8 +273,9 @@ namespace fuujin {
             createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
         }
 
-        if (vkCreateSwapchainKHR(m_Device->GetDevice(), &createInfo,
-                                 &VulkanContext::GetAllocCallbacks(), &m_Swapchain) != VK_SUCCESS) {
+        VkResult result = vkCreateSwapchainKHR(m_Device->GetDevice(), &createInfo,
+                                               &VulkanContext::GetAllocCallbacks(), &m_Swapchain);
+        if (result != VK_SUCCESS) {
             throw std::runtime_error("Failed to create swapchain!");
         }
 
@@ -398,6 +401,7 @@ namespace fuujin {
         spec.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         spec.Allocator = m_Allocator;
         spec.Samples = samples;
+        spec.AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
 
         m_Depth = Ref<VulkanImage>::Create(m_Device, spec);
         m_DepthHasStencil = formatCandidates.at(spec.Format);

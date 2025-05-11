@@ -49,6 +49,7 @@ namespace fuujin {
 
     struct ContextData {
         Ref<VulkanInstance> Instance;
+        VkDebugUtilsMessengerEXT DebugMessenger = VK_NULL_HANDLE;
 
         std::unordered_map<std::string, Ref<VulkanDevice>> Devices;
         std::string UsedDevice;
@@ -56,6 +57,47 @@ namespace fuujin {
         Ref<VulkanSwapchain> Swapchain;
         VmaAllocator Allocator = VK_NULL_HANDLE;
     };
+
+    static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+        ZoneScoped;
+
+        std::string category;
+        switch (messageType) {
+        case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:
+            category = "GENERAL";
+            break;
+        case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT:
+            category = "VALIDATION";
+            break;
+        case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT:
+            category = "PERFORMANCE";
+            break;
+        default:
+            category = "UNKNOWN";
+            break;
+        }
+
+        std::string message = "[VULKAN] [" + category + "] " + std::string(pCallbackData->pMessage);
+        switch (messageSeverity) {
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+            FUUJIN_DEBUG("{}", message.c_str());
+            break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+            FUUJIN_WARN("{}", message.c_str());
+            break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+            FUUJIN_ERROR("{}", message.c_str());
+            break;
+        default:
+            FUUJIN_INFO("{}", message.c_str());
+            break;
+        }
+
+        return VK_FALSE;
+    }
 
     static VulkanContext* s_CurrentContext = nullptr;
 
@@ -151,10 +193,16 @@ namespace fuujin {
                 spec.Extensions.insert(viewExtensions.begin(), viewExtensions.end());
             }
 
+#ifdef FUUJIN_IS_DEBUG
+            spec.Extensions.insert("VK_EXT_debug_utils");
+            spec.Layers.insert("VK_LAYER_KHRONOS_validation");
+#endif
+
             m_Data->Instance = Ref<VulkanInstance>::Create(spec);
         }
 
         Renderer::Submit([&]() { RT_LoadInstance(); }, "Load instance functions");
+        Renderer::Submit([&]() { RT_CreateDebugMessenger(); }, "Create debug messenger");
         Renderer::Submit([&]() { RT_EnumerateDevices(deviceName); }, "Enumerate devices");
 
         // one of the few times we sync - we want the device handles
@@ -195,6 +243,15 @@ namespace fuujin {
         Renderer::Submit([allocator]() mutable { vmaDestroyAllocator(allocator); });
 
         m_Data->Devices.clear();
+
+        auto instance = m_Data->Instance->GetInstance();
+        auto debugMessenger = m_Data->DebugMessenger;
+        Renderer::Submit([instance, debugMessenger]() mutable {
+            if (debugMessenger != VK_NULL_HANDLE) {
+                vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, &GetAllocCallbacks());
+            }
+        });
+
         m_Data->Instance.Reset();
 
         delete m_Data;
@@ -263,6 +320,28 @@ namespace fuujin {
 
         if (vmaCreateAllocator(&allocatorInfo, &m_Data->Allocator) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create allocator!");
+        }
+    }
+
+    void VulkanContext::RT_CreateDebugMessenger() {
+        ZoneScoped;
+
+        auto create = vkCreateDebugUtilsMessengerEXT;
+        if (create == nullptr) {
+            return;
+        }
+
+        VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        createInfo.pfnUserCallback = VulkanDebugCallback;
+        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                     VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                 VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+
+        if (create(m_Data->Instance->GetInstance(), &createInfo, &GetAllocCallbacks(),
+                   &m_Data->DebugMessenger) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create debug messenger!");
         }
     }
 

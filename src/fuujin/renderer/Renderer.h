@@ -1,12 +1,15 @@
 #pragma once
 
 namespace fuujin {
+    class Event;
     class Renderer {
     public:
         Renderer() = delete;
 
         static void Init();
         static void Shutdown();
+
+        static void ProcessEvent(Event& event);
 
         // submits a job to the render thread
         // all jobs will be executed in order submitted
