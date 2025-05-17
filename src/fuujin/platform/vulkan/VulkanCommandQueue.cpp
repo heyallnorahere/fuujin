@@ -327,6 +327,8 @@ namespace fuujin {
         if (vkQueueSubmit(m_Queue, 1, &submitInfo, stored.BufferWait->Get()) != VK_SUCCESS) {
             throw std::runtime_error("Failed to submit command buffer to queue!");
         }
+
+        m_StoredBuffers.push(stored);
     }
 
     static void RT_WaitForQueue(VkQueue queue) {
