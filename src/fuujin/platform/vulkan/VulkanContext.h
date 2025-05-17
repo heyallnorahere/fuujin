@@ -21,6 +21,10 @@ namespace fuujin {
 
         virtual Ref<GraphicsDevice> GetDevice() const override;
         virtual Ref<Swapchain> GetSwapchain() const override;
+        virtual Ref<CommandQueue> GetQueue(QueueType type) const override;
+
+        virtual Ref<Fence> CreateFence(bool signaled) const override;
+        virtual Ref<RefCounted> CreateSemaphore() const override;
 
     private:
         VulkanContext(const std::optional<std::string>& deviceName);

@@ -27,7 +27,7 @@ namespace fuujin {
         Ref<VulkanDevice> GetVulkanDevice() const { return m_Device; }
 
         virtual ViewSize GetSize() const override { return { m_Extent.width, m_Extent.height }; }
-        virtual void RequestResize(const ViewSize& viewSize) override { m_NewViewSize = viewSize; }
+        virtual void RequestResize(const ViewSize& viewSize) override;
 
     private:
         void RT_Invalidate();

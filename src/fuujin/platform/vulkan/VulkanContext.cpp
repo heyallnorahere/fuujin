@@ -4,6 +4,8 @@
 #include "fuujin/core/Application.h"
 #include "fuujin/renderer/Renderer.h"
 
+#include "fuujin/platform/vulkan/VulkanCommandQueue.h"
+
 namespace fuujin {
     static void* VKAPI_CALL VulkanAlloc(void* pUserData, size_t size, size_t alignment,
                                         VkSystemAllocationScope allocationScope) {
@@ -56,6 +58,8 @@ namespace fuujin {
 
         Ref<VulkanSwapchain> Swapchain;
         VmaAllocator Allocator = VK_NULL_HANDLE;
+
+        std::unordered_map<QueueType, Ref<VulkanCommandQueue>> Queues;
     };
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
@@ -225,6 +229,12 @@ namespace fuujin {
         Renderer::Submit([&]() { RT_LoadDevice(); }, "Load device functions");
         Renderer::Submit([&]() { RT_CreateAllocator(); }, "Create allocator");
 
+        const auto& queues = device->GetQueues();
+        for (const auto& [type, family] : queues) {
+            auto commandQueue = Ref<VulkanCommandQueue>::Create(device, type);
+            m_Data->Queues.insert(std::make_pair(type, commandQueue));
+        }
+
         if (m_Data->Swapchain.IsPresent()) {
             // passes by reference to the allocator pointer
             // so the value only matters when the render thread catches up
@@ -238,6 +248,7 @@ namespace fuujin {
         ZoneScoped;
 
         m_Data->Swapchain.Reset();
+        m_Data->Queues.clear();
 
         auto allocator = m_Data->Allocator;
         Renderer::Submit([allocator]() mutable { vmaDestroyAllocator(allocator); });
@@ -271,6 +282,23 @@ namespace fuujin {
     };
 
     Ref<Swapchain> VulkanContext::GetSwapchain() const { return m_Data->Swapchain; }
+
+    Ref<CommandQueue> VulkanContext::GetQueue(QueueType type) const {
+        Ref<CommandQueue> queue;
+        if (m_Data->Queues.contains(type)) {
+            queue = m_Data->Queues.at(type);
+        }
+
+        return queue;
+    }
+
+    Ref<Fence> VulkanContext::CreateFence(bool signaled) const {
+        return Ref<VulkanFence>::Create(m_Data->Devices[m_Data->UsedDevice], signaled);
+    }
+
+    Ref<RefCounted> VulkanContext::CreateSemaphore() const {
+        return Ref<VulkanSemaphore>::Create(m_Data->Devices[m_Data->UsedDevice]);
+    }
 
     void VulkanContext::RT_LoadInstance() const {
         ZoneScoped;

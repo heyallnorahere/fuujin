@@ -79,6 +79,13 @@ namespace fuujin {
         }
     }
 
+    void VulkanSwapchain::RequestResize(const ViewSize& viewSize) {
+        ZoneScoped;
+        m_NewViewSize = viewSize;
+
+        FUUJIN_INFO("Requested swapchain resize from {}x{} to {}x{}", m_Extent.width, m_Extent.height, viewSize.Width, viewSize.Height);
+    }
+
     void VulkanSwapchain::RT_Invalidate() {
         ZoneScoped;
         auto device = m_Device->GetDevice();

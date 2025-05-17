@@ -101,7 +101,7 @@ namespace fuujin {
 
         template <typename _Ty2>
         Ref<_Ty2> As() const {
-            return ref<_Ty2>((_Ty2*)m_Instance);
+            return Ref<_Ty2>((_Ty2*)m_Instance);
         }
 
         template <typename... Args>

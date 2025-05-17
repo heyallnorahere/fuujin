@@ -81,8 +81,8 @@ namespace fuujin {
         Renderer::Submit([=]() {
             vkDestroyRenderPass(device, renderPass, &VulkanContext::GetAllocCallbacks());
 
-            for (uint32_t i = 0; i < m_CreateInfo->subpassCount; i++) {
-                auto subpass = &m_CreateInfo->pSubpasses[i];
+            for (uint32_t i = 0; i < createInfo->subpassCount; i++) {
+                auto subpass = &createInfo->pSubpasses[i];
                 freemem((void*)subpass->pInputAttachments);
                 freemem((void*)subpass->pColorAttachments);
                 freemem((void*)subpass->pResolveAttachments);
@@ -90,10 +90,10 @@ namespace fuujin {
                 freemem((void*)subpass->pPreserveAttachments);
             }
 
-            freemem((void*)m_CreateInfo->pAttachments);
-            freemem((void*)m_CreateInfo->pDependencies);
-            freemem((void*)m_CreateInfo->pSubpasses);
-            freemem(m_CreateInfo);
+            freemem((void*)createInfo->pAttachments);
+            freemem((void*)createInfo->pDependencies);
+            freemem((void*)createInfo->pSubpasses);
+            freemem(createInfo);
         });
     }
 

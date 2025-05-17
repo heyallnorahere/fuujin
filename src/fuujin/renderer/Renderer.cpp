@@ -61,7 +61,6 @@ namespace fuujin {
                         queue.pop();
                     }
                 } else {
-                    FUUJIN_TRACE("Render queue empty, sleeping 1ms...");
                     doSleep = true;
                 }
             }
@@ -102,12 +101,14 @@ namespace fuujin {
 
     void Renderer::ProcessEvent(Event& event) {
         ZoneScoped;
-        
+
         if (event.GetType() == EventType::FramebufferResized) {
             auto swapchain = s_Data->Context->GetSwapchain();
             if (swapchain.IsPresent()) {
                 auto& resizeEvent = (FramebufferResizedEvent&)event;
                 swapchain->RequestResize(resizeEvent.GetSize());
+
+                resizeEvent.SetProcessed();
             }
         }
     }

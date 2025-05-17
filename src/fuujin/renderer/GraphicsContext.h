@@ -3,6 +3,7 @@
 
 #include "fuujin/renderer/GraphicsDevice.h"
 #include "fuujin/renderer/Swapchain.h"
+#include "fuujin/renderer/CommandQueue.h"
 
 namespace fuujin {
     class GraphicsContext : public RefCounted {
@@ -11,5 +12,9 @@ namespace fuujin {
 
         virtual Ref<GraphicsDevice> GetDevice() const = 0;
         virtual Ref<Swapchain> GetSwapchain() const = 0;
+        virtual Ref<CommandQueue> GetQueue(QueueType type) const = 0;
+
+        virtual Ref<Fence> CreateFence(bool signaled = false) const = 0;
+        virtual Ref<RefCounted> CreateSemaphore() const = 0;
     };
 } // namespace fuujin
