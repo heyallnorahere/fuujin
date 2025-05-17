@@ -306,9 +306,8 @@ namespace fuujin {
             const auto& waitStages = stored.Buffer->GetWaitStages();
             for (size_t i = 0; i < semaphores.size(); i++) {
                 waitSemaphores.push_back(semaphores[i]->Get());
-                waitStageFlags.push_back(waitStages.contains(i)
-                                             ? waitStages.at(i)
-                                             : VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+                waitStageFlags.push_back(
+                    waitStages.contains(i) ? waitStages.at(i) : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
             }
 
             submitInfo.waitSemaphoreCount = (uint32_t)waitSemaphores.size();

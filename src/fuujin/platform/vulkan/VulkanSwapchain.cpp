@@ -7,6 +7,8 @@
 #include "fuujin/core/Events.h"
 
 namespace fuujin {
+    static constexpr size_t s_SyncFrameCount = 2;
+
     VulkanSwapchain::VulkanSwapchain(Ref<View> view, Ref<VulkanDevice> device)
         : m_View(view), m_Device(device), m_ImageFormat(VK_FORMAT_UNDEFINED), m_Extent({}) {
         ZoneScoped;
@@ -42,7 +44,7 @@ namespace fuujin {
     std::optional<uint32_t> VulkanSwapchain::RT_FindDeviceQueue() {
         ZoneScoped;
 
-        if (!m_RenderQueue.has_value() && m_Surface != nullptr) {
+        if (!m_PresentFamily.has_value() && m_Surface != nullptr) {
             auto physicalDevice = m_Device->GetPhysicalDevice();
             uint32_t queueCount = 0;
             vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, nullptr);
@@ -52,13 +54,13 @@ namespace fuujin {
                 vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, m_Surface, &supported);
 
                 if (supported == VK_TRUE) {
-                    m_RenderQueue = i;
+                    m_PresentFamily = i;
                     break;
                 }
             }
         }
 
-        return m_RenderQueue;
+        return m_PresentFamily;
     }
 
     void VulkanSwapchain::Initialize(const VmaAllocator& allocator) {
@@ -68,6 +70,8 @@ namespace fuujin {
 
             auto queue = RT_FindDeviceQueue();
             if (queue.has_value()) {
+                vkGetDeviceQueue(m_Device->GetDevice(), queue.value(), 0, &m_PresentQueue);
+
                 RT_Invalidate();
             }
         });
@@ -83,7 +87,79 @@ namespace fuujin {
         ZoneScoped;
         m_NewViewSize = viewSize;
 
-        FUUJIN_INFO("Requested swapchain resize from {}x{} to {}x{}", m_Extent.width, m_Extent.height, viewSize.Width, viewSize.Height);
+        FUUJIN_INFO("Requested swapchain resize from {}x{} to {}x{}", m_Extent.width,
+                    m_Extent.height, viewSize.Width, viewSize.Height);
+    }
+
+    void VulkanSwapchain::RT_AcquireImage() {
+        ZoneScoped;
+
+        const auto& sync = m_Sync[m_SyncFrame];
+        auto fence = sync.Fence;
+        fence->Wait(std::numeric_limits<uint64_t>::max());
+
+        while (true) {
+            auto result = vkAcquireNextImageKHR(
+                m_Device->GetDevice(), m_Swapchain, std::numeric_limits<uint64_t>::max(),
+                sync.ImageAvailable->Get(), VK_NULL_HANDLE, &m_CurrentImage);
+
+            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+                RT_Invalidate();
+                continue;
+            } else if (result != VK_SUCCESS) {
+                throw std::runtime_error("Failed to acquire swapchain image!");
+            }
+
+            break;
+        }
+
+        auto previousFence = m_ImageFences[m_CurrentImage];
+        if (previousFence.IsPresent()) {
+            previousFence->Wait(std::numeric_limits<uint64_t>::max());
+        }
+
+        m_ImageFences[m_CurrentImage] = fence;
+    }
+
+    void VulkanSwapchain::RT_Present(Ref<CommandQueue> queue, CommandList& cmdList) {
+        ZoneScoped;
+
+        auto vulkanQueue = queue.As<VulkanCommandQueue>();
+        auto buffer = (VulkanCommandBuffer*)&cmdList;
+
+        const auto& sync = m_Sync[m_SyncFrame];
+        buffer->AddSemaphore(sync.RenderComplete, SemaphoreUsage::Signal);
+        buffer->AddWaitSemaphore(sync.ImageAvailable,
+                                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
+        auto fence = sync.Fence;
+        fence->Reset();
+        queue->RT_Submit(*buffer, fence);
+
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+        VkSemaphore waitSemaphore = sync.RenderComplete->Get();
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &waitSemaphore;
+        
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &m_Swapchain;
+        presentInfo.pImageIndices = &m_CurrentImage;
+
+        VkResult result;
+        {
+            ZoneScopedN("vkQueuePresentKHR");
+            result = vkQueuePresentKHR(m_PresentQueue, &presentInfo);
+        }
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_NewViewSize.has_value()) {
+            RT_Invalidate();
+            m_NewViewSize.reset();
+        }
+
+        m_SyncFrame++;
+        m_SyncFrame %= s_SyncFrameCount;
     }
 
     void VulkanSwapchain::RT_Invalidate() {
@@ -204,6 +280,18 @@ namespace fuujin {
                                                 Ref<VulkanImage>::Create(m_Device, viewSpec) };
 
                 m_Framebuffers.push_back(Ref<VulkanFramebuffer>::Create(m_Device, framebufferSpec));
+            }
+        }
+
+        if (m_Sync.empty()) {
+            m_SyncFrame = 0;
+
+            for (size_t i = 0; i < s_SyncFrameCount; i++) {
+                auto& frameSync = m_Sync.emplace_back();
+
+                frameSync.Fence = Ref<VulkanFence>::Create(m_Device, true);
+                frameSync.ImageAvailable = Ref<VulkanSemaphore>::Create(m_Device);
+                frameSync.RenderComplete = Ref<VulkanSemaphore>::Create(m_Device);
             }
         }
     }

@@ -6,6 +6,7 @@
 #include "fuujin/platform/vulkan/VulkanImage.h"
 #include "fuujin/platform/vulkan/VulkanRenderPass.h"
 #include "fuujin/platform/vulkan/VulkanFramebuffer.h"
+#include "fuujin/platform/vulkan/VulkanCommandQueue.h"
 
 #include "fuujin/core/Event.h"
 
@@ -29,7 +30,15 @@ namespace fuujin {
         virtual ViewSize GetSize() const override { return { m_Extent.width, m_Extent.height }; }
         virtual void RequestResize(const ViewSize& viewSize) override;
 
+        virtual void RT_AcquireImage() override;
+        virtual void RT_Present(Ref<CommandQueue> queue, CommandList& cmdList) override;
+
     private:
+        struct FrameSync {
+            Ref<VulkanFence> Fence;
+            Ref<VulkanSemaphore> ImageAvailable, RenderComplete;
+        };
+
         void RT_Invalidate();
         VkSwapchainKHR RT_Create();
 
@@ -46,17 +55,22 @@ namespace fuujin {
         VkSwapchainKHR m_Swapchain;
         VkSurfaceKHR m_Surface;
         VkFormat m_ImageFormat;
-
+        
         Ref<VulkanImage> m_Color, m_Depth;
         bool m_DepthHasStencil;
-
+        
         std::vector<Ref<VulkanFramebuffer>> m_Framebuffers;
+        std::vector<Ref<VulkanFence>> m_ImageFences;
         uint32_t m_CurrentImage;
-
+        
+        size_t m_SyncFrame;
+        std::vector<FrameSync> m_Sync;
+        
         VkExtent2D m_Extent;
         std::optional<ViewSize> m_NewViewSize;
-
+        
         VmaAllocator m_Allocator;
-        std::optional<uint32_t> m_RenderQueue;
+        std::optional<uint32_t> m_PresentFamily;
+        VkQueue m_PresentQueue;
     };
 } // namespace fuujin
