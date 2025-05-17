@@ -168,10 +168,12 @@ namespace fuujin {
 
     VulkanContext::VulkanContext(const std::optional<std::string>& deviceName) {
         ZoneScoped;
-        Renderer::Submit([]() {
-            volkInitialize();
-            FUUJIN_DEBUG("Global functions loaded");
-        });
+        Renderer::Submit(
+            []() {
+                volkInitialize();
+                FUUJIN_DEBUG("Global functions loaded");
+            },
+            "Load global functions");
 
         Ref<View> view;
         try {
@@ -229,11 +231,16 @@ namespace fuujin {
         Renderer::Submit([&]() { RT_LoadDevice(); }, "Load device functions");
         Renderer::Submit([&]() { RT_CreateAllocator(); }, "Create allocator");
 
-        const auto& queues = device->GetQueues();
-        for (const auto& [type, family] : queues) {
-            auto commandQueue = Ref<VulkanCommandQueue>::Create(device, type);
-            m_Data->Queues.insert(std::make_pair(type, commandQueue));
-        }
+        Renderer::Submit(
+            [&]() {
+                auto queueDevice = m_Data->Devices[m_Data->UsedDevice];
+                const auto& queues = queueDevice->GetQueues();
+                for (const auto& [type, family] : queues) {
+                    auto commandQueue = Ref<VulkanCommandQueue>::Create(queueDevice, type);
+                    m_Data->Queues.insert(std::make_pair(type, commandQueue));
+                }
+            },
+            "Create command queues");
 
         if (m_Data->Swapchain.IsPresent()) {
             // passes by reference to the allocator pointer
@@ -247,21 +254,26 @@ namespace fuujin {
     VulkanContext::~VulkanContext() {
         ZoneScoped;
 
+        m_Data->Queues.at(QueueType::Graphics)->Clear();
+
         m_Data->Swapchain.Reset();
         m_Data->Queues.clear();
 
         auto allocator = m_Data->Allocator;
-        Renderer::Submit([allocator]() mutable { vmaDestroyAllocator(allocator); });
+        Renderer::Submit([allocator]() mutable { vmaDestroyAllocator(allocator); },
+                         "Destroy allocator");
 
         m_Data->Devices.clear();
 
         auto instance = m_Data->Instance->GetInstance();
         auto debugMessenger = m_Data->DebugMessenger;
-        Renderer::Submit([instance, debugMessenger]() mutable {
-            if (debugMessenger != VK_NULL_HANDLE) {
-                vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, &GetAllocCallbacks());
-            }
-        });
+        Renderer::Submit(
+            [instance, debugMessenger]() mutable {
+                if (debugMessenger != VK_NULL_HANDLE) {
+                    vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, &GetAllocCallbacks());
+                }
+            },
+            "Destroy debug messenger");
 
         m_Data->Instance.Reset();
 

@@ -19,5 +19,7 @@ namespace fuujin {
         virtual ~GraphicsDevice() = default;
 
         virtual void GetProperties(Properties& props) const = 0;
+
+        virtual void Wait() const = 0;
     };
 } // namespace fuujin

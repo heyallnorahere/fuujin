@@ -41,7 +41,7 @@ namespace fuujin {
           m_Initialized(false) {
         ZoneScoped;
 
-        Renderer::Submit([&]() { RT_GetProperties(); });
+        Renderer::Submit([&]() { RT_GetProperties(); }, "Get device properties");
     }
 
     VulkanDevice::~VulkanDevice() {
@@ -50,8 +50,21 @@ namespace fuujin {
         if (m_Initialized) {
             VkDevice device = m_Device;
             Renderer::Submit(
-                [device] { vkDestroyDevice(device, &VulkanContext::GetAllocCallbacks()); });
+                [device] { vkDestroyDevice(device, &VulkanContext::GetAllocCallbacks()); },
+                "Destroy device");
         }
+    }
+
+    static void RT_WaitForDevice(VkDevice device) {
+        ZoneScoped;
+        vkDeviceWaitIdle(device);
+    }
+
+    void VulkanDevice::Wait() const {
+        ZoneScoped;
+
+        auto device = m_Device;
+        Renderer::Submit([device]() { RT_WaitForDevice(device); }, "Wait for device");
     }
 
     void VulkanDevice::RT_GetProperties(VkPhysicalDeviceProperties2& properties) const {
@@ -168,7 +181,8 @@ namespace fuujin {
             std::memcpy(nextBlock, next, nextSize);
         }
 
-        Renderer::Submit([this, nextBlock]() mutable { RT_Initialize(nextBlock); });
+        Renderer::Submit([this, nextBlock]() mutable { RT_Initialize(nextBlock); },
+                         "Create device");
 
         return true;
     }

@@ -12,10 +12,10 @@ namespace fuujin {
 
         m_Image = spec.ExistingImage;
         if (m_Image == VK_NULL_HANDLE) {
-            Renderer::Submit([&]() { RT_CreateImage(); });
+            Renderer::Submit([&]() { RT_CreateImage(); }, "Create device image");
         }
 
-        Renderer::Submit([&]() { RT_CreateView(); });
+        Renderer::Submit([&]() { RT_CreateView(); }, "Create image view");
 
         // todo: yada yada layouts and barriers
     }
@@ -36,7 +36,7 @@ namespace fuujin {
             if (allocation != VK_NULL_HANDLE) {
                 vmaDestroyImage(allocator, image, allocation);
             }
-        });
+        }, "Destroy image");
     }
 
     void VulkanImage::RT_CreateImage() {

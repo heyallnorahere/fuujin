@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 list(APPEND FUUJIN_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR})
-list(APPEND FUUJIN_LIBRARIES TracyClient spdlog::spdlog)
+list(APPEND FUUJIN_LIBRARIES TracyClient spdlog::spdlog glm::glm)
 
 file(GLOB_RECURSE FUUJIN_SOURCE CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"

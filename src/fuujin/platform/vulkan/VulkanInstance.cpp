@@ -36,17 +36,19 @@ namespace fuujin {
 
     VulkanInstance::VulkanInstance(const Spec& spec) : m_Spec(spec), m_Instance(nullptr) {
         ZoneScoped;
-        Renderer::Submit([&]() { RT_Create(); });
+        Renderer::Submit([&]() { RT_Create(); }, "Create instance");
     }
 
     VulkanInstance::~VulkanInstance() {
         ZoneScoped;
 
         VkInstance instance = m_Instance;
-        Renderer::Submit([instance]() {
-            ZoneScoped;
-            vkDestroyInstance(instance, &VulkanContext::GetAllocCallbacks());
-        });
+        Renderer::Submit(
+            [instance]() {
+                ZoneScoped;
+                vkDestroyInstance(instance, &VulkanContext::GetAllocCallbacks());
+            },
+            "Destroy instance");
     }
 
     void VulkanInstance::RT_GetDevices(std::vector<VkPhysicalDevice>& devices) const {

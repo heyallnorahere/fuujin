@@ -81,6 +81,7 @@ namespace fuujin {
         virtual void RT_Submit(CommandList& cmdList, Ref<Fence> fence = {}) override;
 
         virtual void Wait() const override;
+        virtual void Clear() override;
 
     private:
         struct StoredCommandBuffer {
@@ -101,5 +102,6 @@ namespace fuujin {
 
         std::queue<Ref<VulkanFence>> m_AvailableFences;
         std::queue<StoredCommandBuffer> m_StoredBuffers;
+        std::mutex m_Mutex;
     };
 } // namespace fuujin

@@ -6,10 +6,10 @@
 #include "fuujin/platform/vulkan/VulkanContext.h"
 
 namespace fuujin {
-    static void RT_WaitForFence(Ref<VulkanDevice> device, VkFence fence, uint64_t timeout) {
+    static void RT_WaitForFence(VkDevice device, VkFence fence, uint64_t timeout) {
         ZoneScoped;
 
-        vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, timeout);
+        vkWaitForFences(device, 1, &fence, VK_TRUE, timeout);
     }
 
     VulkanFence::VulkanFence(Ref<VulkanDevice> device, bool signaled) {
@@ -17,36 +17,38 @@ namespace fuujin {
         m_Device = device;
         m_Fence = VK_NULL_HANDLE;
 
-        Renderer::Submit([=]() { RT_Create(signaled); });
+        Renderer::Submit([=]() { RT_Create(signaled); }, "Create fence");
     }
 
     VulkanFence::~VulkanFence() {
         ZoneScoped;
 
-        auto device = m_Device;
+        auto device = m_Device->GetDevice();
         auto fence = m_Fence;
 
-        Renderer::Submit([device, fence]() {
-            vkDestroyFence(device->GetDevice(), fence, &VulkanContext::GetAllocCallbacks());
-        });
+        Renderer::Submit(
+            [device, fence]() {
+                vkDestroyFence(device, fence, &VulkanContext::GetAllocCallbacks());
+            },
+            "Destroy fence");
     }
 
     void VulkanFence::Wait(uint64_t timeout) const {
         ZoneScoped;
 
-        auto device = m_Device;
+        auto device = m_Device->GetDevice();
         auto fence = m_Fence;
 
-        Renderer::Submit([=]() { RT_WaitForFence(device, fence, timeout); });
+        Renderer::Submit([=]() { RT_WaitForFence(device, fence, timeout); }, "Wait for fence");
     }
 
     void VulkanFence::Reset() {
         ZoneScoped;
 
-        auto device = m_Device;
+        auto device = m_Device->GetDevice();
         auto fence = m_Fence;
 
-        Renderer::Submit([=]() { vkResetFences(device->GetDevice(), 1, &fence); });
+        Renderer::Submit([=]() { vkResetFences(device, 1, &fence); }, "Reset fence");
     }
 
     bool VulkanFence::RT_IsReady() const {
@@ -77,18 +79,20 @@ namespace fuujin {
         m_Device = device;
         m_Semaphore = VK_NULL_HANDLE;
 
-        Renderer::Submit([=]() { RT_Create(); });
+        Renderer::Submit([=]() { RT_Create(); }, "Create semaphore");
     }
 
     VulkanSemaphore::~VulkanSemaphore() {
         ZoneScoped;
 
-        auto device = m_Device;
+        auto device = m_Device->GetDevice();
         auto semaphore = m_Semaphore;
 
-        Renderer::Submit([device, semaphore]() {
-            vkDestroySemaphore(device->GetDevice(), semaphore, &VulkanContext::GetAllocCallbacks());
-        });
+        Renderer::Submit(
+            [device, semaphore]() {
+                vkDestroySemaphore(device, semaphore, &VulkanContext::GetAllocCallbacks());
+            },
+            "Destroy semaphore");
     }
 
     void VulkanSemaphore::RT_Create() {
@@ -110,17 +114,18 @@ namespace fuujin {
         m_Pool = pool;
         m_Buffer = VK_NULL_HANDLE;
 
-        Renderer::Submit([=]() { RT_Alloc(); });
+        Renderer::Submit([=]() { RT_Alloc(); }, "Allocate command buffer");
     }
 
     VulkanCommandBuffer::~VulkanCommandBuffer() {
         ZoneScoped;
 
-        auto device = m_Device;
+        auto device = m_Device->GetDevice();
         auto pool = m_Pool;
         auto buffer = m_Buffer;
 
-        Renderer::Submit([=]() { vkFreeCommandBuffers(device->GetDevice(), pool, 1, &buffer); });
+        Renderer::Submit([=]() { vkFreeCommandBuffers(device, pool, 1, &buffer); },
+                         "Free command buffer");
     }
 
     void VulkanCommandBuffer::RT_Begin() {
@@ -206,7 +211,7 @@ namespace fuujin {
         m_Device = device;
         m_Type = type;
 
-        Renderer::Submit([=]() { RT_Create(); });
+        Renderer::Submit([=]() { RT_Create(); }, "Set up command queue");
     }
 
     VulkanCommandQueue::~VulkanCommandQueue() {
@@ -218,12 +223,12 @@ namespace fuujin {
             m_StoredBuffers.pop();
         }
 
-        auto device = m_Device;
+        auto device = m_Device->GetDevice();
         auto pool = m_Pool;
 
-        Renderer::Submit([=]() {
-            vkDestroyCommandPool(device->GetDevice(), pool, &VulkanContext::GetAllocCallbacks());
-        });
+        Renderer::Submit(
+            [=]() { vkDestroyCommandPool(device, pool, &VulkanContext::GetAllocCallbacks()); },
+            "Destroy command pool");
     }
 
     static void CheckRenderThread() {
@@ -235,6 +240,8 @@ namespace fuujin {
     CommandList& VulkanCommandQueue::RT_Get() {
         ZoneScoped;
         CheckRenderThread();
+
+        std::lock_guard lock(m_Mutex);
 
         VulkanCommandBuffer* buffer = nullptr;
         if (!m_StoredBuffers.empty()) {
@@ -264,6 +271,8 @@ namespace fuujin {
     void VulkanCommandQueue::RT_Submit(CommandList& cmdList, Ref<Fence> fence) {
         ZoneScoped;
         CheckRenderThread();
+
+        std::lock_guard lock(m_Mutex);
 
         StoredCommandBuffer stored;
         stored.Buffer = (VulkanCommandBuffer*)&cmdList;
@@ -332,7 +341,25 @@ namespace fuujin {
         ZoneScoped;
 
         auto queue = m_Queue;
-        Renderer::Submit([=]() { RT_WaitForQueue(queue); });
+        Renderer::Submit([=]() { RT_WaitForQueue(queue); }, "Wait for queue");
+    }
+
+    void VulkanCommandQueue::Clear() {
+        ZoneScoped;
+        Wait();
+
+        std::lock_guard lock(m_Mutex);
+
+        while (!m_StoredBuffers.empty()) {
+            const auto& front = m_StoredBuffers.front();
+
+            delete front.Buffer;
+            if (front.FenceOwned) {
+                m_AvailableFences.push(front.BufferWait);
+            }
+
+            m_StoredBuffers.pop();
+        }
     }
 
     void VulkanCommandQueue::RT_Create() {

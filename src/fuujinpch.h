@@ -19,6 +19,8 @@
 #include <stddef.h>
 #include <cstdint>
 
+#include <glm/glm.hpp>
+
 #include <tracy/Tracy.hpp>
 
 #if __has_include(<filesystem>)

@@ -1,4 +1,5 @@
 #pragma once
+#include "fuujin/renderer/Framebuffer.h"
 
 namespace fuujin {
     class Event;
@@ -23,5 +24,12 @@ namespace fuujin {
 
         // checks if the thread this is called from is the render thread
         static bool IsRenderThread();
+
+        // pushes a render target of a framebuffer
+        // "force" - force begin render?
+        static void PushRenderTarget(Ref<RenderTarget> target, bool force = false);
+
+        // flushes and pops a render target from the stack
+        static void PopRenderTarget();
     };
 } // namespace fuujin

@@ -27,11 +27,24 @@ namespace fuujin {
         virtual Ref<GraphicsDevice> GetDevice() const override { return m_Device; }
         Ref<VulkanDevice> GetVulkanDevice() const { return m_Device; }
 
-        virtual ViewSize GetSize() const override { return { m_Extent.width, m_Extent.height }; }
+        virtual uint32_t GetWidth() const override { return m_Extent.width; }
+        virtual uint32_t GetHeight() const override { return m_Extent.height; }
+
         virtual void RequestResize(const ViewSize& viewSize) override;
 
+        virtual uint32_t GetImageIndex() const override { return m_CurrentImage; }
+        virtual Ref<Framebuffer> GetFramebuffer(uint32_t index) const override {
+            return m_Framebuffers[index];
+        }
+
+        virtual Ref<Fence> GetCurrentFence() const override { return m_Sync[m_SyncFrame].Fence; }
+
+        virtual void RT_BeginRender(CommandList& cmdList) override;
+        virtual void RT_EndRender(CommandList& cmdList) override;
+        virtual void RT_EndFrame() override;
+
         virtual void RT_AcquireImage() override;
-        virtual void RT_Present(Ref<CommandQueue> queue, CommandList& cmdList) override;
+        virtual void RT_Present() override;
 
     private:
         struct FrameSync {
@@ -55,20 +68,20 @@ namespace fuujin {
         VkSwapchainKHR m_Swapchain;
         VkSurfaceKHR m_Surface;
         VkFormat m_ImageFormat;
-        
+
         Ref<VulkanImage> m_Color, m_Depth;
         bool m_DepthHasStencil;
-        
+
         std::vector<Ref<VulkanFramebuffer>> m_Framebuffers;
         std::vector<Ref<VulkanFence>> m_ImageFences;
         uint32_t m_CurrentImage;
-        
+
         size_t m_SyncFrame;
         std::vector<FrameSync> m_Sync;
-        
+
         VkExtent2D m_Extent;
         std::optional<ViewSize> m_NewViewSize;
-        
+
         VmaAllocator m_Allocator;
         std::optional<uint32_t> m_PresentFamily;
         VkQueue m_PresentQueue;

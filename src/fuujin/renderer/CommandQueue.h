@@ -49,5 +49,6 @@ namespace fuujin {
         virtual void RT_Submit(CommandList& cmdList, Ref<Fence> fence = {}) = 0;
 
         virtual void Wait() const = 0;
+        virtual void Clear() = 0;
     };
 } // namespace fuujin

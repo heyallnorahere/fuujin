@@ -9,36 +9,48 @@
 namespace fuujin {
     static constexpr size_t s_SyncFrameCount = 2;
 
+    static void ClearGraphicsQueue() {
+        ZoneScoped;
+
+        auto context = VulkanContext::Get();
+        auto queue = context->GetQueue(QueueType::Graphics);
+        queue->Clear();
+    }
+
     VulkanSwapchain::VulkanSwapchain(Ref<View> view, Ref<VulkanDevice> device)
         : m_View(view), m_Device(device), m_ImageFormat(VK_FORMAT_UNDEFINED), m_Extent({}) {
         ZoneScoped;
 
         m_Swapchain = VK_NULL_HANDLE;
-        Renderer::Submit([this]() mutable {
-            m_Surface =
-                (VkSurfaceKHR)m_View->CreateVulkanSurface(m_Device->GetInstance()->GetInstance());
-        });
+        Renderer::Submit(
+            [this]() mutable {
+                m_Surface = (VkSurfaceKHR)m_View->CreateVulkanSurface(
+                    m_Device->GetInstance()->GetInstance());
+            },
+            "Create surface");
     }
 
     VulkanSwapchain::~VulkanSwapchain() {
         ZoneScoped;
 
-        // todo: destroy framebuffers
+        m_Framebuffers.clear();
 
         auto device = m_Device->GetDevice();
         auto instance = m_Device->GetInstance()->GetInstance();
         auto swapchain = m_Swapchain;
         auto surface = m_Surface;
 
-        Renderer::Submit([device, instance, swapchain, surface]() {
-            if (swapchain != VK_NULL_HANDLE) {
-                vkDestroySwapchainKHR(device, swapchain, &VulkanContext::GetAllocCallbacks());
-            }
+        Renderer::Submit(
+            [device, instance, swapchain, surface]() {
+                if (swapchain != VK_NULL_HANDLE) {
+                    vkDestroySwapchainKHR(device, swapchain, &VulkanContext::GetAllocCallbacks());
+                }
 
-            if (surface != VK_NULL_HANDLE) {
-                vkDestroySurfaceKHR(instance, surface, &VulkanContext::GetAllocCallbacks());
-            }
-        });
+                if (surface != VK_NULL_HANDLE) {
+                    vkDestroySurfaceKHR(instance, surface, &VulkanContext::GetAllocCallbacks());
+                }
+            },
+            "Destroy swapchain");
     }
 
     std::optional<uint32_t> VulkanSwapchain::RT_FindDeviceQueue() {
@@ -65,16 +77,18 @@ namespace fuujin {
 
     void VulkanSwapchain::Initialize(const VmaAllocator& allocator) {
         ZoneScoped;
-        Renderer::Submit([&]() {
-            m_Allocator = allocator; // :thumbsup:
+        Renderer::Submit(
+            [&]() {
+                m_Allocator = allocator; // :thumbsup:
 
-            auto queue = RT_FindDeviceQueue();
-            if (queue.has_value()) {
-                vkGetDeviceQueue(m_Device->GetDevice(), queue.value(), 0, &m_PresentQueue);
+                auto queue = RT_FindDeviceQueue();
+                if (queue.has_value()) {
+                    vkGetDeviceQueue(m_Device->GetDevice(), queue.value(), 0, &m_PresentQueue);
 
-                RT_Invalidate();
-            }
-        });
+                    RT_Invalidate();
+                }
+            },
+            "Create swapchain");
     }
 
     void VulkanSwapchain::ProcessEvent(Event& event) {
@@ -89,6 +103,34 @@ namespace fuujin {
 
         FUUJIN_INFO("Requested swapchain resize from {}x{} to {}x{}", m_Extent.width,
                     m_Extent.height, viewSize.Width, viewSize.Height);
+    }
+
+    void VulkanSwapchain::RT_BeginRender(CommandList& cmdList) {
+        ZoneScoped;
+        RT_AcquireImage();
+
+        auto buffer = (VulkanCommandBuffer*)&cmdList;
+        auto framebuffer = m_Framebuffers[m_CurrentImage];
+        framebuffer->RT_BeginRenderPass(buffer, glm::vec4(glm::vec3(0.1f), 1.f));
+
+        auto semaphore = m_Sync[m_SyncFrame].ImageAvailable;
+        buffer->AddWaitSemaphore(semaphore, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    }
+
+    void VulkanSwapchain::RT_EndRender(CommandList& cmdList) {
+        ZoneScoped;
+
+        auto buffer = (VulkanCommandBuffer*)&cmdList;
+        auto framebuffer = m_Framebuffers[m_CurrentImage];
+        framebuffer->RT_EndRenderPass(buffer);
+
+        auto semaphore = m_Sync[m_SyncFrame].RenderComplete;
+        buffer->AddSemaphore(semaphore, SemaphoreUsage::Signal);
+    }
+
+    void VulkanSwapchain::RT_EndFrame() {
+        ZoneScoped;
+        RT_Present();
     }
 
     void VulkanSwapchain::RT_AcquireImage() {
@@ -121,28 +163,16 @@ namespace fuujin {
         m_ImageFences[m_CurrentImage] = fence;
     }
 
-    void VulkanSwapchain::RT_Present(Ref<CommandQueue> queue, CommandList& cmdList) {
+    void VulkanSwapchain::RT_Present() {
         ZoneScoped;
-
-        auto vulkanQueue = queue.As<VulkanCommandQueue>();
-        auto buffer = (VulkanCommandBuffer*)&cmdList;
-
-        const auto& sync = m_Sync[m_SyncFrame];
-        buffer->AddSemaphore(sync.RenderComplete, SemaphoreUsage::Signal);
-        buffer->AddWaitSemaphore(sync.ImageAvailable,
-                                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-
-        auto fence = sync.Fence;
-        fence->Reset();
-        queue->RT_Submit(*buffer, fence);
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-        VkSemaphore waitSemaphore = sync.RenderComplete->Get();
+        VkSemaphore waitSemaphore = m_Sync[m_SyncFrame].RenderComplete->Get();
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = &waitSemaphore;
-        
+
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &m_Swapchain;
         presentInfo.pImageIndices = &m_CurrentImage;
@@ -153,7 +183,8 @@ namespace fuujin {
             result = vkQueuePresentKHR(m_PresentQueue, &presentInfo);
         }
 
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_NewViewSize.has_value()) {
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR ||
+            m_NewViewSize.has_value()) {
             RT_Invalidate();
             m_NewViewSize.reset();
         }
@@ -164,11 +195,13 @@ namespace fuujin {
 
     void VulkanSwapchain::RT_Invalidate() {
         ZoneScoped;
-        auto device = m_Device->GetDevice();
-
+        
+        ClearGraphicsQueue();
         m_Framebuffers.clear();
-
+        
+        auto device = m_Device->GetDevice();
         auto old = RT_Create();
+
         if (old != VK_NULL_HANDLE) {
             vkDestroySwapchainKHR(device, old, &VulkanContext::GetAllocCallbacks());
         }
@@ -281,6 +314,8 @@ namespace fuujin {
 
                 m_Framebuffers.push_back(Ref<VulkanFramebuffer>::Create(m_Device, framebufferSpec));
             }
+
+            m_ImageFences.resize(m_Framebuffers.size());
         }
 
         if (m_Sync.empty()) {
@@ -420,7 +455,7 @@ namespace fuujin {
     VkPresentModeKHR VulkanSwapchain::RT_FindPresentMode() const {
         ZoneScoped;
 
-        static constexpr bool vsync = false; // todo: take in parameter from... somewhere
+        static constexpr bool vsync = true; // todo: take in parameter from... somewhere
         if (!vsync) {
             auto physicalDevice = m_Device->GetPhysicalDevice();
 

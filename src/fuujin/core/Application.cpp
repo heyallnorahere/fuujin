@@ -3,7 +3,9 @@
 
 #include "fuujin/core/Event.h"
 #include "fuujin/core/Layer.h"
+
 #include "fuujin/renderer/Renderer.h"
+#include "fuujin/renderer/GraphicsContext.h"
 
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/rotating_file_sink.h>
@@ -115,9 +117,16 @@ namespace fuujin {
         auto delta = std::chrono::duration_cast<Duration>(now - m_Data->LastTimestamp);
         m_Data->LastTimestamp = now;
 
-        m_Data->AppView->Update();
+        auto context = GraphicsContext::Get();
+        Renderer::PushRenderTarget(context->GetSwapchain(), true);
+        
         for (const auto& layer : m_Data->LayerStack) {
             layer->Update(delta);
         }
+        
+        Renderer::PopRenderTarget();
+        Renderer::Wait();
+        
+        m_Data->AppView->Update();
     }
 } // namespace fuujin

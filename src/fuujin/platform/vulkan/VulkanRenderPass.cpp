@@ -59,7 +59,8 @@ namespace fuujin {
         }
     }
 
-    VulkanRenderPass::VulkanRenderPass(Ref<VulkanDevice> device, const VkRenderPassCreateInfo* createInfo) {
+    VulkanRenderPass::VulkanRenderPass(Ref<VulkanDevice> device,
+                                       const VkRenderPassCreateInfo* createInfo) {
         ZoneScoped;
 
         m_Device = device;
@@ -68,7 +69,7 @@ namespace fuujin {
 
         m_CreateInfo = (VkRenderPassCreateInfo*)allocate(sizeof(VkRenderPassCreateInfo));
         CopyRenderPassInfo(createInfo, m_CreateInfo);
-        Renderer::Submit([&]() { RT_Create(); });
+        Renderer::Submit([&]() { RT_Create(); }, "Create render pass");
     }
 
     VulkanRenderPass::~VulkanRenderPass() {
@@ -78,30 +79,33 @@ namespace fuujin {
         auto device = m_Device->GetDevice();
         auto renderPass = m_RenderPass;
 
-        Renderer::Submit([=]() {
-            vkDestroyRenderPass(device, renderPass, &VulkanContext::GetAllocCallbacks());
+        Renderer::Submit(
+            [=]() {
+                vkDestroyRenderPass(device, renderPass, &VulkanContext::GetAllocCallbacks());
 
-            for (uint32_t i = 0; i < createInfo->subpassCount; i++) {
-                auto subpass = &createInfo->pSubpasses[i];
-                freemem((void*)subpass->pInputAttachments);
-                freemem((void*)subpass->pColorAttachments);
-                freemem((void*)subpass->pResolveAttachments);
-                freemem((void*)subpass->pDepthStencilAttachment);
-                freemem((void*)subpass->pPreserveAttachments);
-            }
+                for (uint32_t i = 0; i < createInfo->subpassCount; i++) {
+                    auto subpass = &createInfo->pSubpasses[i];
+                    freemem((void*)subpass->pInputAttachments);
+                    freemem((void*)subpass->pColorAttachments);
+                    freemem((void*)subpass->pResolveAttachments);
+                    freemem((void*)subpass->pDepthStencilAttachment);
+                    freemem((void*)subpass->pPreserveAttachments);
+                }
 
-            freemem((void*)createInfo->pAttachments);
-            freemem((void*)createInfo->pDependencies);
-            freemem((void*)createInfo->pSubpasses);
-            freemem(createInfo);
-        });
+                freemem((void*)createInfo->pAttachments);
+                freemem((void*)createInfo->pDependencies);
+                freemem((void*)createInfo->pSubpasses);
+                freemem(createInfo);
+            },
+            "Destroy render pass");
     }
 
     void VulkanRenderPass::RT_Create() {
         ZoneScoped;
 
         auto device = m_Device->GetDevice();
-        if (vkCreateRenderPass(device, m_CreateInfo, &VulkanContext::GetAllocCallbacks(), &m_RenderPass)) {
+        if (vkCreateRenderPass(device, m_CreateInfo, &VulkanContext::GetAllocCallbacks(),
+                               &m_RenderPass)) {
             FUUJIN_CRITICAL("Failed to create render pass {}!", m_ID);
             return;
         }
