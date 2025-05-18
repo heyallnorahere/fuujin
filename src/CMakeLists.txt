@@ -18,7 +18,7 @@ add_custom_command(OUTPUT ${SHADER_DATA_FILE}
                    COMMAND embed ${SHADER_DATA_FILE}
                            --list ${OUTPUT_LIST}
                            --namespace fuujin
-                           --field s_Shaders
+                           --symbol GetEmbeddedShaders
                            --pch fuujinpch.h
                            --relative ${SPIRV_DIR}
                    DEPENDS ${OUTPUT_LIST})

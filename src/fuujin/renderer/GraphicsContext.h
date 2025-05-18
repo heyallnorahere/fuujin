@@ -4,6 +4,7 @@
 #include "fuujin/renderer/GraphicsDevice.h"
 #include "fuujin/renderer/Swapchain.h"
 #include "fuujin/renderer/CommandQueue.h"
+#include "fuujin/renderer/Shader.h"
 
 namespace fuujin {
     class GraphicsContext : public RefCounted {
@@ -16,5 +17,7 @@ namespace fuujin {
 
         virtual Ref<Fence> CreateFence(bool signaled = false) const = 0;
         virtual Ref<RefCounted> CreateSemaphore() const = 0;
+
+        virtual Ref<Shader> LoadShader(const Shader::Code& code) const = 0;
     };
 } // namespace fuujin

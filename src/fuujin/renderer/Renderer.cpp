@@ -1,6 +1,7 @@
 #include "fuujinpch.h"
 #include "fuujin/renderer/Renderer.h"
 #include "fuujin/renderer/GraphicsContext.h"
+#include "fuujin/renderer/ShaderLibrary.h"
 
 #include "fuujin/core/Events.h"
 
@@ -35,6 +36,7 @@ namespace fuujin {
 
         Ref<GraphicsContext> Context;
         Ref<CommandQueue> GraphicsQueue;
+        std::unique_ptr<ShaderLibrary> Library;
 
         std::stack<ActiveRenderTarget> Targets;
     };
@@ -93,6 +95,8 @@ namespace fuujin {
         s_Data->RenderThread.Thread.detach();
 
         s_Data->Context = GraphicsContext::Get();
+        s_Data->Library = std::make_unique<ShaderLibrary>(s_Data->Context);
+
         Renderer::Submit(
             []() { s_Data->GraphicsQueue = s_Data->Context->GetQueue(QueueType::Graphics); },
             "Fetch graphics queue");
@@ -106,6 +110,7 @@ namespace fuujin {
         }
 
         Wait();
+        s_Data->Library.reset();
         s_Data->GraphicsQueue.Reset();
         s_Data->Context.Reset();
 
@@ -150,7 +155,7 @@ namespace fuujin {
     bool Renderer::Wait(std::optional<std::chrono::milliseconds> timeout) {
         ZoneScoped;
 
-        FUUJIN_DEBUG("Waiting for render queue to finish...");
+        FUUJIN_TRACE("Waiting for render queue to finish...");
         spdlog::stopwatch timer;
 
         while (true) {
@@ -163,14 +168,14 @@ namespace fuujin {
 
             auto elapsed = timer.elapsed_ms();
             if (timeout.has_value() && elapsed >= timeout.value()) {
-                FUUJIN_DEBUG("Waited {} to clear render queue - timed out", elapsed);
+                FUUJIN_WARN("Waited {} to clear render queue - timed out", elapsed);
                 return false;
             }
 
             std::this_thread::sleep_for(1ms);
         }
 
-        FUUJIN_DEBUG("Waited {} to clear render queue", timer.elapsed_ms());
+        FUUJIN_TRACE("Waited {} to clear render queue", timer.elapsed_ms());
         return true;
     }
 
@@ -250,4 +255,6 @@ namespace fuujin {
 
         Renderer::Submit([]() { RT_PopRenderTarget(); }, "Pop render target");
     }
+
+    ShaderLibrary& Renderer::GetShaderLibrary() { return *s_Data->Library; }
 }; // namespace fuujin

@@ -3,6 +3,8 @@
 
 namespace fuujin {
     class Event;
+    class ShaderLibrary;
+
     class Renderer {
     public:
         Renderer() = delete;
@@ -31,5 +33,7 @@ namespace fuujin {
 
         // flushes and pops a render target from the stack
         static void PopRenderTarget();
+
+        static ShaderLibrary& GetShaderLibrary();
     };
 } // namespace fuujin

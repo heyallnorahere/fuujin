@@ -26,6 +26,8 @@ namespace fuujin {
         virtual Ref<Fence> CreateFence(bool signaled) const override;
         virtual Ref<RefCounted> CreateSemaphore() const override;
 
+        virtual Ref<Shader> LoadShader(const Shader::Code& code) const override;
+
     private:
         VulkanContext(const std::optional<std::string>& deviceName);
 

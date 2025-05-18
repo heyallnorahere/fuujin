@@ -5,6 +5,7 @@
 #include "fuujin/renderer/Renderer.h"
 
 #include "fuujin/platform/vulkan/VulkanCommandQueue.h"
+#include "fuujin/platform/vulkan/VulkanShader.h"
 
 namespace fuujin {
     static void* VKAPI_CALL VulkanAlloc(void* pUserData, size_t size, size_t alignment,
@@ -310,6 +311,10 @@ namespace fuujin {
 
     Ref<RefCounted> VulkanContext::CreateSemaphore() const {
         return Ref<VulkanSemaphore>::Create(m_Data->Devices[m_Data->UsedDevice]);
+    }
+
+    Ref<Shader> VulkanContext::LoadShader(const Shader::Code& code) const {
+        return Ref<VulkanShader>::Create(m_Data->Devices[m_Data->UsedDevice], code);
     }
 
     void VulkanContext::RT_LoadInstance() const {
