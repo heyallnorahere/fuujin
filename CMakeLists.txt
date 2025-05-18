@@ -34,4 +34,5 @@ foreach(PLATFORM ${FUUJIN_PLATFORMS})
 endforeach()
 
 add_subdirectory("vendor")
+add_subdirectory("tools")
 add_subdirectory("src")

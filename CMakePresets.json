@@ -32,7 +32,8 @@
             "configuration": "Release",
             "configurePreset": "default",
             "targets": [
-                "fuujin_exe"
+                "fuujin_exe",
+                "embed"
             ]
         },
         {

@@ -1,5 +1,4 @@
 #include "fuujin.h"
-#include "fuujin/renderer/Renderer.h"
 
 using namespace std::chrono_literals;
 
