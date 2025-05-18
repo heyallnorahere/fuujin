@@ -15,5 +15,7 @@ foreach(SOURCE ${TOOLS_SOURCE})
 endforeach()
 
 set_target_properties(${TOOLS} PROPERTIES
-    CXX_STANDARD 17
+    CXX_STANDARD 20
     FOLDER "tools")
+
+target_link_libraries(compile_shaders PRIVATE shaderc)

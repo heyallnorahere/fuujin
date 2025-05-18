@@ -3,6 +3,26 @@ cmake_minimum_required(VERSION 3.21)
 list(APPEND FUUJIN_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR})
 list(APPEND FUUJIN_LIBRARIES TracyClient spdlog::spdlog glm::glm)
 
+set(ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
+set(SHADER_DIR "${ASSET_DIR}/shaders")
+set(SPIRV_DIR "${CMAKE_CURRENT_BINARY_DIR}/spirv")
+set(OUTPUT_LIST "${SPIRV_DIR}/outputs.txt")
+
+file(GLOB SHADER_SOURCE CONFIGURE_DEPENDS "${SHADER_DIR}/*.glsl")
+add_custom_command(OUTPUT ${OUTPUT_LIST}
+                   COMMAND compile_shaders ${SPIRV_DIR} ${SHADER_SOURCE}
+                   DEPENDS ${SHADER_SOURCE})
+
+set(SHADER_DATA_FILE "${CMAKE_CURRENT_BINARY_DIR}/shaders.generated.cpp")
+add_custom_command(OUTPUT ${SHADER_DATA_FILE}
+                   COMMAND embed ${SHADER_DATA_FILE}
+                           --list ${OUTPUT_LIST}
+                           --namespace fuujin
+                           --field s_Shaders
+                           --pch fuujinpch.h
+                           --relative ${SPIRV_DIR}
+                   DEPENDS ${OUTPUT_LIST})
+
 file(GLOB_RECURSE FUUJIN_SOURCE CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
@@ -63,7 +83,7 @@ foreach(SOURCE ${FUUJIN_SOURCE})
     source_group(${SOURCE_GROUP} FILES ${SOURCE})
 endforeach()
 
-add_library(fuujin STATIC ${FUUJIN_SOURCE})
+add_library(fuujin STATIC ${FUUJIN_SOURCE} ${SHADER_DATA_FILE})
 target_compile_definitions(fuujin PUBLIC ${FUUJIN_DEFINES} $<$<CONFIG:Debug>:FUUJIN_IS_DEBUG>)
 target_link_libraries(fuujin PUBLIC ${FUUJIN_LIBRARIES})
 target_include_directories(fuujin PUBLIC ${FUUJIN_INCLUDE})

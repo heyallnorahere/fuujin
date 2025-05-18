@@ -35,7 +35,8 @@ void ParseCommandLine(int argc, const char** argv, CommandLine& cli) {
                 throw std::runtime_error("Passed an option without any value!");
             }
 
-            cli.Options[argument].push_back(argv[++i]);
+            std::string value = argv[++i];
+            cli.Options[argument].push_back(value);
             continue;
         }
 
@@ -51,6 +52,7 @@ struct Input {
     std::optional<std::string> Namespace;
     std::optional<std::string> FieldName;
     std::optional<fs::path> RelativeTo;
+    std::optional<fs::path> InputList;
 };
 
 void ParseInput(const CommandLine& cli, Input& input) {
@@ -76,10 +78,17 @@ void ParseInput(const CommandLine& cli, Input& input) {
         input.FieldName = it->second[0];
     }
 
-    const auto& inputFiles = cli.Options.at("--input");
-    for (const auto& arg : inputFiles) {
-        fs::path inputPath = arg;
-        input.InputFiles.push_back(fs::absolute(inputPath));
+    it = cli.Options.find("--list");
+    if (it != cli.Options.end()) {
+        input.InputList = fs::absolute(it->second[0]);
+    }
+
+    if (cli.Options.contains("--input")) {
+        const auto& inputFiles = cli.Options.at("--input");
+        for (const auto& arg : inputFiles) {
+            fs::path inputPath = arg;
+            input.InputFiles.push_back(fs::absolute(inputPath));
+        }
     }
 }
 
@@ -119,9 +128,25 @@ int main(int argc, const char** argv) {
     }
 
     output << "const std::unordered_map<std::string, std::vector<uint8_t>> "
-           << input.FieldName.value_or("s_Data") << " = {" << std::endl;
+           << input.FieldName.value_or("g_EmbeddedData") << " = {" << std::endl;
 
-    for (const auto& path : input.InputFiles) {
+    std::vector<fs::path> inputPaths;
+    if (input.InputList.has_value()) {
+        std::ifstream inputList(input.InputList.value());
+        std::string line;
+
+        while (std::getline(inputList, line)) {
+            if (line.empty()) {
+                continue;
+            }
+
+            inputPaths.push_back(fs::absolute(line));
+        }
+    } else {
+        inputPaths = input.InputFiles;
+    }
+
+    for (const auto& path : inputPaths) {
         std::ifstream inputFile(path, std::ios::in | std::ios::binary);
         if (!inputFile.is_open()) {
             throw std::runtime_error("Failed to read data file \"" + path.string() + "\"");

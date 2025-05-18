@@ -4,6 +4,10 @@ add_subdirectory("tracy")
 add_subdirectory("spdlog")
 add_subdirectory("glm")
 
+find_package(Python3 REQUIRED)
+execute_process(COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/shaderc/utils/git-sync-deps")
+add_subdirectory("shaderc")
+
 if(${FUUJIN_PLATFORM_desktop})
     add_subdirectory("glfw")
 endif()
