@@ -15,6 +15,7 @@
 #include <future>
 #include <limits>
 #include <queue>
+#include <map>
 
 #include <stddef.h>
 #include <cstdint>

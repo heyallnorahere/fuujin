@@ -27,6 +27,7 @@ namespace fuujin {
         virtual Ref<RefCounted> CreateSemaphore() const override;
 
         virtual Ref<Shader> LoadShader(const Shader::Code& code) const override;
+        virtual Ref<Pipeline> CreatePipeline(const Pipeline::Spec& spec) const override;
 
     private:
         VulkanContext(const std::optional<std::string>& deviceName);

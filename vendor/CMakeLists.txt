@@ -6,7 +6,10 @@ add_subdirectory("glm")
 
 find_package(Python3 REQUIRED)
 execute_process(COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/shaderc/utils/git-sync-deps")
+
+set(SHADERC_SPIRV_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/SPIRV-Headers")
 add_subdirectory("shaderc")
+add_subdirectory("SPIRV-Cross")
 
 if(${FUUJIN_PLATFORM_desktop})
     add_subdirectory("glfw")

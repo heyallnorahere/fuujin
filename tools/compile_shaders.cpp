@@ -127,9 +127,13 @@ static void CompileShader(const shaderc::Compiler& compiler, const shaderc::Comp
         std::string path = shader.string();
 
         auto result = compiler.CompileGlslToSpv(stageSource, stage, path.c_str(), "main", options);
-        std::vector<char> code((char*)result.begin(), (char*)result.end());
+        if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
+            auto message = result.GetErrorMessage();
+            throw std::runtime_error("Failed to compile shader " + path + ": " + message);
+        }
 
         auto outputPath = shaderDir / (stageName + ".spv");
+        std::vector<char> code((char*)result.begin(), (char*)result.end());
         std::ofstream output(outputPath, std::ios::out | std::ios::binary);
         output.write(code.data(), code.size());
 

@@ -81,6 +81,7 @@ namespace fuujin {
     }
 
     Application::~Application() {
+        m_Data->LayerStack.clear();
         Renderer::Shutdown();
 
         delete m_Data;

@@ -9,6 +9,8 @@ namespace fuujin {
     public:
         virtual ~Swapchain() = default;
 
+        virtual RenderTargetType GetType() const override { return RenderTargetType::Swapchain; }
+
         virtual Ref<View> GetView() const = 0;
         virtual Ref<GraphicsDevice> GetDevice() const = 0;
 

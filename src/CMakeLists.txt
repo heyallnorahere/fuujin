@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 list(APPEND FUUJIN_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR})
-list(APPEND FUUJIN_LIBRARIES TracyClient spdlog::spdlog glm::glm)
+list(APPEND FUUJIN_LIBRARIES TracyClient spdlog::spdlog glm::glm spirv-cross-core)
 
 set(ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
 set(SHADER_DIR "${ASSET_DIR}/shaders")
@@ -65,7 +65,7 @@ if(${FUUJIN_PLATFORM_vulkan})
     endif()
 
     add_library(fuujin_vulkan STATIC ${VOLK_SOURCE} ${VMA_SOURCE})
-    target_link_libraries(fuujin_vulkan PUBLIC Vulkan::Headers)
+    target_link_libraries(fuujin_vulkan PUBLIC Vulkan::Headers spirv-cross-glsl)
     target_include_directories(fuujin_vulkan PUBLIC ${VOLK_DIR} "${VMA_DIR}/include")
     list(APPEND FUUJIN_LIBRARIES fuujin_vulkan)
     target_compile_definitions(fuujin_vulkan PRIVATE VMA_STATIC_VULKAN_FUNCTIONS=0

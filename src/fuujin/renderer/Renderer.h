@@ -34,6 +34,7 @@ namespace fuujin {
         // flushes and pops a render target from the stack
         static void PopRenderTarget();
 
+        // get the shader library attached to the current graphics context
         static ShaderLibrary& GetShaderLibrary();
     };
 } // namespace fuujin

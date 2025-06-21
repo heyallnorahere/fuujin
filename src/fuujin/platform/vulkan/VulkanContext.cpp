@@ -6,6 +6,7 @@
 
 #include "fuujin/platform/vulkan/VulkanCommandQueue.h"
 #include "fuujin/platform/vulkan/VulkanShader.h"
+#include "fuujin/platform/vulkan/VulkanPipeline.h"
 
 namespace fuujin {
     static void* VKAPI_CALL VulkanAlloc(void* pUserData, size_t size, size_t alignment,
@@ -315,6 +316,10 @@ namespace fuujin {
 
     Ref<Shader> VulkanContext::LoadShader(const Shader::Code& code) const {
         return Ref<VulkanShader>::Create(m_Data->Devices[m_Data->UsedDevice], code);
+    }
+
+    Ref<Pipeline> VulkanContext::CreatePipeline(const Pipeline::Spec& spec) const {
+        return Ref<VulkanPipeline>::Create(m_Data->Devices[m_Data->UsedDevice], spec);
     }
 
     void VulkanContext::RT_LoadInstance() const {

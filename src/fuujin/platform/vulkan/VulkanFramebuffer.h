@@ -26,6 +26,8 @@ namespace fuujin {
 
         VkFramebuffer Get() const { return m_Framebuffer; }
 
+        Ref<VulkanRenderPass> GetRenderPass() const { return m_Spec.RenderPass; }
+
         virtual uint32_t GetWidth() const override { return m_Spec.Extent.width; }
         virtual uint32_t GetHeight() const override { return m_Spec.Extent.height; }
 

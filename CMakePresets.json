@@ -10,11 +10,7 @@
             "name": "default",
             "binaryDir": "build",
             "cacheVariables": {
-                "BUILD_SHARED_LIBS": "OFF",
                 "TRACY_ENABLE": "OFF",
-
-                "SHADERC_SKIP_EXAMPLES": "ON",
-                "SHADERC_SKIP_TESTS": "ON",
                 "SHADERC_ENABLE_SHARED_CRT": "ON"
             }
         },

@@ -39,6 +39,8 @@ namespace fuujin {
 
         virtual Ref<Fence> GetCurrentFence() const override { return m_Sync[m_SyncFrame].Fence; }
 
+        Ref<VulkanRenderPass> GetRenderPass() const { return m_RenderPass; }
+
         virtual void RT_BeginRender(CommandList& cmdList) override;
         virtual void RT_EndRender(CommandList& cmdList) override;
         virtual void RT_EndFrame() override;

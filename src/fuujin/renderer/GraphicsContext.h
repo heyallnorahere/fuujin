@@ -5,6 +5,7 @@
 #include "fuujin/renderer/Swapchain.h"
 #include "fuujin/renderer/CommandQueue.h"
 #include "fuujin/renderer/Shader.h"
+#include "fuujin/renderer/Pipeline.h"
 
 namespace fuujin {
     class GraphicsContext : public RefCounted {
@@ -19,5 +20,6 @@ namespace fuujin {
         virtual Ref<RefCounted> CreateSemaphore() const = 0;
 
         virtual Ref<Shader> LoadShader(const Shader::Code& code) const = 0;
+        virtual Ref<Pipeline> CreatePipeline(const Pipeline::Spec& spec) const = 0;
     };
 } // namespace fuujin

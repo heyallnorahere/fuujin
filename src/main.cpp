@@ -1,5 +1,10 @@
 #include "fuujin.h"
 
+#include "fuujin/renderer/Renderer.h"
+#include "fuujin/renderer/Pipeline.h"
+#include "fuujin/renderer/GraphicsContext.h"
+#include "fuujin/renderer/ShaderLibrary.h"
+
 using namespace std::chrono_literals;
 
 class TestLayer : public fuujin::Layer {
