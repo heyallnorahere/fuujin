@@ -8,12 +8,15 @@
 #include <spirv_cross.hpp>
 
 namespace fuujin {
-    enum ShaderResourceType : uint32_t {
-        UniformBuffer = 1 << 0,
-        StorageBuffer = 1 << 1,
-        SampledImage = 1 << 2,
-        ShaderSampler = 1 << 3,
-        StorageImage = 1 << 4,
+    struct ResourceDescriptor {
+        ResourceDescriptor() = default;
+
+        ResourceDescriptor(uint32_t set, uint32_t binding) {
+            Set = set;
+            Binding = binding;
+        }
+
+        uint32_t Set, Binding;
     };
 
     struct ShaderResource {
@@ -21,6 +24,7 @@ namespace fuujin {
         std::string Name;
         std::unordered_map<ShaderStage, spirv_cross::TypeID> Types;
         std::vector<size_t> Dimensions;
+        std::shared_ptr<GPUResource> Interface;
     };
 
     struct ShaderPushConstants {
@@ -41,10 +45,17 @@ namespace fuujin {
         size_t TotalSize;
         std::unordered_map<std::string, ShaderField> Fields;
         spirv_cross::SPIRType::BaseType BaseType;
+        std::shared_ptr<GPUType> Interface;
     };
 
     class VulkanShader : public Shader {
     public:
+        using Resources =
+            std::unordered_map<uint32_t, std::unordered_map<uint32_t, ShaderResource>>;
+
+        using Types =
+            std::unordered_map<ShaderStage, std::unordered_map<spirv_cross::TypeID, ShaderType>>;
+
         static VkShaderStageFlagBits ConvertStage(ShaderStage stage);
 
         VulkanShader(Ref<VulkanDevice> device, const Code& code);
@@ -52,6 +63,14 @@ namespace fuujin {
         virtual ~VulkanShader() override;
 
         virtual void GetStages(std::unordered_set<ShaderStage>& stages) const override;
+
+        virtual std::shared_ptr<GPUResource> GetResourceByName(
+            const std::string& name) const override;
+        
+        std::shared_ptr<GPUResource> GetResourceByDescriptor(
+            const ResourceDescriptor& descriptor) const;
+
+        bool GetResourceDescriptor(const std::string& name, ResourceDescriptor& descriptor) const;
 
         const std::unordered_map<ShaderStage, VkShaderModule>& GetModules() const {
             return m_Modules;
@@ -64,6 +83,9 @@ namespace fuujin {
         }
 
         const VkPipelineVertexInputStateCreateInfo& GetVertexInput() const { return m_VertexInput; }
+
+        const Resources& GetResources() const { return m_Resources; }
+        const Types& GetTypes() const { return m_Types; }
 
     private:
         void Reflect();
@@ -94,9 +116,9 @@ namespace fuujin {
         VkVertexInputBindingDescription m_VertexBinding;
         std::vector<VkVertexInputAttributeDescription> m_VertexAttributes;
 
-        std::unordered_map<uint32_t, std::unordered_map<uint32_t, ShaderResource>> m_Resources;
+        Resources m_Resources;
+        Types m_Types;
         ShaderPushConstants m_PushConstants;
-        std::unordered_map<ShaderStage, std::unordered_map<spirv_cross::TypeID, ShaderType>>
-            m_Types;
+        std::unordered_map<std::string, ResourceDescriptor> m_ResourceMap;
     };
 } // namespace fuujin

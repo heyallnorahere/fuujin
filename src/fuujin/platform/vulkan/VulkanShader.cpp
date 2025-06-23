@@ -8,6 +8,123 @@
 #include <spirv_cross.hpp>
 
 namespace fuujin {
+    class VulkanType : public GPUType {
+    public:
+        VulkanType(const Ref<VulkanShader>& shader, ShaderStage stage, spirv_cross::TypeID id) {
+            ZoneScoped;
+
+            m_Shader = shader;
+            m_Stage = stage;
+            m_ID = id;
+        }
+
+        virtual size_t GetSize() const override {
+            ZoneScoped;
+
+            const auto& types = m_Shader->GetTypes();
+            const auto& type = types.at(m_Stage).at(m_ID);
+
+            return type.TotalSize;
+        }
+
+        virtual void GetFields(std::unordered_map<std::string, Field>& fields) const override {
+            ZoneScoped;
+
+            const auto& types = m_Shader->GetTypes();
+            const auto& stage = types.at(m_Stage);
+            const auto& type = stage.at(m_ID);
+
+            fields.clear();
+            for (const auto& [name, data] : type.Fields) {
+                auto& field = fields[name];
+                field.Dimensions = data.Dimensions;
+                field.Offset = data.Offset;
+                field.Stride = data.Stride;
+
+                const auto& referenced = stage.at(data.Type);
+                field.Type = referenced.Interface;
+            }
+        }
+
+    private:
+        Ref<VulkanShader> m_Shader;
+        ShaderStage m_Stage;
+        spirv_cross::TypeID m_ID;
+    };
+
+    class VulkanResource : public GPUResource {
+    public:
+        VulkanResource(const Ref<VulkanShader>& shader, uint32_t set, uint32_t binding) {
+            ZoneScoped;
+
+            m_Shader = shader;
+            m_Set = set;
+            m_Binding = binding;
+        }
+
+        virtual const std::string& GetName() const override {
+            ZoneScoped;
+            return GetResource().Name;
+        }
+
+        virtual uint32_t GetResourceType() const override {
+            ZoneScoped;
+            return GetResource().ResourceType;
+        }
+
+        virtual const std::vector<size_t>& GetDimensions() const override {
+            ZoneScoped;
+            return GetResource().Dimensions;
+        }
+
+        virtual void GetStages(std::unordered_set<ShaderStage>& stages) const override {
+            ZoneScoped;
+            stages.clear();
+
+            const auto& resource = GetResource();
+            for (auto [stage, id] : resource.Types) {
+                stages.insert(stage);
+            }
+        }
+
+        virtual std::shared_ptr<GPUType> GetType(
+            const std::optional<ShaderStage>& stage = {}) const override {
+            ZoneScoped;
+
+            ShaderStage stageValue;
+            spirv_cross::TypeID id;
+
+            const auto& resource = GetResource();
+            if (stage.has_value()) {
+                stageValue = stage.value();
+                if (!resource.Types.contains(stageValue)) {
+                    return nullptr;
+                }
+
+                id = resource.Types.at(stageValue);
+            } else {
+                auto it = resource.Types.begin();
+                stageValue = it->first;
+                id = it->second;
+            }
+
+            const auto& types = m_Shader->GetTypes();
+            const auto& type = types.at(stageValue).at(id);
+            return type.Interface;
+        }
+
+    private:
+        const ShaderResource& GetResource() const {
+            ZoneScoped;
+
+            const auto& resources = m_Shader->GetResources();
+            return resources.at(m_Set).at(m_Binding);
+        }
+
+        Ref<VulkanShader> m_Shader;
+        uint32_t m_Set, m_Binding;
+    };
+
     VkShaderStageFlagBits VulkanShader::ConvertStage(ShaderStage stage) {
         ZoneScoped;
 
@@ -67,6 +184,48 @@ namespace fuujin {
         }
     }
 
+    std::shared_ptr<GPUResource> VulkanShader::GetResourceByName(const std::string& name) const {
+        ZoneScoped;
+
+        ResourceDescriptor descriptor;
+        if (!GetResourceDescriptor(name, descriptor)) {
+            return nullptr;
+        }
+
+        return GetResourceByDescriptor(descriptor);
+    }
+
+    std::shared_ptr<GPUResource> VulkanShader::GetResourceByDescriptor(
+        const ResourceDescriptor& descriptor) const {
+        ZoneScoped;
+
+        auto it = m_Resources.find(descriptor.Set);
+        if (it == m_Resources.end()) {
+            return nullptr;
+        }
+
+        const auto& setResources = it->second;
+        auto setIt = setResources.find(descriptor.Binding);
+        if (setIt != setResources.end()) {
+            return nullptr;
+        }
+
+        return setIt->second.Interface;
+    }
+
+    bool VulkanShader::GetResourceDescriptor(const std::string& name,
+                                             ResourceDescriptor& descriptor) const {
+        ZoneScoped;
+
+        auto it = m_ResourceMap.find(name);
+        if (it == m_ResourceMap.end()) {
+            return false;
+        }
+
+        descriptor = it->second;
+        return true;
+    }
+
     void VulkanShader::Reflect() {
         ZoneScoped;
 
@@ -78,18 +237,36 @@ namespace fuujin {
 
             auto resources = compiler.get_shader_resources();
 
-            ProcessResources(resources.uniform_buffers, compiler, stage, UniformBuffer);
-            ProcessResources(resources.storage_buffers, compiler, stage, StorageBuffer);
-            ProcessResources(resources.separate_images, compiler, stage, SampledImage);
-            ProcessResources(resources.separate_samplers, compiler, stage, ShaderSampler);
-            ProcessResources(resources.storage_images, compiler, stage, StorageImage);
+            ProcessResources(resources.uniform_buffers, compiler, stage,
+                             GPUResource::UniformBuffer);
+
+            ProcessResources(resources.storage_buffers, compiler, stage,
+                             GPUResource::StorageBuffer);
+
+            ProcessResources(resources.storage_images, compiler, stage, GPUResource::StorageImage);
+            ProcessResources(resources.separate_images, compiler, stage, GPUResource::SampledImage);
+            ProcessResources(resources.separate_samplers, compiler, stage,
+                             GPUResource::ShaderSampler);
+
             ProcessResources(resources.sampled_images, compiler, stage,
-                             SampledImage | ShaderSampler);
+                             GPUResource::SampledImage | GPUResource::ShaderSampler);
 
             ProcessPushConstants(resources.push_constant_buffers, compiler, stage);
 
             if (stage == ShaderStage::Vertex) {
                 ProcessVertexInputs(resources.stage_inputs, compiler, stage);
+            }
+        }
+
+        for (auto& [set, resources] : m_Resources) {
+            for (auto& [binding, resource] : resources) {
+                resource.Interface =
+                    std::shared_ptr<GPUResource>(new VulkanResource(this, set, binding));
+
+                const auto& name = resource.Interface->GetName();
+                if (!name.empty()) {
+                    m_ResourceMap[name] = ResourceDescriptor(set, binding);
+                }
             }
         }
 
@@ -189,7 +366,7 @@ namespace fuujin {
 
                 auto name = compiler.get_member_name(id, i);
                 if (name.empty()) {
-                    name = "<field_" + std::to_string(i) + ">";
+                    name = "<field " + std::to_string(i) + ">";
                 }
 
                 result.Fields[name] = field;
@@ -208,6 +385,7 @@ namespace fuujin {
         }
 
         result.TotalSize = result.ElementSize * result.Rows * result.Columns;
+        result.Interface = std::shared_ptr<GPUType>(new VulkanType(this, stage, id));
     }
 
     void VulkanShader::ProcessResources(
@@ -223,8 +401,8 @@ namespace fuujin {
             bool exists = setData.contains(binding);
 
             auto& result = setData[binding];
-            bool canOverwrite =
-                (result.ResourceType & SampledImage) == 0 && (type & SampledImage) != 0;
+            bool canOverwrite = (result.ResourceType & GPUResource::SampledImage) == 0 &&
+                                (type & GPUResource::SampledImage) != 0;
 
             result.ResourceType |= type;
             if (!exists || canOverwrite) {
@@ -423,22 +601,22 @@ namespace fuujin {
                 }
 
                 switch (resource.ResourceType) {
-                case UniformBuffer:
+                case GPUResource::UniformBuffer:
                     binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                     break;
-                case StorageBuffer:
+                case GPUResource::StorageBuffer:
                     binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                     break;
-                case SampledImage:
+                case GPUResource::SampledImage:
                     binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                     break;
-                case ShaderSampler:
+                case GPUResource::ShaderSampler:
                     binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
                     break;
-                case SampledImage | ShaderSampler:
+                case GPUResource::SampledImage | GPUResource::ShaderSampler:
                     binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                     break;
-                case StorageImage:
+                case GPUResource::StorageImage:
                     binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                     break;
                 default:
