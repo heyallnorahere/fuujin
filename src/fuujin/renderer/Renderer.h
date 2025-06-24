@@ -1,9 +1,27 @@
 #pragma once
+#include "fuujin/core/Ref.h"
 #include "fuujin/renderer/Framebuffer.h"
+#include "fuujin/renderer/DeviceBuffer.h"
+#include "fuujin/renderer/Pipeline.h"
+
+#include "fuujin/core/Buffer.h"
 
 namespace fuujin {
     class Event;
     class ShaderLibrary;
+    class CommandList;
+
+    class RendererAPI {
+    public:
+        virtual ~RendererAPI() = default;
+
+        virtual void RT_RenderIndexed(CommandList& cmdlist, Ref<DeviceBuffer> vertices,
+                                      Ref<DeviceBuffer> indices, Ref<Pipeline> pipeline,
+                                      uint32_t indexCount,
+                                      const Buffer& pushConstants = Buffer()) const = 0;
+
+        virtual void RT_SetViewport(CommandList& cmdlist, Ref<RenderTarget> target) const = 0;
+    };
 
     class Renderer {
     public:
@@ -33,6 +51,10 @@ namespace fuujin {
 
         // flushes and pops a render target from the stack
         static void PopRenderTarget();
+
+        static void RenderIndexed(Ref<DeviceBuffer> vertices, Ref<DeviceBuffer> indices,
+                                  Ref<Pipeline> pipeline, uint32_t indexCount,
+                                  const Buffer& pushConstants = Buffer());
 
         // get the shader library attached to the current graphics context
         static ShaderLibrary& GetShaderLibrary();

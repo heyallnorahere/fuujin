@@ -37,6 +37,7 @@ namespace fuujin {
         Ref<GraphicsContext> Context;
         Ref<CommandQueue> GraphicsQueue;
         std::unique_ptr<ShaderLibrary> Library;
+        RendererAPI* API;
 
         std::stack<ActiveRenderTarget> Targets;
     };
@@ -96,6 +97,7 @@ namespace fuujin {
 
         s_Data->Context = GraphicsContext::Get();
         s_Data->Library = std::make_unique<ShaderLibrary>(s_Data->Context);
+        s_Data->API = s_Data->Context->CreateRendererAPI();
 
         Renderer::Submit(
             []() { s_Data->GraphicsQueue = s_Data->Context->GetQueue(QueueType::Graphics); },
@@ -110,6 +112,8 @@ namespace fuujin {
         }
 
         Wait();
+
+        delete s_Data->API;
         s_Data->Library.reset();
         s_Data->GraphicsQueue.Reset();
         s_Data->Context.Reset();
@@ -199,7 +203,9 @@ namespace fuujin {
 
         target.CmdList = &s_Data->GraphicsQueue->RT_Get();
         target.CmdList->RT_Begin();
+
         target.Target->RT_BeginRender(*target.CmdList);
+        s_Data->API->RT_SetViewport(*target.CmdList, target.Target);
     }
 
     static void RT_EndRenderTarget() {
@@ -254,6 +260,37 @@ namespace fuujin {
         ZoneScoped;
 
         Renderer::Submit([]() { RT_PopRenderTarget(); }, "Pop render target");
+    }
+
+    struct RenderIndexed_Data {
+        Ref<DeviceBuffer> VertexBuffer;
+        Ref<DeviceBuffer> IndexBuffer;
+        Ref<Pipeline> Pipeline;
+        uint32_t IndexCount;
+        Buffer PushConstants;
+    };
+
+    void Renderer::RenderIndexed(Ref<DeviceBuffer> vertices, Ref<DeviceBuffer> indices,
+                                 Ref<Pipeline> pipeline, uint32_t indexCount,
+                                 const Buffer& pushConstants) {
+        ZoneScoped;
+
+        auto data = new RenderIndexed_Data;
+        data->VertexBuffer = vertices;
+        data->IndexBuffer = indices;
+        data->Pipeline = pipeline;
+        data->IndexCount = indexCount;
+        data->PushConstants = pushConstants;
+
+        Renderer::Submit([data]() {
+            RT_BeginRenderTarget();
+
+            const auto& target = s_Data->Targets.top();
+            s_Data->API->RT_RenderIndexed(*target.CmdList, data->VertexBuffer, data->IndexBuffer,
+                                          data->Pipeline, data->IndexCount, data->PushConstants);
+            
+            delete data;
+        });
     }
 
     ShaderLibrary& Renderer::GetShaderLibrary() { return *s_Data->Library; }

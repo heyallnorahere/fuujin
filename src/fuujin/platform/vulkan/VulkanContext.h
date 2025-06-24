@@ -29,6 +29,10 @@ namespace fuujin {
         virtual Ref<Shader> LoadShader(const Shader::Code& code) const override;
         virtual Ref<Pipeline> CreatePipeline(const Pipeline::Spec& spec) const override;
 
+        virtual Ref<DeviceBuffer> CreateBuffer(const DeviceBuffer::Spec& spec) const override;
+
+        virtual RendererAPI* CreateRendererAPI() const override;
+
     private:
         VulkanContext(const std::optional<std::string>& deviceName);
 

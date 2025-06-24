@@ -153,6 +153,7 @@ namespace fuujin {
         vkResetCommandBuffer(m_Buffer, 0);
         m_Semaphores.clear();
         m_WaitStages.clear();
+        m_Dependencies.clear();
     }
 
     void VulkanCommandBuffer::AddSemaphore(Ref<RefCounted> semaphore, SemaphoreUsage usage) {
@@ -160,6 +161,11 @@ namespace fuujin {
 
         auto vkSemaphore = semaphore.As<VulkanSemaphore>();
         m_Semaphores[usage].push_back(vkSemaphore);
+    }
+
+    void VulkanCommandBuffer::AddDependency(Ref<RefCounted> object) {
+        ZoneScoped;
+        m_Dependencies.push_back(object);
     }
 
     void VulkanCommandBuffer::AddWaitSemaphore(Ref<VulkanSemaphore> semaphore,

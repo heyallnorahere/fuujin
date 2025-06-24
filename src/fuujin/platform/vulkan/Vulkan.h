@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef VULKAN_H_
+#error vulkan.h already included!
+#endif
+
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
 

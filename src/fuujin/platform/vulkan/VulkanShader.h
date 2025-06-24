@@ -86,6 +86,7 @@ namespace fuujin {
 
         const Resources& GetResources() const { return m_Resources; }
         const Types& GetTypes() const { return m_Types; }
+        const ShaderPushConstants& GetPushConstants() const { return m_PushConstants; }
 
     private:
         void Reflect();

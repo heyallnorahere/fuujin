@@ -135,7 +135,7 @@ namespace fuujin {
 
         VkPipelineMultisampleStateCreateInfo multisampling{};
         multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisampling.rasterizationSamples = (VkSampleCountFlagBits)m_Spec.MultisampleBits;
+        multisampling.rasterizationSamples = m_Device->RT_GetMaxSampleCount();
 
         VkPhysicalDeviceFeatures2 features{};
         m_Device->RT_GetFeatures(features);
@@ -158,6 +158,13 @@ namespace fuujin {
         }
 
         VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                              VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+        VkPipelineColorBlendStateCreateInfo colorBlend{};
+        colorBlend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlend.logicOpEnable = VK_FALSE;
+
         if (m_Spec.ColorBlending != ColorBlending::None) {
             colorBlendAttachment.blendEnable = VK_TRUE;
             colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
@@ -184,13 +191,10 @@ namespace fuujin {
 
             colorBlendAttachment.srcAlphaBlendFactor = colorBlendAttachment.srcColorBlendFactor;
             colorBlendAttachment.dstAlphaBlendFactor = colorBlendAttachment.dstColorBlendFactor;
-        }
 
-        VkPipelineColorBlendStateCreateInfo colorBlend{};
-        colorBlend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        colorBlend.logicOpEnable = VK_FALSE;
-        colorBlend.attachmentCount = 1;
-        colorBlend.pAttachments = &colorBlendAttachment;
+            colorBlend.attachmentCount = 1;
+            colorBlend.pAttachments = &colorBlendAttachment;
+        }
 
         VkGraphicsPipelineCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

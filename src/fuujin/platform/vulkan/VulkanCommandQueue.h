@@ -48,6 +48,7 @@ namespace fuujin {
         virtual void RT_Reset() override;
 
         virtual void AddSemaphore(Ref<RefCounted> semaphore, SemaphoreUsage usage) override;
+        virtual void AddDependency(Ref<RefCounted> object) override;
 
         void AddWaitSemaphore(Ref<VulkanSemaphore> semaphore, VkPipelineStageFlags wait);
         bool GetSemaphores(SemaphoreUsage usage,
@@ -65,6 +66,7 @@ namespace fuujin {
         Ref<VulkanDevice> m_Device;
         std::unordered_map<SemaphoreUsage, std::vector<Ref<VulkanSemaphore>>> m_Semaphores;
         std::unordered_map<size_t, VkPipelineStageFlags> m_WaitStages;
+        std::vector<Ref<RefCounted>> m_Dependencies;
 
         VkCommandPool m_Pool;
         VkCommandBuffer m_Buffer;

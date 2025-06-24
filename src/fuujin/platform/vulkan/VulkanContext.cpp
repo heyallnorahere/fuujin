@@ -7,6 +7,8 @@
 #include "fuujin/platform/vulkan/VulkanCommandQueue.h"
 #include "fuujin/platform/vulkan/VulkanShader.h"
 #include "fuujin/platform/vulkan/VulkanPipeline.h"
+#include "fuujin/platform/vulkan/VulkanRenderer.h"
+#include "fuujin/platform/vulkan/VulkanBuffer.h"
 
 namespace fuujin {
     static void* VKAPI_CALL VulkanAlloc(void* pUserData, size_t size, size_t alignment,
@@ -256,7 +258,9 @@ namespace fuujin {
     VulkanContext::~VulkanContext() {
         ZoneScoped;
 
-        m_Data->Queues.at(QueueType::Graphics)->Clear();
+        for (auto [type, queue] : m_Data->Queues) {
+            queue->Clear();
+        }
 
         m_Data->Swapchain.Reset();
         m_Data->Queues.clear();
@@ -320,6 +324,15 @@ namespace fuujin {
 
     Ref<Pipeline> VulkanContext::CreatePipeline(const Pipeline::Spec& spec) const {
         return Ref<VulkanPipeline>::Create(m_Data->Devices[m_Data->UsedDevice], spec);
+    }
+
+    Ref<DeviceBuffer> VulkanContext::CreateBuffer(const DeviceBuffer::Spec& spec) const {
+        return Ref<VulkanBuffer>::Create(m_Data->Devices[m_Data->UsedDevice], m_Data->Allocator,
+                                         spec);
+    }
+
+    RendererAPI* VulkanContext::CreateRendererAPI() const {
+        return new VulkanRenderer(m_Data->Devices[m_Data->UsedDevice]);
     }
 
     void VulkanContext::RT_LoadInstance() const {

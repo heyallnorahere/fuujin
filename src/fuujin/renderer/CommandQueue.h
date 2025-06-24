@@ -39,6 +39,7 @@ namespace fuujin {
         virtual void RT_Reset() = 0;
 
         virtual void AddSemaphore(Ref<RefCounted> semaphore, SemaphoreUsage usage) = 0;
+        virtual void AddDependency(Ref<RefCounted> object) = 0;
     };
 
     class CommandQueue : public RefCounted {

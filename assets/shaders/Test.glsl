@@ -7,13 +7,8 @@ layout(push_constant) uniform PushConstants {
 #stage vertex
 layout(location = 0) in vec3 i_Position;
 
-layout(set = 0, binding = 0, std140) uniform MatrixUBO {
-    mat4 Projection, View, Model;
-} u_MatrixUBO;
-
 void main() {
-    mat4 mvp = u_MatrixUBO.Projection * u_MatrixUBO.View * u_MatrixUBO.Model;
-    gl_Position = mvp * vec4(i_Position, 1.0);
+    gl_Position = vec4(i_Position, 1.0);
 }
 
 #stage fragment

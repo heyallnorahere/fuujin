@@ -36,7 +36,6 @@ namespace fuujin {
             FrontFace FrontFace = FrontFace::CCW;
             bool DisableCulling = false;
             bool Wireframe = false;
-            uint32_t MultisampleBits = 1;
             ColorBlending ColorBlending = ColorBlending::Default;
 
             Ref<Shader> Shader;
