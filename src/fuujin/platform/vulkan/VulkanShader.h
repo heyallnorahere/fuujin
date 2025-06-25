@@ -57,6 +57,7 @@ namespace fuujin {
             std::unordered_map<ShaderStage, std::unordered_map<spirv_cross::TypeID, ShaderType>>;
 
         static VkShaderStageFlagBits ConvertStage(ShaderStage stage);
+        static VkDescriptorType ConvertDescriptorType(uint32_t resourceType);
 
         VulkanShader(Ref<VulkanDevice> device, const Code& code);
 

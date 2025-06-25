@@ -7,7 +7,7 @@
 #include "fuujin/core/Events.h"
 
 namespace fuujin {
-    static constexpr size_t s_SyncFrameCount = 2;
+    static constexpr size_t s_SyncFrameCount = 3;
 
     static void ClearGraphicsQueue() {
         ZoneScoped;
@@ -104,6 +104,8 @@ namespace fuujin {
         FUUJIN_INFO("Requested swapchain resize from {}x{} to {}x{}", m_Extent.width,
                     m_Extent.height, viewSize.Width, viewSize.Height);
     }
+
+    size_t VulkanSwapchain::GetSyncFrameCount() const { return s_SyncFrameCount; }
 
     void VulkanSwapchain::RT_BeginRender(CommandList& cmdList) {
         ZoneScoped;
@@ -455,7 +457,7 @@ namespace fuujin {
     VkPresentModeKHR VulkanSwapchain::RT_FindPresentMode() const {
         ZoneScoped;
 
-        static constexpr bool vsync = true; // todo: take in parameter from... somewhere
+        static constexpr bool vsync = false; // todo: take in parameter from... somewhere
         if (!vsync) {
             auto physicalDevice = m_Device->GetPhysicalDevice();
 
@@ -475,6 +477,7 @@ namespace fuujin {
             }
         }
 
+        // always supported, vsync
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 

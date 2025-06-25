@@ -1,5 +1,6 @@
 #pragma once
 #include "fuujin/core/Ref.h"
+#include "fuujin/renderer/GraphicsContext.h"
 #include "fuujin/renderer/Framebuffer.h"
 #include "fuujin/renderer/DeviceBuffer.h"
 #include "fuujin/renderer/Pipeline.h"
@@ -11,16 +12,32 @@ namespace fuujin {
     class ShaderLibrary;
     class CommandList;
 
+    class RendererAllocation : public RefCounted {
+    public:
+        virtual bool Bind(const std::string& name, Ref<DeviceBuffer> buffer, uint32_t index = 0,
+                          size_t offset = 0, size_t range = 0) = 0;
+    };
+
+    struct IndexedRenderCall {
+        Ref<DeviceBuffer> VertexBuffer, IndexBuffer;
+        Ref<Pipeline> Pipeline;
+        uint32_t IndexCount;
+
+        Buffer PushConstants;
+        Ref<RendererAllocation> Resources;
+    };
+
     class RendererAPI {
     public:
         virtual ~RendererAPI() = default;
 
-        virtual void RT_RenderIndexed(CommandList& cmdlist, Ref<DeviceBuffer> vertices,
-                                      Ref<DeviceBuffer> indices, Ref<Pipeline> pipeline,
-                                      uint32_t indexCount,
-                                      const Buffer& pushConstants = Buffer()) const = 0;
+        virtual void RT_NewFrame(uint32_t frame) = 0;
+
+        virtual void RT_RenderIndexed(CommandList& cmdlist, const IndexedRenderCall& data) = 0;
 
         virtual void RT_SetViewport(CommandList& cmdlist, Ref<RenderTarget> target) const = 0;
+
+        virtual Ref<RendererAllocation> CreateAllocation(const Ref<Shader>& shader) const = 0;
     };
 
     class Renderer {
@@ -30,7 +47,13 @@ namespace fuujin {
         static void Init();
         static void Shutdown();
 
+        static Ref<GraphicsContext> GetContext();
+        static Ref<CommandQueue> GetGraphicsQueue();
+        static ShaderLibrary& GetShaderLibrary();
+
         static void ProcessEvent(Event& event);
+
+        static Ref<RendererAllocation> CreateAllocation(const Ref<Shader>& shader);
 
         // submits a job to the render thread
         // all jobs will be executed in order submitted
@@ -45,18 +68,17 @@ namespace fuujin {
         // checks if the thread this is called from is the render thread
         static bool IsRenderThread();
 
+        // signals a new frame
+        static void NewFrame();
+
         // pushes a render target of a framebuffer
-        // "force" - force begin render?
-        static void PushRenderTarget(Ref<RenderTarget> target, bool force = false);
+        static void PushRenderTarget(Ref<RenderTarget> target);
 
         // flushes and pops a render target from the stack
         static void PopRenderTarget();
 
-        static void RenderIndexed(Ref<DeviceBuffer> vertices, Ref<DeviceBuffer> indices,
-                                  Ref<Pipeline> pipeline, uint32_t indexCount,
-                                  const Buffer& pushConstants = Buffer());
-
-        // get the shader library attached to the current graphics context
-        static ShaderLibrary& GetShaderLibrary();
+        // renders a mesh with the provided resources
+        // note that a render target needs to have been pushed
+        static void RenderIndexed(const IndexedRenderCall& data);
     };
 } // namespace fuujin

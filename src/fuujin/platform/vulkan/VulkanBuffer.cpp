@@ -30,6 +30,19 @@ namespace fuujin {
         Renderer::Submit([=]() { vmaDestroyBuffer(allocator, buffer, allocation); });
     }
 
+    VkDescriptorType VulkanBuffer::GetDescriptorType() const {
+        ZoneScoped;
+
+        switch (m_Spec.Usage) {
+        case Usage::Uniform:
+            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case Usage::Storage:
+            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        }
+
+        throw std::runtime_error("This buffer usage does not support binding to descriptor sets!");
+    }
+
     Buffer VulkanBuffer::RT_Map() {
         ZoneScoped;
 

@@ -26,6 +26,6 @@ namespace fuujin {
 
         virtual Ref<DeviceBuffer> CreateBuffer(const DeviceBuffer::Spec& spec) const = 0;
 
-        virtual RendererAPI* CreateRendererAPI() const = 0;
+        virtual RendererAPI* CreateRendererAPI(uint32_t frames) const = 0;
     };
 } // namespace fuujin

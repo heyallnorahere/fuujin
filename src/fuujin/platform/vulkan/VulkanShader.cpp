@@ -142,6 +142,27 @@ namespace fuujin {
         }
     }
 
+    VkDescriptorType VulkanShader::ConvertDescriptorType(uint32_t resourceType) {
+        ZoneScoped;
+
+        switch (resourceType) {
+        case GPUResource::UniformBuffer:
+            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case GPUResource::StorageBuffer:
+            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case GPUResource::SampledImage:
+            return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case GPUResource::ShaderSampler:
+            return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case GPUResource::SampledImage | GPUResource::ShaderSampler:
+            return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        case GPUResource::StorageImage:
+            return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        default:
+            throw std::runtime_error("Unknown descriptor type!");
+        }
+    }
+
     VulkanShader::VulkanShader(Ref<VulkanDevice> device, const Code& code) {
         ZoneScoped;
 
@@ -595,32 +616,10 @@ namespace fuujin {
                 VkDescriptorSetLayoutBinding binding{};
                 binding.binding = bindingIndex;
                 binding.descriptorCount = (uint32_t)descriptorCount;
+                binding.descriptorType = ConvertDescriptorType(resource.ResourceType);
 
-                for (auto [stage, type] : resource.Types) {
+                for (const auto& [stage, type] : resource.Types) {
                     binding.stageFlags |= ConvertStage(stage);
-                }
-
-                switch (resource.ResourceType) {
-                case GPUResource::UniformBuffer:
-                    binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                    break;
-                case GPUResource::StorageBuffer:
-                    binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                    break;
-                case GPUResource::SampledImage:
-                    binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-                    break;
-                case GPUResource::ShaderSampler:
-                    binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-                    break;
-                case GPUResource::SampledImage | GPUResource::ShaderSampler:
-                    binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                    break;
-                case GPUResource::StorageImage:
-                    binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-                    break;
-                default:
-                    throw std::runtime_error("Unknown descriptor type!");
                 }
 
                 bindings.push_back(binding);

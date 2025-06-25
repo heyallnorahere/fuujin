@@ -46,6 +46,16 @@ namespace fuujin {
 
         operator bool() const { return IsPresent(); }
 
+        template <typename _Ty>
+        _Ty* As() {
+            return (_Ty*)m_Buffer;
+        }
+
+        template <typename _Ty>
+        const _Ty* As() const {
+            return (const _Ty*)m_Buffer;
+        }
+
     private:
         void Allocate(size_t size);
         void Free();

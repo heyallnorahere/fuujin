@@ -331,8 +331,8 @@ namespace fuujin {
                                          spec);
     }
 
-    RendererAPI* VulkanContext::CreateRendererAPI() const {
-        return new VulkanRenderer(m_Data->Devices[m_Data->UsedDevice]);
+    RendererAPI* VulkanContext::CreateRendererAPI(uint32_t frames) const {
+        return new VulkanRenderer(m_Data->Devices[m_Data->UsedDevice], frames);
     }
 
     void VulkanContext::RT_LoadInstance() const {

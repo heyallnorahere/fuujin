@@ -33,7 +33,8 @@ namespace fuujin {
 
         void PushLayer(Layer* layer);
 
-        void Update();
+        void Loop();
+        void Update(Duration delta);
 
         ApplicationData* m_Data;
     };

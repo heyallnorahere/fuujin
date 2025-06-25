@@ -7,8 +7,13 @@ layout(push_constant) uniform PushConstants {
 #stage vertex
 layout(location = 0) in vec3 i_Position;
 
+layout(set = 0, binding = 0, std140) uniform TransformUBO {
+    vec3 Translation;
+} u_TransformUBO;
+
 void main() {
-    gl_Position = vec4(i_Position, 1.0);
+    vec3 position = u_TransformUBO.Translation + i_Position;
+    gl_Position = vec4(position, 1.0);
 }
 
 #stage fragment

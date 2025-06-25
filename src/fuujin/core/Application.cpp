@@ -56,7 +56,7 @@ namespace fuujin {
 
         FUUJIN_INFO("Initialized. Launching...");
         while (!app.GetView()->IsClosed()) {
-            app.Update();
+            app.Loop();
         }
 
         FUUJIN_INFO("Exiting...");
@@ -71,6 +71,8 @@ namespace fuujin {
     };
 
     Application::Application() {
+        ZoneScoped;
+
         s_App = this;
 
         m_Data = new ApplicationData;
@@ -81,6 +83,8 @@ namespace fuujin {
     }
 
     Application::~Application() {
+        ZoneScoped;
+
         m_Data->LayerStack.clear();
         Renderer::Shutdown();
 
@@ -108,18 +112,38 @@ namespace fuujin {
     Ref<View> Application::GetView() const { return m_Data->AppView; }
 
     void Application::PushLayer(Layer* layer) {
+        ZoneScoped;
         m_Data->LayerStack.insert(m_Data->LayerStack.begin(), std::unique_ptr<Layer>(layer));
     }
 
-    void Application::Update() {
+    std::vector<float> s_Deltas;
+
+    void Application::Loop() {
         ZoneScoped;
 
         auto now = std::chrono::high_resolution_clock::now();
         auto delta = std::chrono::duration_cast<Duration>(now - m_Data->LastTimestamp);
         m_Data->LastTimestamp = now;
 
-        auto context = GraphicsContext::Get();
-        Renderer::PushRenderTarget(context->GetSwapchain(), true);
+        Update(delta);
+
+        s_Deltas.push_back(delta.count());        
+        if (s_Deltas.size() == 20) {
+            float mean = 0.f;
+            for (float time : s_Deltas) {
+                mean += time / s_Deltas.size();
+            }
+
+            s_Deltas.clear();
+            FUUJIN_DEBUG("FPS: {}", 1.f / mean);
+        }
+    }
+
+    void Application::Update(Duration delta) {
+        ZoneScoped;
+
+        Renderer::NewFrame();
+        Renderer::PushRenderTarget(Renderer::GetContext()->GetSwapchain());
         
         for (const auto& layer : m_Data->LayerStack) {
             layer->Update(delta);

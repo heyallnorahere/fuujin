@@ -33,9 +33,13 @@ namespace fuujin {
         virtual void RequestResize(const ViewSize& viewSize) override;
 
         virtual uint32_t GetImageIndex() const override { return m_CurrentImage; }
+        virtual uint32_t GetImageCount() const override { return (uint32_t)m_Framebuffers.size(); }
+
         virtual Ref<Framebuffer> GetFramebuffer(uint32_t index) const override {
             return m_Framebuffers[index];
         }
+
+        virtual size_t GetSyncFrameCount() const override;
 
         virtual Ref<Fence> GetCurrentFence() const override { return m_Sync[m_SyncFrame].Fence; }
 

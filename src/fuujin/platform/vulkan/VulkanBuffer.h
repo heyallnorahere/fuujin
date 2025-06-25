@@ -14,6 +14,8 @@ namespace fuujin {
 
         VkBuffer Get() const { return m_Buffer; }
 
+        VkDescriptorType GetDescriptorType() const;
+
         virtual Buffer RT_Map() override;
         virtual void RT_Unmap() override;
 

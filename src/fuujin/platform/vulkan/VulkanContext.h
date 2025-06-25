@@ -31,7 +31,7 @@ namespace fuujin {
 
         virtual Ref<DeviceBuffer> CreateBuffer(const DeviceBuffer::Spec& spec) const override;
 
-        virtual RendererAPI* CreateRendererAPI() const override;
+        virtual RendererAPI* CreateRendererAPI(uint32_t frames) const override;
 
     private:
         VulkanContext(const std::optional<std::string>& deviceName);

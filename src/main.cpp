@@ -1,10 +1,12 @@
 #include "fuujin.h"
 
 #include "fuujin/renderer/Renderer.h"
-#include "fuujin/renderer/GraphicsContext.h"
 #include "fuujin/renderer/ShaderLibrary.h"
 
+#include <numbers>
+
 using namespace std::chrono_literals;
+using namespace fuujin;
 
 // https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
 static glm::vec3 hsv2rgb(const glm::vec3& in) {
@@ -74,63 +76,85 @@ static const std::vector<Vertex> s_Vertices = { { glm::vec3(0.5f, -0.5f, 0.f) },
                                                 { glm::vec3(0.f, 0.5f, 0.f) },
                                                 { glm::vec3(-0.5f, -0.5f, 0.f) } };
 
-class TestLayer : public fuujin::Layer {
+class TestLayer : public Layer {
 public:
     TestLayer() {
         ZoneScoped;
         LoadResources();
 
-        Hue = 0.f;
+        Time = 0.f;
     }
 
-    virtual void Update(fuujin::Duration delta) override {
+    virtual void Update(Duration delta) override {
         ZoneScoped;
 
-        static constexpr float hsvMax = 360.f;
-        Hue += (float)delta.count() * hsvMax * 0.75f;
-        if (Hue > hsvMax) {
-            Hue -= hsvMax;
+        Time += delta.count();
+
+        static const float pi = std::numbers::pi_v<float>;
+        float x = std::sin(Time * pi * 2.f) * 0.25f;
+
+        Renderer::Submit([this, x]() {
+            auto translation = glm::vec3(x, 0.f, 0.f);
+
+            auto mapped = m_UniformBuffer->RT_Map();
+            Buffer::Copy(Buffer::Wrapper(&translation, sizeof(glm::vec3)), mapped);
+            m_UniformBuffer->RT_Unmap();
+        });
+
+        static constexpr float hueMax = 360.f;
+        float hue = Time * hueMax * 0.75f;
+        while (hue > hueMax) {
+            hue -= hueMax;
         }
 
-        glm::vec4 color = glm::vec4(hsv2rgb(glm::vec3(Hue, 1.f, 1.f)), 1.f);
+        glm::vec4 color = glm::vec4(hsv2rgb(glm::vec3(hue, 1.f, 1.f)), 1.f);
+        m_Call.PushConstants = Buffer::Wrapper(&color, sizeof(glm::vec4));
 
-        auto pushConstants = fuujin::Buffer::Wrapper(&color, sizeof(glm::vec4));
-        fuujin::Renderer::RenderIndexed(m_VertexBuffer, m_IndexBuffer, m_Pipeline,
-                                        (uint32_t)s_Indices.size(), pushConstants);
+        Renderer::RenderIndexed(m_Call);
     }
 
 private:
     void LoadResources() {
         ZoneScoped;
 
-        auto context = fuujin::GraphicsContext::Get();
-        auto& library = fuujin::Renderer::GetShaderLibrary();
+        auto context = Renderer::GetContext();
+        auto& library = Renderer::GetShaderLibrary();
 
-        fuujin::DeviceBuffer::Spec staging, actual;
+        DeviceBuffer::Spec staging, actual;
         staging.Size = actual.Size = s_Vertices.size() * sizeof(Vertex);
 
-        staging.QueueOwnership = { fuujin::QueueType::Transfer };
-        staging.Usage = fuujin::DeviceBuffer::Usage::Staging;
+        staging.QueueOwnership = { QueueType::Transfer };
+        staging.Usage = DeviceBuffer::Usage::Staging;
 
-        actual.QueueOwnership = { fuujin::QueueType::Graphics, fuujin::QueueType::Transfer };
-        actual.Usage = fuujin::DeviceBuffer::Usage::Vertex;
+        actual.QueueOwnership = { QueueType::Graphics, QueueType::Transfer };
+        actual.Usage = DeviceBuffer::Usage::Vertex;
 
         m_VertexStaging = context->CreateBuffer(staging);
-        m_VertexBuffer = context->CreateBuffer(actual);
+        m_Call.VertexBuffer = context->CreateBuffer(actual);
 
         staging.Size = actual.Size = s_Indices.size() * sizeof(uint32_t);
-        actual.Usage = fuujin::DeviceBuffer::Usage::Index;
+        actual.Usage = DeviceBuffer::Usage::Index;
 
         m_IndexStaging = context->CreateBuffer(staging);
-        m_IndexBuffer = context->CreateBuffer(actual);
+        m_Call.IndexBuffer = context->CreateBuffer(actual);
 
-        fuujin::Pipeline::Spec pipelineSpec;
+        Pipeline::Spec pipelineSpec;
         pipelineSpec.Target = context->GetSwapchain();
         pipelineSpec.Shader = library.Get("assets/shaders/Test.glsl");
-        pipelineSpec.Type = fuujin::Pipeline::Type::Graphics;
-        pipelineSpec.DisableCulling = true;
+        pipelineSpec.Type = Pipeline::Type::Graphics;
+        pipelineSpec.FrontFace = FrontFace::CCW;
 
-        m_Pipeline = context->CreatePipeline(pipelineSpec);
+        m_Call.Pipeline = context->CreatePipeline(pipelineSpec);
+        m_Call.Resources = Renderer::CreateAllocation(pipelineSpec.Shader);
+        m_Call.IndexCount = (uint32_t)s_Indices.size();
+
+        DeviceBuffer::Spec uboSpec;
+        uboSpec.QueueOwnership = { QueueType::Graphics };
+        uboSpec.Size = sizeof(glm::vec3);
+        uboSpec.Usage = DeviceBuffer::Usage::Uniform;
+
+        m_UniformBuffer = context->CreateBuffer(uboSpec);
+        m_Call.Resources->Bind("TransformUBO", m_UniformBuffer);
 
         fuujin::Renderer::Submit([this]() { RT_CopyBuffers(); });
     }
@@ -139,22 +163,22 @@ private:
         ZoneScoped;
 
         auto mapped = m_VertexStaging->RT_Map();
-        fuujin::Buffer::Copy(fuujin::Buffer::Wrapper(s_Vertices), mapped);
+        Buffer::Copy(Buffer::Wrapper(s_Vertices), mapped);
         m_VertexStaging->RT_Unmap();
 
         mapped = m_IndexStaging->RT_Map();
-        fuujin::Buffer::Copy(fuujin::Buffer::Wrapper(s_Indices), mapped);
+        Buffer::Copy(Buffer::Wrapper(s_Indices), mapped);
         m_IndexStaging->RT_Unmap();
 
-        auto context = fuujin::GraphicsContext::Get();
+        auto context = Renderer::GetContext();
         auto queue = context->GetQueue(fuujin::QueueType::Transfer);
         auto fence = context->CreateFence();
 
         auto& cmdList = queue->RT_Get();
         cmdList.RT_Begin();
 
-        m_VertexStaging->RT_CopyTo(cmdList, m_VertexBuffer);
-        m_IndexStaging->RT_CopyTo(cmdList, m_IndexBuffer);
+        m_VertexStaging->RT_CopyTo(cmdList, m_Call.VertexBuffer);
+        m_IndexStaging->RT_CopyTo(cmdList, m_Call.IndexBuffer);
 
         cmdList.AddDependency(m_VertexStaging);
         cmdList.AddDependency(m_IndexStaging);
@@ -167,15 +191,15 @@ private:
         fence->Wait();
     }
 
-    float Hue;
-    fuujin::Ref<fuujin::DeviceBuffer> m_VertexBuffer, m_IndexBuffer;
-    fuujin::Ref<fuujin::DeviceBuffer> m_VertexStaging, m_IndexStaging;
-    fuujin::Ref<fuujin::Pipeline> m_Pipeline;
+    float Time;
+
+    IndexedRenderCall m_Call;
+    Ref<DeviceBuffer> m_UniformBuffer;
+    Ref<DeviceBuffer> m_VertexStaging, m_IndexStaging;
 };
 
-void InitializeApplication() { fuujin::Application::PushLayer<TestLayer>(); }
-
-int RunApplication() { return fuujin::Application::Run(InitializeApplication); }
+void InitializeApplication() { Application::PushLayer<TestLayer>(); }
+int RunApplication() { return Application::Run(InitializeApplication); }
 
 int main(int argc, const char** argv) {
     ZoneScoped;
