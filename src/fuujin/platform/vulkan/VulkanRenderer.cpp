@@ -227,12 +227,17 @@ namespace fuujin {
             return;
         }
 
+        FUUJIN_INFO("Bindings changed on renderer allocation {} - recalculating set groups", m_ID);
         CalculateGenericGroups(m_Bindings, m_SetGroups);
+
         for (auto& [setIndex, bindings] : m_Bindings) {
             for (auto& [bindingIndex, binding] : bindings) {
                 if (!binding.DescriptorsChanged) {
                     continue;
                 }
+
+                FUUJIN_DEBUG("Recalculating binding group for binding {}.{} on allocation {}",
+                             setIndex, bindingIndex, m_ID);
 
                 CalculateGenericGroups(binding.Descriptors, binding.Groups);
 
@@ -332,7 +337,7 @@ namespace fuujin {
         m_FrameCount = frames;
         m_CurrentFrame = 0;
 
-        Renderer::Submit([this]() { RT_CreatePools(); });
+        Renderer::Submit([this]() { RT_CreatePools(); }, "Create renderer descriptor pools");
     }
 
     VulkanRenderer::~VulkanRenderer() {
@@ -358,6 +363,22 @@ namespace fuujin {
 
         m_CurrentFrame = frame;
         m_DescriptorPools[frame].MarkedForReset = true;
+
+        auto context = Renderer::GetContext().As<VulkanContext>();
+        if (context) {
+            m_TracyContext = context->GetTracyContext();
+        } else {
+            m_TracyContext = nullptr;
+        }
+    }
+
+    void VulkanRenderer::RT_PrePresent(CommandList& cmdlist) {
+        ZoneScoped;
+        auto cmdBuffer = ((VulkanCommandBuffer&)cmdlist).Get();
+
+        if (m_TracyContext != nullptr) {
+            TracyVkCollect(m_TracyContext, cmdBuffer);
+        }
     }
 
     void VulkanRenderer::RT_RenderIndexed(CommandList& cmdlist, const IndexedRenderCall& data) {
@@ -367,13 +388,13 @@ namespace fuujin {
         cmdlist.AddDependency(data.IndexBuffer);
         cmdlist.AddDependency(data.Pipeline);
 
-        // todo: tracy gpu zone
-
         auto vertexBuffer = data.VertexBuffer.As<VulkanBuffer>()->Get();
         auto indexBuffer = data.IndexBuffer.As<VulkanBuffer>()->Get();
         auto vkPipeline = data.Pipeline.As<VulkanPipeline>();
         auto shader = vkPipeline->GetSpec().Shader.As<VulkanShader>();
         auto cmdBuffer = ((VulkanCommandBuffer&)cmdlist).Get();
+
+        TracyVkZone(m_TracyContext, cmdBuffer, "RT_RenderIndexed");
 
         VkDeviceSize offset = 0;
         vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &vertexBuffer, &offset);
@@ -487,6 +508,8 @@ namespace fuujin {
                                            Ref<RendererAllocation> allocation,
                                            VkPipelineBindPoint bindPoint) {
         ZoneScoped;
+        TracyVkZone(m_TracyContext, cmdBuffer, "RT_BindAllocation");
+
         RT_ResetCurrentPool();
 
         auto rendererAlloc = allocation.As<VulkanRendererAllocation>();

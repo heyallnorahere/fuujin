@@ -62,6 +62,7 @@ namespace fuujin {
 
         Ref<VulkanSwapchain> Swapchain;
         VmaAllocator Allocator = VK_NULL_HANDLE;
+        TracyVkCtx TracyContext = nullptr;
 
         std::unordered_map<QueueType, Ref<VulkanCommandQueue>> Queues;
     };
@@ -228,15 +229,15 @@ namespace fuujin {
 
         if (view.IsPresent()) {
             m_Data->Swapchain = Ref<VulkanSwapchain>::Create(view, device);
-            Renderer::Submit([&]() { RT_QueryPresentQueue(); }, "Query present queue");
+            Renderer::Submit([this]() { RT_QueryPresentQueue(); }, "Query present queue");
         }
 
         device->Initialize();
-        Renderer::Submit([&]() { RT_LoadDevice(); }, "Load device functions");
-        Renderer::Submit([&]() { RT_CreateAllocator(); }, "Create allocator");
+        Renderer::Submit([this]() { RT_LoadDevice(); }, "Load device functions");
+        Renderer::Submit([this]() { RT_CreateAllocator(); }, "Create allocator");
 
         Renderer::Submit(
-            [&]() {
+            [this]() {
                 auto queueDevice = m_Data->Devices[m_Data->UsedDevice];
                 const auto& queues = queueDevice->GetQueues();
                 for (const auto& [type, family] : queues) {
@@ -245,6 +246,8 @@ namespace fuujin {
                 }
             },
             "Create command queues");
+
+        Renderer::Submit([this]() { RT_CreateTracyContext(); }, "Create Tracy context");
 
         if (m_Data->Swapchain.IsPresent()) {
             // passes by reference to the allocator pointer
@@ -265,9 +268,11 @@ namespace fuujin {
         m_Data->Swapchain.Reset();
         m_Data->Queues.clear();
 
+        auto tracyContext = m_Data->TracyContext;
+        Renderer::Submit([tracyContext]() { TracyVkDestroy(tracyContext); });
+
         auto allocator = m_Data->Allocator;
-        Renderer::Submit([allocator]() mutable { vmaDestroyAllocator(allocator); },
-                         "Destroy allocator");
+        Renderer::Submit([allocator]() { vmaDestroyAllocator(allocator); }, "Destroy allocator");
 
         m_Data->Devices.clear();
 
@@ -294,6 +299,8 @@ namespace fuujin {
         auto name = deviceName.value_or(m_Data->UsedDevice);
         return m_Data->Devices[name];
     }
+
+    TracyVkCtx VulkanContext::GetTracyContext() const { return m_Data->TracyContext; }
 
     Ref<GraphicsDevice> VulkanContext::GetDevice() const {
         return m_Data->Devices[m_Data->UsedDevice];
@@ -384,6 +391,31 @@ namespace fuujin {
         if (vmaCreateAllocator(&allocatorInfo, &m_Data->Allocator) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create allocator!");
         }
+    }
+
+    void VulkanContext::RT_CreateTracyContext() {
+        ZoneScoped;
+
+        auto instance = m_Data->Instance;
+        auto device = m_Data->Devices.at(m_Data->UsedDevice);
+        auto queue = m_Data->Queues.at(QueueType::Graphics);
+
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandBufferCount = 1;
+        allocInfo.commandPool = queue->GetPool();
+
+        VkCommandBuffer cmdBuffer;
+        if (vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &cmdBuffer) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to allocate command buffer for Tracy initialization!");
+        }
+
+        m_Data->TracyContext = TracyVkContext(instance->GetInstance(), device->GetPhysicalDevice(),
+                                              device->GetDevice(), queue->GetQueue(), cmdBuffer,
+                                              vkGetInstanceProcAddr, vkGetDeviceProcAddr);
+
+        vkFreeCommandBuffers(device->GetDevice(), allocInfo.commandPool, 1, &cmdBuffer);
     }
 
     void VulkanContext::RT_CreateDebugMessenger() {

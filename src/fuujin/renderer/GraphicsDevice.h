@@ -8,7 +8,7 @@ namespace fuujin {
     class GraphicsDevice : public RefCounted {
     public:
         struct Properties {
-            std::string Name;
+            std::string Name, Vendor;
             Version DriverVersion;
             GraphicsDeviceType Type;
 

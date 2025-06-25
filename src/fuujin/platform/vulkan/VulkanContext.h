@@ -19,6 +19,8 @@ namespace fuujin {
         Ref<VulkanInstance> GetInstance() const;
         Ref<VulkanDevice> GetVulkanDevice(const std::optional<std::string>& deviceName = {}) const;
 
+        TracyVkCtx GetTracyContext() const;
+
         virtual Ref<GraphicsDevice> GetDevice() const override;
         virtual Ref<Swapchain> GetSwapchain() const override;
         virtual Ref<CommandQueue> GetQueue(QueueType type) const override;
@@ -41,6 +43,7 @@ namespace fuujin {
 
         void RT_QueryPresentQueue();
         void RT_CreateAllocator();
+        void RT_CreateTracyContext();
 
         void RT_CreateDebugMessenger();
         void RT_EnumerateDevices(const std::optional<std::string>& deviceName);

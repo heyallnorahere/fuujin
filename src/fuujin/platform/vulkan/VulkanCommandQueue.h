@@ -79,6 +79,9 @@ namespace fuujin {
 
         virtual QueueType GetType() const override { return m_Type; }
 
+        VkQueue GetQueue() const { return m_Queue; }
+        VkCommandPool GetPool() const { return m_Pool; }
+
         virtual CommandList& RT_Get() override;
         virtual void RT_Submit(CommandList& cmdList, Ref<Fence> fence = {}) override;
 

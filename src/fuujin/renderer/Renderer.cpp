@@ -50,7 +50,6 @@ namespace fuujin {
         tracy::SetThreadName("Render thread");
         s_Data->RenderThread.ID = std::this_thread::get_id();
 
-        ZoneScoped;
         FUUJIN_DEBUG("Render thread starting...");
 
         while (s_Data) {
@@ -86,6 +85,43 @@ namespace fuujin {
         }
     }
 
+    static void LogGraphicsContext() {
+        auto device = s_Data->Context->GetDevice();
+
+        GraphicsDevice::Properties properties;
+        device->GetProperties(properties);
+
+        FUUJIN_DEBUG("Graphics device:");
+        FUUJIN_DEBUG("\tName: {}", properties.Name.c_str());
+        FUUJIN_DEBUG("\tVendor: {}", properties.Vendor.c_str());
+
+        FUUJIN_DEBUG("\tDriver version: {}.{}.{}", properties.DriverVersion.Major,
+                     properties.DriverVersion.Minor, properties.DriverVersion.Patch);
+
+        std::string type;
+        switch (properties.Type) {
+        case GraphicsDeviceType::Discrete:
+            type = "Discrete";
+            break;
+        case GraphicsDeviceType::CPU:
+            type = "CPU";
+            break;
+        case GraphicsDeviceType::Integrated:
+            type = "Integrated";
+            break;
+        case GraphicsDeviceType::Other:
+        default:
+            type = "Other";
+            break;
+        }
+
+        FUUJIN_DEBUG("\tType: {}", type.c_str());
+        FUUJIN_DEBUG("\tAPI: {}", properties.API.c_str());
+
+        FUUJIN_DEBUG("\tAPI version: {}.{}.{}", properties.APIVersion.Major,
+                     properties.APIVersion.Minor, properties.APIVersion.Patch);
+    }
+
     void Renderer::Init() {
         ZoneScoped;
 
@@ -100,6 +136,7 @@ namespace fuujin {
 
         s_Data->Context = GraphicsContext::Get();
         s_Data->Library = std::make_unique<ShaderLibrary>(s_Data->Context);
+        Renderer::Submit([]() { LogGraphicsContext(); });
 
         uint32_t frameCount = 3;
         auto swapchain = s_Data->Context->GetSwapchain();
@@ -182,8 +219,6 @@ namespace fuujin {
 
     void Renderer::Submit(const std::function<void()>& callback,
                           const std::optional<std::string>& label) {
-        ZoneScoped;
-
         auto jobLabel = label.value_or("<unnamed render task>");
         if (IsRenderThread()) {
             FUUJIN_TRACE("Render thread: inline sub-job {}", jobLabel.c_str());
@@ -201,8 +236,6 @@ namespace fuujin {
     }
 
     bool Renderer::Wait(std::optional<std::chrono::milliseconds> timeout) {
-        ZoneScoped;
-
         FUUJIN_TRACE("Waiting for render queue to finish...");
         spdlog::stopwatch timer;
 
@@ -280,10 +313,15 @@ namespace fuujin {
 
         auto& target = s_Data->Targets.top();
         target.Target->RT_EndRender(*target.CmdList);
-        target.CmdList->RT_End();
+
+        if (target.Target->GetType() == RenderTargetType::Swapchain) {
+            s_Data->API->RT_PrePresent(*target.CmdList);
+        }
 
         auto fence = target.Target->GetCurrentFence();
         fence->Reset();
+
+        target.CmdList->RT_End();
         s_Data->GraphicsQueue->RT_Submit(*target.CmdList, fence);
 
         target.CmdList = nullptr;

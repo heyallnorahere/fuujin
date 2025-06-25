@@ -1,5 +1,6 @@
 #pragma once
 #include "fuujin/renderer/Renderer.h"
+#include "fuujin/platform/vulkan/Vulkan.h"
 
 #include "fuujin/platform/vulkan/VulkanDevice.h"
 #include "fuujin/platform/vulkan/VulkanShader.h"
@@ -84,6 +85,7 @@ namespace fuujin {
         ~VulkanRenderer();
 
         virtual void RT_NewFrame(uint32_t frame) override;
+        virtual void RT_PrePresent(CommandList& cmdlist) override;
 
         virtual void RT_RenderIndexed(CommandList& cmdlist, const IndexedRenderCall& data) override;
 
@@ -99,6 +101,7 @@ namespace fuujin {
                                VkPipelineBindPoint bindPoint);
 
         Ref<VulkanDevice> m_Device;
+        TracyVkCtx m_TracyContext;
         uint32_t m_FrameCount;
 
         uint32_t m_CurrentFrame;

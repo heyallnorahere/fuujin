@@ -41,7 +41,7 @@ namespace fuujin {
           m_Initialized(false) {
         ZoneScoped;
 
-        Renderer::Submit([&]() { RT_GetProperties(); }, "Get device properties");
+        Renderer::Submit([&]() { RT_GetDeviceProperties(); }, "Get device properties");
     }
 
     VulkanDevice::~VulkanDevice() {
@@ -367,7 +367,7 @@ namespace fuujin {
         }
     }
 
-    void VulkanDevice::RT_GetProperties() {
+    void VulkanDevice::RT_GetDeviceProperties() {
         ZoneScoped;
 
         VkPhysicalDeviceProperties2 properties{};
@@ -391,6 +391,24 @@ namespace fuujin {
             break;
         default:
             m_Properties.Type = GraphicsDeviceType::Other;
+        }
+
+        switch (properties.properties.vendorID) {
+        case 0x10DE:
+            m_Properties.Vendor = "NVIDIA";
+            break;
+        case 0x1002:
+            m_Properties.Vendor = "AMD";
+            break;
+        case 0x8086:
+            m_Properties.Vendor = "Intel";
+            break;
+        case 0x13B5:
+            m_Properties.Vendor = "ARM";
+            break;
+        default:
+            m_Properties.Vendor = "Unknown";
+            break;
         }
     }
 } // namespace fuujin

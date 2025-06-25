@@ -202,8 +202,6 @@ void InitializeApplication() { Application::PushLayer<TestLayer>(); }
 int RunApplication() { return Application::Run(InitializeApplication); }
 
 int main(int argc, const char** argv) {
-    ZoneScoped;
-
 #ifndef FUUJIN_IS_DEBUG
     try {
         return RunApplication();

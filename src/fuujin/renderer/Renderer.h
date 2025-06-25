@@ -32,6 +32,7 @@ namespace fuujin {
         virtual ~RendererAPI() = default;
 
         virtual void RT_NewFrame(uint32_t frame) = 0;
+        virtual void RT_PrePresent(CommandList& cmdlist) = 0;
 
         virtual void RT_RenderIndexed(CommandList& cmdlist, const IndexedRenderCall& data) = 0;
 

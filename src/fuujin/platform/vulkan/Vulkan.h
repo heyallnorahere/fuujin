@@ -10,6 +10,9 @@
 #include <volk.h>
 #include <vk_mem_alloc.h>
 
+#define TRACY_VK_USE_SYMBOL_TABLE
+#include <tracy/TracyVulkan.hpp>
+
 namespace fuujin {
     inline Version FromVulkanVersion(uint32_t version) {
         Version result;

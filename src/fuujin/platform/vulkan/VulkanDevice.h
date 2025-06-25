@@ -73,7 +73,7 @@ namespace fuujin {
     private:
         void RT_Initialize(void* next);
         void RT_SelectQueues();
-        void RT_GetProperties();
+        void RT_GetDeviceProperties();
 
         Ref<VulkanInstance> m_Instance;
         VkPhysicalDevice m_PhysicalDevice;

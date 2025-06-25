@@ -21,7 +21,9 @@
                 "CMAKE_BUILD_TYPE": "Debug",
                 "TRACY_ENABLE": "ON",
                 "TRACY_CALLSTACK": "ON",
-                "TRACY_FIBERS": "ON"
+                "TRACY_FIBERS": "ON",
+                "TRACY_SYMBOL_OFFLINE_RESOLVE": "ON",
+                "TRACY_LIBBACKTRACE_ELF_DYNLOAD_SUPPORT": "ON"
             }
         }
     ],

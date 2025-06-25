@@ -24,8 +24,6 @@ namespace fuujin {
     }
 
     int Application::Run(const std::function<void()>& initialization) {
-        ZoneScoped;
-
         spdlog::level::level_enum level;
 #ifdef FUUJIN_IS_DEBUG
         level = spdlog::level::debug;
@@ -116,8 +114,6 @@ namespace fuujin {
         m_Data->LayerStack.insert(m_Data->LayerStack.begin(), std::unique_ptr<Layer>(layer));
     }
 
-    std::vector<float> s_Deltas;
-
     void Application::Loop() {
         ZoneScoped;
 
@@ -126,17 +122,6 @@ namespace fuujin {
         m_Data->LastTimestamp = now;
 
         Update(delta);
-
-        s_Deltas.push_back(delta.count());        
-        if (s_Deltas.size() == 20) {
-            float mean = 0.f;
-            for (float time : s_Deltas) {
-                mean += time / s_Deltas.size();
-            }
-
-            s_Deltas.clear();
-            FUUJIN_DEBUG("FPS: {}", 1.f / mean);
-        }
     }
 
     void Application::Update(Duration delta) {
