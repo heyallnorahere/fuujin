@@ -23,7 +23,6 @@ namespace fuujin {
 
         virtual void Wait() const override;
 
-        // note: these should preferably be called from inside the render thread
         void RT_GetProperties(VkPhysicalDeviceProperties2& properties) const;
         void RT_GetFeatures(VkPhysicalDeviceFeatures2& features) const;
         void RT_GetExtensions(std::unordered_set<std::string>& extensions) const;

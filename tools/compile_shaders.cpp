@@ -16,6 +16,7 @@ namespace fs = std::experimental::filesystem;
 #include <sstream>
 #include <optional>
 #include <unordered_map>
+#include <iostream>
 
 static const std::string s_StageDeclaration = "#stage ";
 static const std::unordered_map<std::string, shaderc_shader_kind> s_StageMap = {
@@ -73,7 +74,7 @@ class Includer : public shaderc::CompileOptions::IncluderInterface {
 };
 
 template <typename _Ty>
-static void CompileShader(const shaderc::Compiler& compiler, const shaderc::CompileOptions& options,
+static bool CompileShader(const shaderc::Compiler& compiler, const shaderc::CompileOptions& options,
                           const fs::path& shader, const fs::path& outputDir, _Ty& outputStream) {
     std::ifstream input(shader);
     std::stringstream common;
@@ -129,7 +130,8 @@ static void CompileShader(const shaderc::Compiler& compiler, const shaderc::Comp
         auto result = compiler.CompileGlslToSpv(stageSource, stage, path.c_str(), "main", options);
         if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
             auto message = result.GetErrorMessage();
-            throw std::runtime_error("Failed to compile shader " + path + ": " + message);
+            std::cerr << "Failed to compile shader " << path << ": " << message << std::endl;
+            return false;
         }
 
         auto outputPath = shaderDir / (stageName + ".spv");
@@ -139,6 +141,8 @@ static void CompileShader(const shaderc::Compiler& compiler, const shaderc::Comp
 
         outputStream << outputPath.string() << std::endl;
     }
+
+    return true;
 }
 
 int main(int argc, const char** argv) {
@@ -158,7 +162,9 @@ int main(int argc, const char** argv) {
 
     for (int i = 2; i < argc; i++) {
         fs::path shader = fs::absolute(argv[i]);
-        CompileShader(compiler, options, shader, outputDir, outputList);
+        if (!CompileShader(compiler, options, shader, outputDir, outputList)) {
+            return 1;
+        }
     }
 
     return 0;

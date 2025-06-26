@@ -2,11 +2,14 @@
 #include "fuujin/platform/vulkan/VulkanBuffer.h"
 
 #include "fuujin/platform/vulkan/VulkanCommandQueue.h"
+#include "fuujin/platform/vulkan/VulkanContext.h"
+#include "fuujin/platform/vulkan/VulkanImage.h"
 
 #include "fuujin/renderer/Renderer.h"
 
 namespace fuujin {
-    VulkanBuffer::VulkanBuffer(Ref<VulkanDevice> device, const VmaAllocator& allocator, const Spec& spec) {
+    VulkanBuffer::VulkanBuffer(Ref<VulkanDevice> device, const VmaAllocator& allocator,
+                               const Spec& spec) {
         ZoneScoped;
 
         m_Device = device;
@@ -59,20 +62,52 @@ namespace fuujin {
         vmaUnmapMemory(m_Allocator, m_Allocation);
     }
 
-    void VulkanBuffer::RT_CopyTo(CommandList& cmdlist, Ref<DeviceBuffer> destination, size_t size,
-                                 size_t srcOffset, size_t dstOffset) const {
+    void VulkanBuffer::RT_CopyToBuffer(CommandList& cmdlist, const Ref<DeviceBuffer>& destination,
+                                       size_t size, size_t srcOffset, size_t dstOffset) const {
         ZoneScoped;
 
-        // todo: tracy gpu zone
+        auto cmdBuffer = ((VulkanCommandBuffer&)cmdlist).Get();
+        auto context = Renderer::GetContext().As<VulkanContext>();
+        TracyVkZone(context->GetTracyContext(), cmdBuffer, "RT_CopyToBuffer");
 
         VkBufferCopy region{};
         region.size = size > 0 ? size : m_Spec.Size;
         region.srcOffset = srcOffset;
         region.dstOffset = dstOffset;
 
-        auto cmdBuffer = ((VulkanCommandBuffer&)cmdlist).Get();
         auto dst = destination.As<VulkanBuffer>();
         vkCmdCopyBuffer(cmdBuffer, m_Buffer, dst->Get(), 1, &region);
+    }
+
+    void VulkanBuffer::RT_CopyToImage(CommandList& cmdlist, const Ref<DeviceImage>& destination,
+                                      size_t offset, const ImageCopy& copy) const {
+        ZoneScoped;
+
+        auto cmdBuffer = ((VulkanCommandBuffer&)cmdlist).Get();
+        auto context = Renderer::GetContext().As<VulkanContext>();
+        TracyVkZone(context->GetTracyContext(), cmdBuffer, "RT_CopyToBuffer");
+
+        auto image = destination.As<VulkanImage>();
+        const auto& spec = image->GetSpec();
+
+        VkBufferImageCopy region{};
+        region.bufferOffset = offset;
+        region.imageOffset.x = copy.X;
+        region.imageOffset.y = copy.Y;
+        region.imageOffset.z = copy.Z;
+        region.imageExtent.width = copy.Width > 0 ? copy.Width : spec.Extent.width - copy.X;
+        region.imageExtent.height = copy.Height > 0 ? copy.Height : spec.Extent.height - copy.Y;
+        region.imageExtent.depth = copy.Depth > 0 ? copy.Depth : spec.Extent.depth - copy.Z;
+        region.imageSubresource.aspectMask = spec.AspectFlags;
+        region.imageSubresource.mipLevel = copy.MipLevel;
+        region.imageSubresource.baseArrayLayer = copy.ArrayOffset;
+        region.imageSubresource.layerCount =
+            copy.ArraySize > 0 ? copy.ArraySize : spec.ArrayLayers - copy.ArrayOffset;
+
+        static constexpr VkImageLayout layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        ImageTransition transition(cmdBuffer, image, layout, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+        vkCmdCopyBufferToImage(cmdBuffer, m_Buffer, image->GetImage(), layout, 1, &region);
     }
 
     void VulkanBuffer::RT_Allocate(VmaAllocator allocator) {

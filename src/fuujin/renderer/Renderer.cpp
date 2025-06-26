@@ -13,6 +13,12 @@
 #include <spdlog/stopwatch.h>
 #include <spdlog/fmt/chrono.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_MALLOC(size) ::fuujin::allocate(size)
+#define STBI_REALLOC(block, size) ::fuujin::reallocate(block, size)
+#define STBI_FREE(block) ::fuujin::freemem(block)
+#include <stb_image.h>
+
 using namespace std::chrono_literals;
 
 namespace fuujin {
@@ -38,6 +44,8 @@ namespace fuujin {
         Ref<CommandQueue> GraphicsQueue;
         std::unique_ptr<ShaderLibrary> Library;
         RendererAPI* API;
+
+        Ref<Sampler> DefaultSampler;
 
         uint32_t FrameCount;
         std::optional<uint32_t> CurrentFrame;
@@ -148,6 +156,9 @@ namespace fuujin {
         s_Data->API = s_Data->Context->CreateRendererAPI(frameCount);
         s_Data->FrameCount = frameCount;
 
+        Sampler::Spec spec{}; // default (linear, repeat)
+        s_Data->DefaultSampler = s_Data->Context->CreateSampler(spec);
+
         Renderer::Submit(
             []() { s_Data->GraphicsQueue = s_Data->Context->GetQueue(QueueType::Graphics); },
             "Fetch graphics queue");
@@ -215,6 +226,75 @@ namespace fuujin {
     Ref<RendererAllocation> Renderer::CreateAllocation(const Ref<Shader>& shader) {
         ZoneScoped;
         return s_Data->API->CreateAllocation(shader);
+    }
+
+    struct TextureLoadData {
+        Ref<DeviceBuffer> StagingBuffer;
+        Ref<Texture> Texture;
+    };
+
+    Ref<Texture> Renderer::LoadTexture(const fs::path& path, const Ref<Sampler>& sampler) {
+        ZoneScoped;
+        stbi_set_flip_vertically_on_load(true);
+
+        int width, height, channels;
+        auto pathString = path.string();
+        auto dataRaw = stbi_load(pathString.c_str(), &width, &height, &channels, 4);
+
+        if (dataRaw == nullptr) {
+            return nullptr;
+        }
+
+        DeviceBuffer::Spec stagingSpec;
+        stagingSpec.QueueOwnership = { QueueType::Transfer };
+        stagingSpec.Size = (size_t)width * height * channels;
+        stagingSpec.Usage = DeviceBuffer::Usage::Staging;
+
+        Texture::Spec textureSpec;
+        textureSpec.Sampler = sampler.IsPresent() ? sampler : s_Data->DefaultSampler;
+
+        textureSpec.Width = (uint32_t)width;
+        textureSpec.Height = (uint32_t)height;
+        textureSpec.Depth = 1;
+        textureSpec.MipLevels = 1; // todo: mipmaps
+        textureSpec.Format = Texture::Format::RGBA8;
+        textureSpec.Type = Texture::Type::_2D;
+
+        auto stagingBuffer = s_Data->Context->CreateBuffer(stagingSpec);
+        auto texture = s_Data->Context->CreateTexture(textureSpec);
+
+        auto loadData = new TextureLoadData;
+        loadData->StagingBuffer = stagingBuffer;
+        loadData->Texture = texture;
+
+        Renderer::Submit([=]() {
+            size_t dataSize = loadData->StagingBuffer->GetSpec().Size;
+            auto imageData = Buffer::Wrapper(dataRaw, dataSize);
+
+            auto mapped = loadData->StagingBuffer->RT_Map();
+            Buffer::Copy(imageData, mapped);
+            loadData->StagingBuffer->RT_Unmap();
+
+            auto transferQueue = s_Data->Context->GetQueue(QueueType::Transfer);
+            auto& cmdlist = transferQueue->RT_Get();
+            cmdlist.RT_Begin();
+
+            auto image = loadData->Texture->GetImage();
+            loadData->StagingBuffer->RT_CopyToImage(cmdlist, image);
+            cmdlist.AddDependency(loadData->StagingBuffer);
+
+            if (loadData->Texture->GetSpec().MipLevels > 1) {
+                // todo: generate mipmaps
+            }
+
+            cmdlist.RT_End();
+            transferQueue->RT_Submit(cmdlist);
+
+            stbi_image_free(dataRaw);
+            delete loadData;
+        });
+
+        return texture;
     }
 
     void Renderer::Submit(const std::function<void()>& callback,

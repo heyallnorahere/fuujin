@@ -4,6 +4,7 @@
 #include "fuujin/renderer/Framebuffer.h"
 #include "fuujin/renderer/DeviceBuffer.h"
 #include "fuujin/renderer/Pipeline.h"
+#include "fuujin/renderer/Texture.h"
 
 #include "fuujin/core/Buffer.h"
 
@@ -16,6 +17,8 @@ namespace fuujin {
     public:
         virtual bool Bind(const std::string& name, Ref<DeviceBuffer> buffer, uint32_t index = 0,
                           size_t offset = 0, size_t range = 0) = 0;
+
+        virtual bool Bind(const std::string& name, Ref<Texture> texture, uint32_t index = 0) = 0;
     };
 
     struct IndexedRenderCall {
@@ -55,6 +58,8 @@ namespace fuujin {
         static void ProcessEvent(Event& event);
 
         static Ref<RendererAllocation> CreateAllocation(const Ref<Shader>& shader);
+
+        static Ref<Texture> LoadTexture(const fs::path& path, const Ref<Sampler>& sampler = {});
 
         // submits a job to the render thread
         // all jobs will be executed in order submitted

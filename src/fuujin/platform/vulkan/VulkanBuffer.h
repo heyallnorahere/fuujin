@@ -19,8 +19,12 @@ namespace fuujin {
         virtual Buffer RT_Map() override;
         virtual void RT_Unmap() override;
 
-        virtual void RT_CopyTo(CommandList& cmdlist, Ref<DeviceBuffer> destination, size_t size = 0,
-                               size_t srcOffset = 0, size_t dstOffset = 0) const override;
+        virtual void RT_CopyToBuffer(CommandList& cmdlist, const Ref<DeviceBuffer>& destination,
+                                     size_t size = 0, size_t srcOffset = 0,
+                                     size_t dstOffset = 0) const override;
+
+        virtual void RT_CopyToImage(CommandList& cmdlist, const Ref<DeviceImage>& destination,
+                                    size_t offset = 0, const ImageCopy& copy = {}) const override;
 
     private:
         void RT_Allocate(VmaAllocator allocator);

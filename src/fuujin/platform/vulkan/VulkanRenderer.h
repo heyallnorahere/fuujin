@@ -40,6 +40,9 @@ namespace fuujin {
         virtual bool Bind(const std::string& name, Ref<DeviceBuffer> buffer, uint32_t index = 0,
                           size_t offset = 0, size_t range = 0) override;
 
+        virtual bool Bind(const std::string& name, Ref<Texture> texture,
+                          uint32_t index = 0) override;
+
         void RT_AllocateDescriptorSets(const Ref<VulkanDevice>& device, VkDescriptorPool pool,
                                        DescriptorSetArray& sets);
 

@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.21)
 add_subdirectory("tracy")
 add_subdirectory("spdlog")
 add_subdirectory("glm")
+add_subdirectory("stb")
 
 find_package(Python3 REQUIRED)
 execute_process(COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/shaderc/utils/git-sync-deps")

@@ -69,12 +69,15 @@ static glm::vec3 hsv2rgb(const glm::vec3& in) {
 
 struct Vertex {
     glm::vec3 Position;
+    glm::vec2 UV;
 };
 
 static const std::vector<uint32_t> s_Indices = { 0, 1, 2 };
-static const std::vector<Vertex> s_Vertices = { { glm::vec3(0.5f, -0.5f, 0.f) },
-                                                { glm::vec3(0.f, 0.5f, 0.f) },
-                                                { glm::vec3(-0.5f, -0.5f, 0.f) } };
+static const std::vector<Vertex> s_Vertices = {
+    { glm::vec3(0.5f, -0.5f, 0.f), glm::vec2(1.f, 1.f) },
+    { glm::vec3(0.f, 0.5f, 0.f), glm::vec2(1.f, 0.f) },
+    { glm::vec3(-0.5f, -0.5f, 0.f), glm::vec2(0.f, 1.f) }
+};
 
 class TestLayer : public Layer {
 public:
@@ -154,7 +157,10 @@ private:
         uboSpec.Usage = DeviceBuffer::Usage::Uniform;
 
         m_UniformBuffer = context->CreateBuffer(uboSpec);
+        m_Texture = Renderer::LoadTexture("assets/textures/texture.png");
+
         m_Call.Resources->Bind("TransformUBO", m_UniformBuffer);
+        m_Call.Resources->Bind("u_Texture", m_Texture);
 
         fuujin::Renderer::Submit([this]() { RT_CopyBuffers(); });
     }
@@ -177,8 +183,8 @@ private:
         auto& cmdList = queue->RT_Get();
         cmdList.RT_Begin();
 
-        m_VertexStaging->RT_CopyTo(cmdList, m_Call.VertexBuffer);
-        m_IndexStaging->RT_CopyTo(cmdList, m_Call.IndexBuffer);
+        m_VertexStaging->RT_CopyToBuffer(cmdList, m_Call.VertexBuffer);
+        m_IndexStaging->RT_CopyToBuffer(cmdList, m_Call.IndexBuffer);
 
         cmdList.AddDependency(m_VertexStaging);
         cmdList.AddDependency(m_IndexStaging);
@@ -195,6 +201,7 @@ private:
 
     IndexedRenderCall m_Call;
     Ref<DeviceBuffer> m_UniformBuffer;
+    Ref<Texture> m_Texture;
     Ref<DeviceBuffer> m_VertexStaging, m_IndexStaging;
 };
 

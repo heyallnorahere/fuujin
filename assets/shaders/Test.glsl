@@ -6,6 +6,9 @@ layout(push_constant) uniform PushConstants {
 
 #stage vertex
 layout(location = 0) in vec3 i_Position;
+layout(location = 1) in vec2 i_UV;
+
+layout(location = 0) out vec2 o_UV;
 
 layout(set = 0, binding = 0, std140) uniform TransformUBO {
     vec3 Translation;
@@ -17,9 +20,13 @@ void main() {
 }
 
 #stage fragment
+layout(location = 0) in vec2 i_UV;
+
 layout(location = 0) out vec4 o_Color;
 
+layout(set = 0, binding = 1) uniform sampler2D u_Texture;
+
 void main() {
-    //o_Color = vec4(0.7, 0.0, 0.8, 1.0);
-    o_Color = u_PushConstants.Color;
+    vec4 tex = texture(u_Texture, i_UV);
+    o_Color = mix(u_PushConstants.Color, tex, 0.5);
 }

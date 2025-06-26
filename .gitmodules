@@ -28,3 +28,6 @@
 [submodule "vendor/SPIRV-Headers"]
 	path = vendor/SPIRV-Headers
 	url = https://github.com/KhronosGroup/SPIRV-Headers.git
+[submodule "vendor/stb"]
+	path = vendor/stb
+	url = https://github.com/heyallnorahere/stb.git

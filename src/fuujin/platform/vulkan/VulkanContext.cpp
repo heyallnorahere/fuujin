@@ -9,6 +9,7 @@
 #include "fuujin/platform/vulkan/VulkanPipeline.h"
 #include "fuujin/platform/vulkan/VulkanRenderer.h"
 #include "fuujin/platform/vulkan/VulkanBuffer.h"
+#include "fuujin/platform/vulkan/VulkanTexture.h"
 
 namespace fuujin {
     static void* VKAPI_CALL VulkanAlloc(void* pUserData, size_t size, size_t alignment,
@@ -336,6 +337,15 @@ namespace fuujin {
     Ref<DeviceBuffer> VulkanContext::CreateBuffer(const DeviceBuffer::Spec& spec) const {
         return Ref<VulkanBuffer>::Create(m_Data->Devices[m_Data->UsedDevice], m_Data->Allocator,
                                          spec);
+    }
+
+    Ref<Sampler> VulkanContext::CreateSampler(const Sampler::Spec& spec) const {
+        return Ref<VulkanSampler>::Create(m_Data->Devices[m_Data->UsedDevice], spec);
+    }
+
+    Ref<Texture> VulkanContext::CreateTexture(const Texture::Spec& spec) const {
+        return Ref<VulkanTexture>::Create(m_Data->Devices[m_Data->UsedDevice], m_Data->Allocator,
+                                          spec);
     }
 
     RendererAPI* VulkanContext::CreateRendererAPI(uint32_t frames) const {

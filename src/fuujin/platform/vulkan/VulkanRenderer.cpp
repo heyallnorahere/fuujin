@@ -5,6 +5,7 @@
 #include "fuujin/platform/vulkan/VulkanPipeline.h"
 #include "fuujin/platform/vulkan/VulkanCommandQueue.h"
 #include "fuujin/platform/vulkan/VulkanContext.h"
+#include "fuujin/platform/vulkan/VulkanTexture.h"
 
 namespace fuujin {
     static uint64_t s_CurrentAllocationID = 0;
@@ -51,6 +52,32 @@ namespace fuujin {
         };
 
         SetDescriptor(descriptor.Set, descriptor.Binding, index, data, VulkanBindingType::Buffer);
+    }
+
+    bool VulkanRendererAllocation::Bind(const std::string& name, Ref<Texture> texture,
+                                        uint32_t index) {
+        ZoneScoped;
+
+        ResourceDescriptor descriptor;
+        if (!m_Shader->GetResourceDescriptor(name, descriptor)) {
+            return false;
+        }
+
+        VulkanDescriptor data;
+        data.Object = texture;
+        data.DescriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+        auto raw = texture.As<VulkanTexture>().Raw();
+        data.Binder = [=](Buffer& block) {
+            auto imageInfo = (VkDescriptorImageInfo*)block.Get();
+            imageInfo->imageView = raw->GetVulkanImage()->GetView();
+            imageInfo->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            auto sampler = raw->GetSpec().Sampler.As<VulkanSampler>();
+            imageInfo->sampler = sampler->GetSampler();
+        };
+
+        SetDescriptor(descriptor.Set, descriptor.Binding, index, data, VulkanBindingType::Image);
     }
 
     struct SetAllocate {
@@ -173,6 +200,9 @@ namespace fuujin {
             case GPUResource::StorageBuffer:
                 bindingType = VulkanBindingType::Buffer;
                 break;
+            case GPUResource::SampledImage | GPUResource::ShaderSampler:
+                bindingType = VulkanBindingType::Image;
+                break;
             default:
                 throw std::runtime_error("Unimplemented!");
             }
@@ -276,6 +306,14 @@ namespace fuujin {
         const auto& setBindings = m_Bindings.at(index);
         const auto& setResources = m_Shader->GetResources().at(index);
 
+        size_t bufferSize = 0;
+        std::map<uint32_t, size_t> bufferOffsets;
+        for (const auto& [bindingIndex, binding] : setBindings) {
+            bufferOffsets[bindingIndex] = bufferSize;
+            bufferSize += binding.BufferSize;
+        }
+
+        descriptorInfo = Buffer(bufferSize);
         for (const auto& [bindingIndex, binding] : setBindings) {
             const auto& resource = setResources.at(bindingIndex);
             auto descriptorType = VulkanShader::ConvertDescriptorType(resource.ResourceType);
@@ -286,10 +324,10 @@ namespace fuujin {
                     index, bindingIndex);
             }
 
-            descriptorInfo = Buffer(binding.BufferSize);
             for (const auto& [offset, size] : binding.Groups) {
-                uint32_t bufferOffset = binding.OffsetMap.at(offset);
-                auto groupSlice = descriptorInfo.Slice(bufferOffset * binding.BufferStride);
+                uint32_t groupOffset =
+                    bufferOffsets.at(bindingIndex) + binding.OffsetMap.at(offset);
+                auto groupSlice = descriptorInfo.Slice(groupOffset * binding.BufferStride);
 
                 VkWriteDescriptorSet write{};
                 write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

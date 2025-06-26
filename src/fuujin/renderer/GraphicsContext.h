@@ -7,6 +7,7 @@
 #include "fuujin/renderer/Shader.h"
 #include "fuujin/renderer/Pipeline.h"
 #include "fuujin/renderer/DeviceBuffer.h"
+#include "fuujin/renderer/Texture.h"
 
 namespace fuujin {
     class RendererAPI;
@@ -25,6 +26,8 @@ namespace fuujin {
         virtual Ref<Pipeline> CreatePipeline(const Pipeline::Spec& spec) const = 0;
 
         virtual Ref<DeviceBuffer> CreateBuffer(const DeviceBuffer::Spec& spec) const = 0;
+        virtual Ref<Sampler> CreateSampler(const Sampler::Spec& spec) const = 0;
+        virtual Ref<Texture> CreateTexture(const Texture::Spec& spec) const = 0;
 
         virtual RendererAPI* CreateRendererAPI(uint32_t frames) const = 0;
     };

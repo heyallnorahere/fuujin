@@ -32,6 +32,8 @@ namespace fuujin {
         virtual Ref<Pipeline> CreatePipeline(const Pipeline::Spec& spec) const override;
 
         virtual Ref<DeviceBuffer> CreateBuffer(const DeviceBuffer::Spec& spec) const override;
+        virtual Ref<Sampler> CreateSampler(const Sampler::Spec& spec) const override;
+        virtual Ref<Texture> CreateTexture(const Texture::Spec& spec) const override;
 
         virtual RendererAPI* CreateRendererAPI(uint32_t frames) const override;
 
