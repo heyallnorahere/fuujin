@@ -69,14 +69,15 @@ static glm::vec3 hsv2rgb(const glm::vec3& in) {
 
 struct Vertex {
     glm::vec3 Position;
+    glm::vec3 Normal;
     glm::vec2 UV;
 };
 
 static const std::vector<uint32_t> s_Indices = { 0, 1, 2 };
 static const std::vector<Vertex> s_Vertices = {
-    { glm::vec3(0.5f, -0.5f, 0.f), glm::vec2(1.f, 0.f) },
-    { glm::vec3(0.f, 0.5f, 0.f), glm::vec2(0.5f, 1.f) },
-    { glm::vec3(-0.5f, -0.5f, 0.f), glm::vec2(0.f, 0.f) }
+    { glm::vec3(0.5f, -0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec2(1.f, 0.f) },
+    { glm::vec3(0.f, 0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec2(0.5f, 1.f) },
+    { glm::vec3(-0.5f, -0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec2(0.f, 0.f) }
 };
 
 class TestLayer : public Layer {
@@ -95,14 +96,7 @@ public:
 
         static const float pi = std::numbers::pi_v<float>;
         float x = std::sin(Time * pi * 2.f) * 0.25f;
-
-        Renderer::Submit([this, x]() {
-            auto translation = glm::vec3(x, 0.f, 0.f);
-
-            auto mapped = m_UniformBuffer->RT_Map();
-            Buffer::Copy(Buffer::Wrapper(&translation, sizeof(glm::vec3)), mapped);
-            m_UniformBuffer->RT_Unmap();
-        });
+        m_Call.ModelMatrix = glm::translate(glm::mat4(1.f), glm::vec3(x, 0.f, 0.f));
 
         static constexpr float hueMax = 360.f;
         float hue = Time * hueMax * 0.75f;
@@ -111,9 +105,9 @@ public:
         }
 
         glm::vec4 color = glm::vec4(hsv2rgb(glm::vec3(hue, 1.f, 1.f)), 1.f);
-        m_Call.PushConstants = Buffer::Wrapper(&color, sizeof(glm::vec4));
+        m_Call.Material->SetProperty(Material::Property::AlbedoColor, color);
 
-        Renderer::RenderIndexed(m_Call);
+        Renderer::RenderWithMaterial(m_Call);
     }
 
 private:
@@ -140,27 +134,27 @@ private:
 
         m_IndexStaging = context->CreateBuffer(staging);
         m_Call.IndexBuffer = context->CreateBuffer(actual);
+        m_Call.IndexCount = (uint32_t)s_Indices.size();
+
+        m_Call.Material = Ref<Material>::Create();
+        m_Call.Material->GetPipeline().Wireframe = false;
 
         Pipeline::Spec pipelineSpec;
         pipelineSpec.Target = context->GetSwapchain();
-        pipelineSpec.Shader = library.Get("assets/shaders/Test.glsl");
+        pipelineSpec.Shader = library.Get("assets/shaders/MaterialStatic.glsl");
         pipelineSpec.Type = Pipeline::Type::Graphics;
         pipelineSpec.FrontFace = FrontFace::CCW;
 
+        m_Call.Material->SetPipelineSpec(pipelineSpec);
         m_Call.Pipeline = context->CreatePipeline(pipelineSpec);
-        m_Call.Resources = Renderer::CreateAllocation(pipelineSpec.Shader);
-        m_Call.IndexCount = (uint32_t)s_Indices.size();
 
         DeviceBuffer::Spec uboSpec;
         uboSpec.QueueOwnership = { QueueType::Graphics };
         uboSpec.Size = sizeof(glm::vec3);
         uboSpec.Usage = DeviceBuffer::Usage::Uniform;
 
-        m_UniformBuffer = context->CreateBuffer(uboSpec);
-        m_Texture = Renderer::LoadTexture("assets/textures/texture.png");
-
-        m_Call.Resources->Bind("TransformUBO", m_UniformBuffer);
-        m_Call.Resources->Bind("u_Texture", m_Texture);
+        auto texture = Renderer::LoadTexture("assets/textures/texture.png");
+        m_Call.Material->SetTexture(Material::TextureSlot::Albedo, texture);
 
         fuujin::Renderer::Submit([this]() { RT_CopyBuffers(); });
     }
@@ -199,9 +193,7 @@ private:
 
     float Time;
 
-    IndexedRenderCall m_Call;
-    Ref<DeviceBuffer> m_UniformBuffer;
-    Ref<Texture> m_Texture;
+    MaterialRenderCall m_Call;
     Ref<DeviceBuffer> m_VertexStaging, m_IndexStaging;
 };
 

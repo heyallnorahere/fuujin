@@ -102,18 +102,24 @@ namespace fuujin {
 
     Buffer Buffer::Slice(size_t offset, size_t size) {
         ZoneScoped;
+        if (offset + size > m_Size) {
+            throw std::runtime_error("Attempted to slice out of bounds!");
+        }
 
         auto slicePtr = (void*)((size_t)m_Buffer + offset);
-        auto sliceSize = size > 0 ? size : m_Size;
+        auto sliceSize = size > 0 ? size : m_Size - offset;
 
         return Wrapper(slicePtr, sliceSize);
     }
 
     const Buffer Buffer::Slice(size_t offset, size_t size) const {
         ZoneScoped;
+        if (offset + size > m_Size) {
+            throw std::runtime_error("Attempted to slice out of bounds!");
+        }
 
         auto slicePtr = (const void*)((size_t)m_Buffer + offset);
-        auto sliceSize = size > 0 ? size : m_Size;
+        auto sliceSize = size > 0 ? size : m_Size - offset;
 
         return Wrapper(slicePtr, sliceSize);
     }

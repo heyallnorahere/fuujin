@@ -163,11 +163,14 @@ namespace fuujin {
         }
     }
 
+    static uint64_t s_ShaderID = 0;
+
     VulkanShader::VulkanShader(Ref<VulkanDevice> device, const Code& code) {
         ZoneScoped;
 
         m_Device = device;
         m_Code = code; // we need a copy
+        m_ID = s_ShaderID++;
 
         Renderer::Submit([=]() { RT_Load(); }, "Load shader modules");
 
@@ -227,7 +230,7 @@ namespace fuujin {
 
         const auto& setResources = it->second;
         auto setIt = setResources.find(descriptor.Binding);
-        if (setIt != setResources.end()) {
+        if (setIt == setResources.end()) {
             return nullptr;
         }
 

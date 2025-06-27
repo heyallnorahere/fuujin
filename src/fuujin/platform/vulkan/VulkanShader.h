@@ -63,6 +63,8 @@ namespace fuujin {
 
         virtual ~VulkanShader() override;
 
+        virtual uint64_t GetID() const override { return m_ID; }
+
         virtual void GetStages(std::unordered_set<ShaderStage>& stages) const override;
 
         virtual std::shared_ptr<GPUResource> GetResourceByName(
@@ -109,6 +111,7 @@ namespace fuujin {
 
         Ref<VulkanDevice> m_Device;
         Code m_Code;
+        uint64_t m_ID;
 
         std::unordered_map<ShaderStage, VkShaderModule> m_Modules;
         std::map<uint32_t, VkDescriptorSetLayout> m_SetLayouts;

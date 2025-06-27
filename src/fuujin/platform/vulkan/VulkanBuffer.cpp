@@ -85,7 +85,7 @@ namespace fuujin {
 
         auto cmdBuffer = ((VulkanCommandBuffer&)cmdlist).Get();
         auto context = Renderer::GetContext().As<VulkanContext>();
-        TracyVkZone(context->GetTracyContext(), cmdBuffer, "RT_CopyToBuffer");
+        TracyVkZone(context->GetTracyContext(), cmdBuffer, "RT_CopyToImage");
 
         auto image = destination.As<VulkanImage>();
         const auto& spec = image->GetSpec();

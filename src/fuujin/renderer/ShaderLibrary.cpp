@@ -1,6 +1,8 @@
 #include "fuujinpch.h"
 #include "fuujin/renderer/ShaderLibrary.h"
 
+#include "fuujin/renderer/Renderer.h"
+
 namespace fuujin {
     const std::unordered_map<std::string, std::vector<uint8_t>>& GetEmbeddedShaders();
 
@@ -44,6 +46,10 @@ namespace fuujin {
         }
 
         auto& data = m_Shaders[identifier];
+        if (data.Shader) {
+            Renderer::FreeShader(data.Shader->GetID());
+        }
+
         if (data.Spec.Load.has_value()) {
             Shader::Code code;
             data.Spec.Load.value()(code);

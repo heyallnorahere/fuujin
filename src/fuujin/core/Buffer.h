@@ -1,6 +1,10 @@
 #pragma once
 
 namespace fuujin {
+    /*
+     * Spacially-safe representation of a block of memory. Can either allocate a new block or wrap
+     * around existing memory.
+     */
     class Buffer {
     public:
         static Buffer Wrapper(void* data, size_t size);

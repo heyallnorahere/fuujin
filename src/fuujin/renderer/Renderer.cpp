@@ -32,6 +32,17 @@ namespace fuujin {
         CommandList* CmdList;
     };
 
+    struct MaterialAllocation {
+        Ref<RendererAllocation> Allocation;
+        Ref<DeviceBuffer> Buffer;
+        uint64_t State;
+        bool IsNew;
+    };
+
+    struct MaterialData {
+        std::unordered_map<uint64_t, MaterialAllocation> Allocations;
+    };
+
     struct RendererData {
         struct {
             std::thread Thread;
@@ -46,6 +57,8 @@ namespace fuujin {
         RendererAPI* API;
 
         Ref<Sampler> DefaultSampler;
+        Ref<Texture> WhiteTexture;
+        std::unordered_map<uint64_t, MaterialData> MaterialData;
 
         uint32_t FrameCount;
         std::optional<uint32_t> CurrentFrame;
@@ -94,6 +107,7 @@ namespace fuujin {
     }
 
     static void LogGraphicsContext() {
+        ZoneScoped;
         auto device = s_Data->Context->GetDevice();
 
         GraphicsDevice::Properties properties;
@@ -130,6 +144,17 @@ namespace fuujin {
                      properties.APIVersion.Minor, properties.APIVersion.Patch);
     }
 
+    void Renderer::CreateDefaultObjects() {
+        ZoneScoped;
+
+        Sampler::Spec spec{}; // default (linear, repeat)
+        s_Data->DefaultSampler = s_Data->Context->CreateSampler(spec);
+
+        Buffer whiteData(sizeof(uint8_t) * 4);
+        std::memset(whiteData.Get(), 0xFF, whiteData.GetSize());
+        s_Data->WhiteTexture = CreateTexture(1, 1, Texture::Format::RGBA8, whiteData);
+    }
+
     void Renderer::Init() {
         ZoneScoped;
 
@@ -156,12 +181,11 @@ namespace fuujin {
         s_Data->API = s_Data->Context->CreateRendererAPI(frameCount);
         s_Data->FrameCount = frameCount;
 
-        Sampler::Spec spec{}; // default (linear, repeat)
-        s_Data->DefaultSampler = s_Data->Context->CreateSampler(spec);
-
         Renderer::Submit(
             []() { s_Data->GraphicsQueue = s_Data->Context->GetQueue(QueueType::Graphics); },
             "Fetch graphics queue");
+
+        CreateDefaultObjects();
     }
 
     void Renderer::Shutdown() {
@@ -172,9 +196,12 @@ namespace fuujin {
         }
 
         Wait();
-
         delete s_Data->API;
+
+        s_Data->MaterialData.clear();
+        s_Data->WhiteTexture.Reset();
         s_Data->DefaultSampler.Reset();
+
         s_Data->Library.reset();
         s_Data->GraphicsQueue.Reset();
         s_Data->Context.Reset();
@@ -229,33 +256,171 @@ namespace fuujin {
         return s_Data->API->CreateAllocation(shader);
     }
 
-    struct TextureLoadData {
-        Ref<DeviceBuffer> StagingBuffer;
-        Ref<Texture> Texture;
+    void Renderer::FreeMaterial(uint64_t id) {
+        ZoneScoped;
+        if (!s_Data) {
+            return;
+        }
+
+        s_Data->MaterialData.erase(id);
+    }
+
+    void Renderer::FreeShader(uint64_t id) {
+        ZoneScoped;
+        if (!s_Data) {
+            return;
+        }
+
+        for (auto& [materialID, data] : s_Data->MaterialData) {
+            data.Allocations.erase(id);
+        }
+    }
+
+    struct MaterialUniformSet {
+        Buffer Data;
+        Ref<DeviceBuffer> UniformBuffer;
     };
+
+    Ref<RendererAllocation> Renderer::GetMaterialAllocation(const Ref<Material>& material,
+                                                            const Ref<Shader>& shader) {
+        ZoneScoped;
+
+        // see assets/shaders/include/Material.glsl
+        static const std::string materialBufferName = "MaterialBuffer";
+
+        auto bufferResource = shader->GetResourceByName(materialBufferName);
+
+        uint64_t materialID = material->GetID();
+        auto& materialData = s_Data->MaterialData[materialID];
+
+        uint64_t shaderID = shader->GetID();
+        if (!materialData.Allocations.contains(shaderID)) {
+            auto& newAllocation = materialData.Allocations[shaderID];
+            newAllocation.Allocation = CreateAllocation(shader);
+            newAllocation.State = 0;
+            newAllocation.IsNew = true;
+
+            if (bufferResource) {
+                DeviceBuffer::Spec bufferSpec;
+                bufferSpec.QueueOwnership = { QueueType::Graphics };
+                bufferSpec.Size = bufferResource->GetType()->GetSize();
+                bufferSpec.Usage = DeviceBuffer::Usage::Uniform;
+
+                newAllocation.Buffer = s_Data->Context->CreateBuffer(bufferSpec);
+                newAllocation.Allocation->Bind(materialBufferName, newAllocation.Buffer);
+            }
+
+            // todo: bind renderer buffers (lighting, camera)
+        }
+
+        auto& allocation = materialData.Allocations[shaderID];
+        uint64_t currentState = material->GetState();
+
+        if (currentState != allocation.State || allocation.IsNew) {
+            allocation.State = currentState;
+            allocation.IsNew = false;
+
+            if (bufferResource) {
+                auto uniformSet = new MaterialUniformSet;
+                uniformSet->UniformBuffer = allocation.Buffer;
+
+                uniformSet->Data = Buffer(allocation.Buffer->GetSpec().Size);
+                std::memset(uniformSet->Data.Get(), 0, uniformSet->Data.GetSize());
+                material->MapProperties(bufferResource, uniformSet->Data);
+
+                Renderer::Submit([uniformSet]() {
+                    auto mapped = uniformSet->UniformBuffer->RT_Map();
+                    Buffer::Copy(uniformSet->Data, mapped);
+                    uniformSet->UniformBuffer->RT_Unmap();
+
+                    delete uniformSet;
+                });
+            }
+
+            const auto& textures = material->GetTextures();
+            for (uint32_t i = 0; i < (uint32_t)Material::TextureSlot::MAX; i++) {
+                auto slot = (Material::TextureSlot)i;
+                auto name = Material::GetTextureName(slot);
+
+                auto texture = textures.contains(slot) ? textures.at(slot) : s_Data->WhiteTexture;
+                allocation.Allocation->Bind(name, texture);
+            }
+        }
+
+        return allocation.Allocation;
+    }
 
     Ref<Texture> Renderer::LoadTexture(const fs::path& path, const Ref<Sampler>& sampler) {
         ZoneScoped;
         stbi_set_flip_vertically_on_load(true);
 
-        int width, height, channels;
         auto pathString = path.string();
+        FUUJIN_INFO("Loading 2D texture from path: {}", pathString.c_str());
+
+        int width, height, channels;
         auto dataRaw = stbi_load(pathString.c_str(), &width, &height, &channels, 4);
 
         if (dataRaw == nullptr) {
             return nullptr;
         }
 
+        size_t dataSize = (size_t)width * height * channels;
+        auto texture = CreateTexture((uint32_t)width, (uint32_t)height, Texture::Format::RGBA8,
+                                     Buffer::Wrapper(dataRaw, dataSize), sampler);
+
+        stbi_image_free(dataRaw);
+        return texture;
+    }
+
+    struct TextureCreationInfo {
+        Ref<DeviceBuffer> StagingBuffer;
+        Ref<Texture> Texture;
+        Buffer ImageData;
+    };
+
+    static void RT_LoadTextureData(TextureCreationInfo* createInfo) {
+        ZoneScoped;
+
+        auto mapped = createInfo->StagingBuffer->RT_Map();
+        Buffer::Copy(createInfo->ImageData, mapped);
+        createInfo->StagingBuffer->RT_Unmap();
+
+        auto transferQueue = s_Data->Context->GetQueue(QueueType::Transfer);
+        auto& cmdlist = transferQueue->RT_Get();
+        cmdlist.RT_Begin();
+
+        auto image = createInfo->Texture->GetImage();
+        createInfo->StagingBuffer->RT_CopyToImage(cmdlist, image);
+        cmdlist.AddDependency(createInfo->StagingBuffer);
+
+        if (createInfo->Texture->GetSpec().MipLevels > 1) {
+            // todo: generate mipmaps
+        }
+
+        cmdlist.RT_End();
+        transferQueue->RT_Submit(cmdlist);
+
+        delete createInfo;
+    }
+
+    Ref<Texture> Renderer::CreateTexture(uint32_t width, uint32_t height, Texture::Format format,
+                                         const Buffer& data, const Ref<Sampler>& sampler) {
+        ZoneScoped;
+        if (data.IsEmpty()) {
+            FUUJIN_WARN("Attempted to create texture with an empty buffer! Returning null");
+            return nullptr;
+        }
+
         DeviceBuffer::Spec stagingSpec;
         stagingSpec.QueueOwnership = { QueueType::Transfer };
-        stagingSpec.Size = (size_t)width * height * channels;
+        stagingSpec.Size = data.GetSize();
         stagingSpec.Usage = DeviceBuffer::Usage::Staging;
 
         Texture::Spec textureSpec;
         textureSpec.Sampler = sampler.IsPresent() ? sampler : s_Data->DefaultSampler;
 
-        textureSpec.Width = (uint32_t)width;
-        textureSpec.Height = (uint32_t)height;
+        textureSpec.Width = width;
+        textureSpec.Height = height;
         textureSpec.Depth = 1;
         textureSpec.MipLevels = 1; // todo: mipmaps
         textureSpec.Format = Texture::Format::RGBA8;
@@ -264,37 +429,12 @@ namespace fuujin {
         auto stagingBuffer = s_Data->Context->CreateBuffer(stagingSpec);
         auto texture = s_Data->Context->CreateTexture(textureSpec);
 
-        auto loadData = new TextureLoadData;
-        loadData->StagingBuffer = stagingBuffer;
-        loadData->Texture = texture;
+        auto createInfo = new TextureCreationInfo;
+        createInfo->StagingBuffer = stagingBuffer;
+        createInfo->Texture = texture;
+        createInfo->ImageData = data;
 
-        Renderer::Submit([=]() {
-            size_t dataSize = loadData->StagingBuffer->GetSpec().Size;
-            auto imageData = Buffer::Wrapper(dataRaw, dataSize);
-
-            auto mapped = loadData->StagingBuffer->RT_Map();
-            Buffer::Copy(imageData, mapped);
-            loadData->StagingBuffer->RT_Unmap();
-
-            auto transferQueue = s_Data->Context->GetQueue(QueueType::Transfer);
-            auto& cmdlist = transferQueue->RT_Get();
-            cmdlist.RT_Begin();
-
-            auto image = loadData->Texture->GetImage();
-            loadData->StagingBuffer->RT_CopyToImage(cmdlist, image);
-            cmdlist.AddDependency(loadData->StagingBuffer);
-
-            if (loadData->Texture->GetSpec().MipLevels > 1) {
-                // todo: generate mipmaps
-            }
-
-            cmdlist.RT_End();
-            transferQueue->RT_Submit(cmdlist);
-
-            stbi_image_free(dataRaw);
-            delete loadData;
-        });
-
+        Renderer::Submit([=]() { RT_LoadTextureData(createInfo); });
         return texture;
     }
 
@@ -468,5 +608,21 @@ namespace fuujin {
 
             delete copy;
         });
+    }
+
+    void Renderer::RenderWithMaterial(const MaterialRenderCall& data) {
+        ZoneScoped;
+
+        IndexedRenderCall innerCall;
+        innerCall.VertexBuffer = data.VertexBuffer;
+        innerCall.IndexBuffer = data.IndexBuffer;
+        innerCall.Pipeline = data.Pipeline;
+        innerCall.IndexCount = data.IndexCount;
+
+        // todo: cleaner solution
+        innerCall.PushConstants = Buffer::Wrapper(&data.ModelMatrix, sizeof(glm::mat4));
+        innerCall.Resources = GetMaterialAllocation(data.Material, data.Pipeline->GetSpec().Shader);
+
+        RenderIndexed(innerCall);
     }
 }; // namespace fuujin

@@ -39,6 +39,8 @@ namespace fuujin {
     public:
         using Code = std::unordered_map<ShaderStage, std::vector<uint8_t>>;
 
+        virtual uint64_t GetID() const = 0;
+
         virtual void GetStages(std::unordered_set<ShaderStage>& stages) const = 0;
 
         virtual std::shared_ptr<GPUResource> GetResourceByName(const std::string& name) const = 0;
