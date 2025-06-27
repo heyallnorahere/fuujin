@@ -15,6 +15,8 @@ layout(set = 0, binding = 0, std140) uniform TransformUBO {
 } u_TransformUBO;
 
 void main() {
+    o_UV = i_UV;
+
     vec3 position = u_TransformUBO.Translation + i_Position;
     gl_Position = vec4(position, 1.0);
 }

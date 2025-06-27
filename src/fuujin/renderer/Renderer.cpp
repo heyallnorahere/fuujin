@@ -174,6 +174,7 @@ namespace fuujin {
         Wait();
 
         delete s_Data->API;
+        s_Data->DefaultSampler.Reset();
         s_Data->Library.reset();
         s_Data->GraphicsQueue.Reset();
         s_Data->Context.Reset();

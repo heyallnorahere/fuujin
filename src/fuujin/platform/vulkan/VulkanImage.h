@@ -28,11 +28,12 @@ namespace fuujin {
             VmaAllocator Allocator = VK_NULL_HANDLE;
         };
 
-        static VkAccessFlags GetLayoutAccessFlags(VkImageLayout layout);
+        static VkAccessFlags GetLayoutAccessFlags(VkImageLayout layout, VkPipelineStageFlags stage);
 
         static void RT_TransitionLayout(VkCommandBuffer cmdBuffer, VkImage image,
                                         VkImageLayout srcLayout, VkPipelineStageFlags srcStage,
-                                        VkImageLayout dstLayout, VkPipelineStageFlags dstStage);
+                                        VkImageLayout dstLayout, VkPipelineStageFlags dstStage,
+                                        const VkImageSubresourceRange& subresource);
 
         VulkanImage(const Ref<VulkanDevice>& device, const VulkanSpec& spec);
         virtual ~VulkanImage() override;
@@ -78,5 +79,6 @@ namespace fuujin {
 
         VkImageLayout m_Layout;
         VkPipelineStageFlags m_EndStage;
+        VkImageSubresourceRange m_Subresource;
     };
 } // namespace fuujin

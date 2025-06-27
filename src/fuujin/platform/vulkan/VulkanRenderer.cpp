@@ -325,9 +325,9 @@ namespace fuujin {
             }
 
             for (const auto& [offset, size] : binding.Groups) {
-                uint32_t groupOffset =
-                    bufferOffsets.at(bindingIndex) + binding.OffsetMap.at(offset);
-                auto groupSlice = descriptorInfo.Slice(groupOffset * binding.BufferStride);
+                uint32_t groupOffset = bufferOffsets.at(bindingIndex) +
+                                       binding.OffsetMap.at(offset) * binding.BufferStride;
+                auto groupSlice = descriptorInfo.Slice(groupOffset);
 
                 VkWriteDescriptorSet write{};
                 write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

@@ -5,7 +5,15 @@
 #include "fuujin/platform/vulkan/VulkanContext.h"
 
 namespace fuujin {
-    VkAccessFlags VulkanImage::GetLayoutAccessFlags(VkImageLayout layout) {
+    VkAccessFlags VulkanImage::GetLayoutAccessFlags(VkImageLayout layout,
+                                                    VkPipelineStageFlags stage) {
+        static const VkPipelineStageFlags endStages =
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+        if ((stage & ~endStages) == 0) {
+            return 0;
+        }
+
         switch (layout) {
         case VK_IMAGE_LAYOUT_UNDEFINED:
             return 0;
@@ -24,7 +32,8 @@ namespace fuujin {
 
     void VulkanImage::RT_TransitionLayout(VkCommandBuffer cmdBuffer, VkImage image,
                                           VkImageLayout srcLayout, VkPipelineStageFlags srcStage,
-                                          VkImageLayout dstLayout, VkPipelineStageFlags dstStage) {
+                                          VkImageLayout dstLayout, VkPipelineStageFlags dstStage,
+                                          const VkImageSubresourceRange& subresource) {
         ZoneScoped;
 
         VkImageMemoryBarrier barrier{};
@@ -34,8 +43,9 @@ namespace fuujin {
         barrier.image = image;
         barrier.oldLayout = srcLayout;
         barrier.newLayout = dstLayout;
-        barrier.srcAccessMask = GetLayoutAccessFlags(srcLayout);
-        barrier.dstAccessMask = GetLayoutAccessFlags(dstLayout);
+        barrier.srcAccessMask = GetLayoutAccessFlags(srcLayout, srcStage);
+        barrier.dstAccessMask = GetLayoutAccessFlags(dstLayout, dstStage);
+        barrier.subresourceRange = subresource;
 
         vkCmdPipelineBarrier(cmdBuffer, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
     }
@@ -116,10 +126,15 @@ namespace fuujin {
                 auto& cmdlist = queue->RT_Get();
                 cmdlist.RT_Begin();
 
+                VkImageSubresourceRange subresource{};
+                subresource.aspectMask = m_Spec.AspectFlags;
+                subresource.levelCount = m_Spec.MipLevels;
+                subresource.layerCount = m_Spec.ArrayLayers;
+
                 auto cmdBuffer = ((VulkanCommandBuffer&)cmdlist).Get();
                 RT_TransitionLayout(cmdBuffer, m_Image, createInfo.initialLayout,
                                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_Spec.SafeLayout,
-                                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+                                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, subresource);
 
                 cmdlist.RT_End();
                 queue->RT_Submit(cmdlist);
@@ -160,10 +175,22 @@ namespace fuujin {
                                      VkPipelineStageFlags endStage) {
         ZoneScoped;
 
+        const auto& spec = image->GetSpec();
+        m_Subresource.aspectMask = spec.AspectFlags;
+        m_Subresource.baseArrayLayer = 0;
+        m_Subresource.layerCount = spec.ArrayLayers;
+        m_Subresource.baseMipLevel = 0;
+        m_Subresource.levelCount = spec.MipLevels;
+
         VkImage vkImage = image->GetImage();
         VkImageLayout safeLayout = image->GetSpec().SafeLayout;
+        VkImageSubresourceRange subresource = m_Subresource;
 
-        Renderer::Submit([=]() {});
+        Renderer::Submit([=]() {
+            VulkanImage::RT_TransitionLayout(cmdBuffer, vkImage, safeLayout,
+                                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, layout, stage,
+                                             subresource);
+        });
 
         m_Buffer = cmdBuffer;
         m_Image = image;
@@ -179,11 +206,15 @@ namespace fuujin {
         if (safeLayout != VK_IMAGE_LAYOUT_UNDEFINED) {
             VkCommandBuffer cmdBuffer = m_Buffer;
             VkImage vkImage = m_Image->GetImage();
+            VkImageSubresourceRange subresource = m_Subresource;
 
             VkImageLayout layout = m_Layout;
             VkPipelineStageFlags stage = m_EndStage;
 
-            Renderer::Submit([=]() {});
+            Renderer::Submit([=]() {
+                VulkanImage::RT_TransitionLayout(cmdBuffer, vkImage, layout, stage, safeLayout,
+                                                 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, subresource);
+            });
         }
     }
 } // namespace fuujin
