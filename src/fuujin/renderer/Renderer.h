@@ -28,7 +28,7 @@ namespace fuujin {
         uint32_t IndexCount;
 
         Buffer PushConstants;
-        Ref<RendererAllocation> Resources;
+        std::vector<Ref<RendererAllocation>> Resources;
     };
 
     struct MaterialRenderCall {

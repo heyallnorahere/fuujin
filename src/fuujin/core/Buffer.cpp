@@ -50,7 +50,6 @@ namespace fuujin {
     }
 
     Buffer::Buffer(size_t size) { Allocate(size); }
-
     Buffer::~Buffer() { Release(); }
 
     Buffer::Buffer(std::nullptr_t) { Release(); }
@@ -134,7 +133,7 @@ namespace fuujin {
         Buffer copy(m_Size);
         Copy(*this, copy);
 
-        return std::move(copy);
+        return copy;
     }
 
     void Buffer::Allocate(size_t size) {

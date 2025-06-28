@@ -15,7 +15,7 @@ layout(location = 2) out vec3 out_WorldPosition;
 void main() {
     mat4 viewProjection = GetViewProjection(u_PushConstants.CameraIndex);
     vec4 worldPosition = u_PushConstants.Model * vec4(in_Position, 1.0);
-    gl_Position = viewProjection * worldPosition; // todo: camera
+    gl_Position = viewProjection * worldPosition;
 
     mat3 normalMatrix = transpose(inverse(mat3(u_PushConstants.Model)));
     out_Normal = normalize(normalMatrix * in_Normal);

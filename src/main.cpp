@@ -80,6 +80,27 @@ static const std::vector<Vertex> s_Vertices = {
     { glm::vec3(-0.5f, -0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec2(0.f, 0.f) }
 };
 
+template <typename _Ty>
+inline glm::mat<4, 4, _Ty, glm::defaultp> Perspective(_Ty fovy, _Ty aspect, _Ty zNear, _Ty zFar) {
+    if (Renderer::GetAPI().LeftHanded) {
+        return glm::perspectiveLH(fovy, aspect, zNear, zFar);
+    } else {
+        return glm::perspectiveRH(fovy, aspect, zNear, zFar);
+    }
+}
+
+template <typename _Ty, glm::qualifier Q>
+inline glm::mat<4, 4, _Ty, Q> LookAt(const glm::vec<3, _Ty, Q>& eye,
+                                     const glm::vec<3, _Ty, Q>& center,
+                                     const glm::vec<3, _Ty, Q>& up) {
+    if (Renderer::GetAPI().LeftHanded) {
+        return glm::lookAtLH(eye, center, up);
+    } else {
+        return glm::lookAtRH(eye, center, up);
+    }
+}
+
+static const float s_PI = std::numbers::pi_v<float>;
 class TestLayer : public Layer {
 public:
     TestLayer() {
@@ -91,12 +112,33 @@ public:
 
     virtual void Update(Duration delta) override {
         ZoneScoped;
-
         Time += delta.count();
 
-        static const float pi = std::numbers::pi_v<float>;
-        float x = std::sin(Time * pi * 2.f) * 0.25f;
-        m_Call.ModelMatrix = glm::translate(glm::mat4(1.f), glm::vec3(x, 0.f, 0.f));
+        auto context = Renderer::GetContext();
+        auto swapchain = context->GetSwapchain();
+        uint32_t width = swapchain->GetWidth();
+        uint32_t height = swapchain->GetHeight();
+        float aspect = (float)width / height;
+
+        if (height == 0) {
+            aspect = 1.f;
+        }
+
+        float theta = Time * s_PI;
+        glm::vec3 radial = glm::vec3(glm::sin(theta), 0.f, glm::cos(theta));
+
+        glm::vec3 position = radial * 5.f;
+        glm::vec3 up = glm::vec3(0.f, 1.f, 0.f);
+        glm::vec3 direction = -radial;
+
+        Renderer::SceneData scene;
+        Renderer::Camera& camera = scene.Cameras.emplace_back();
+        camera.Position = position;
+        camera.Projection = Perspective(s_PI / 4.f, aspect, 0.1f, 10.f);
+        camera.View = LookAt(position, position + direction, up);
+        Renderer::UpdateScene(0, scene);
+
+        m_Call.ModelMatrix = glm::mat4(1.f);
 
         static constexpr float hueMax = 360.f;
         float hue = Time * hueMax * 0.75f;
@@ -135,6 +177,8 @@ private:
         m_IndexStaging = context->CreateBuffer(staging);
         m_Call.IndexBuffer = context->CreateBuffer(actual);
         m_Call.IndexCount = (uint32_t)s_Indices.size();
+        m_Call.SceneID = 0;
+        m_Call.CameraIndex = 0;
 
         m_Call.Material = Ref<Material>::Create();
         m_Call.Material->GetPipeline().Wireframe = false;
@@ -144,6 +188,7 @@ private:
         pipelineSpec.Shader = library.Get("assets/shaders/MaterialStatic.glsl");
         pipelineSpec.Type = Pipeline::Type::Graphics;
         pipelineSpec.FrontFace = FrontFace::CCW;
+        pipelineSpec.DisableCulling = true;
 
         m_Call.Material->SetPipelineSpec(pipelineSpec);
         m_Call.Pipeline = context->CreatePipeline(pipelineSpec);

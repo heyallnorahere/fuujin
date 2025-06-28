@@ -8,6 +8,7 @@
 #include "fuujin/renderer/Pipeline.h"
 
 namespace fuujin {
+    class ShaderBuffer;
     class Material : public RefCounted {
     public:
         enum class TextureSlot : uint32_t { Albedo = 0, Specular, Ambient, Normal, MAX };
@@ -58,7 +59,7 @@ namespace fuujin {
             SetPropertyData(name, wrapper);
         }
 
-        void MapProperties(const std::shared_ptr<GPUResource>& resource, Buffer& buffer) const;
+        void MapProperties(ShaderBuffer& buffer) const;
         void SetPipelineSpec(Pipeline::Spec& spec) const;
 
     private:

@@ -100,8 +100,8 @@ namespace fuujin {
         void RT_CreatePools();
         void RT_ResetCurrentPool();
 
-        void RT_BindAllocation(VkCommandBuffer cmdBuffer, Ref<RendererAllocation> allocation,
-                               VkPipelineBindPoint bindPoint);
+        void RT_BindAllocation(VkCommandBuffer cmdBuffer, Ref<VulkanRendererAllocation> allocation,
+                               VkPipelineBindPoint bindPoint, std::set<uint32_t>& boundSets);
 
         Ref<VulkanDevice> m_Device;
         TracyVkCtx m_TracyContext;

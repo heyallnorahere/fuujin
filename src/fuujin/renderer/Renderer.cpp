@@ -40,7 +40,7 @@ namespace fuujin {
         bool IsNew;
     };
 
-    struct ShaderData {
+    struct RendererShaderData {
         std::unordered_map<uint64_t, ObjectAllocation> Materials, Scenes;
     };
 
@@ -67,7 +67,7 @@ namespace fuujin {
         Ref<Texture> WhiteTexture;
 
         std::unordered_map<uint64_t, SceneState> SceneState;
-        std::unordered_map<uint64_t, ShaderData> ShaderData;
+        std::unordered_map<uint64_t, RendererShaderData> ShaderData;
 
         uint32_t FrameCount;
         std::optional<uint32_t> CurrentFrame;
@@ -313,6 +313,14 @@ namespace fuujin {
         if (!s_Data) {
             return;
         }
+
+        if (!s_Data->SceneState.contains(id)) {
+            s_Data->SceneState[id].State = 0;
+        }
+
+        auto& state = s_Data->SceneState[id];
+        state.Data = data;
+        state.State++;
     }
 
     static void CreateObjectAllocation(const Ref<Shader>& shader, const std::string& bufferName,
@@ -336,9 +344,82 @@ namespace fuujin {
     }
 
     struct AllocationUniformSet {
-        Buffer Data;
+        ShaderBuffer Data;
         Ref<DeviceBuffer> UniformBuffer;
     };
+
+    template <typename _Ty>
+    static bool UpdateObjectAllocation(const Ref<Shader>& shader, const std::string& bufferName,
+                                       ObjectAllocation& allocation, uint64_t currentState,
+                                       const _Ty& bufferCallback) {
+        ZoneScoped;
+
+        if (currentState != allocation.State || allocation.IsNew) {
+            allocation.State = currentState;
+            allocation.IsNew = false;
+
+            auto bufferResource = shader->GetResourceByName(bufferName);
+            if (bufferResource) {
+                auto uniformSet = new AllocationUniformSet;
+                uniformSet->UniformBuffer = allocation.Buffer;
+
+                uniformSet->Data = ShaderBuffer(bufferResource->GetType());
+                auto& dataBuffer = uniformSet->Data.GetBuffer();
+                std::memset(dataBuffer.Get(), 0, dataBuffer.GetSize());
+                bufferCallback(uniformSet->Data);
+
+                Renderer::Submit([uniformSet]() {
+                    auto mapped = uniformSet->UniformBuffer->RT_Map();
+                    Buffer::Copy(uniformSet->Data.GetBuffer(), mapped);
+                    uniformSet->UniformBuffer->RT_Unmap();
+
+                    delete uniformSet;
+                });
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    Ref<RendererAllocation> Renderer::GetSceneAllocation(uint64_t id, const Ref<Shader>& shader) {
+        ZoneScoped;
+        if (!s_Data || !s_Data->SceneState.contains(id)) {
+            return nullptr;
+        }
+
+        // see assets/shaders/include/Scene.glsl
+        static const std::string sceneBufferName = "Scene";
+
+        uint64_t shaderID = shader->GetID();
+        auto& shaderData = s_Data->ShaderData[shaderID];
+
+        if (!shaderData.Scenes.contains(id)) {
+            auto& newAllocation = shaderData.Scenes[id];
+            CreateObjectAllocation(shader, sceneBufferName, newAllocation);
+        }
+
+        const auto& scene = s_Data->SceneState.at(id);
+        auto callback = [&](ShaderBuffer& buffer) {
+            const auto& data = scene.Data;
+
+            // see assets/shaders/include/Scene.glsl
+            for (size_t i = 0; i < data.Cameras.size(); i++) {
+                const auto& camera = data.Cameras[i];
+                std::string basePath = "Cameras[" + std::to_string(i) + "]";
+
+                buffer.Set(basePath + ".Position", camera.Position);
+                buffer.Set(basePath + ".Projection", camera.Projection);
+                buffer.Set(basePath + ".View", camera.View);
+            }
+        };
+
+        auto& allocation = shaderData.Scenes[id];
+        UpdateObjectAllocation(shader, sceneBufferName, allocation, scene.State, callback);
+
+        return allocation.Allocation;
+    }
 
     Ref<RendererAllocation> Renderer::GetMaterialAllocation(const Ref<Material>& material,
                                                             const Ref<Shader>& shader) {
@@ -359,28 +440,9 @@ namespace fuujin {
         auto& allocation = shaderData.Materials[materialID];
         uint64_t currentState = material->GetState();
 
-        if (currentState != allocation.State || allocation.IsNew) {
-            allocation.State = currentState;
-            allocation.IsNew = false;
-
-            auto bufferResource = shader->GetResourceByName(materialBufferName);
-            if (bufferResource) {
-                auto uniformSet = new AllocationUniformSet;
-                uniformSet->UniformBuffer = allocation.Buffer;
-
-                uniformSet->Data = Buffer(allocation.Buffer->GetSpec().Size);
-                std::memset(uniformSet->Data.Get(), 0, uniformSet->Data.GetSize());
-                material->MapProperties(bufferResource, uniformSet->Data);
-
-                Renderer::Submit([uniformSet]() {
-                    auto mapped = uniformSet->UniformBuffer->RT_Map();
-                    Buffer::Copy(uniformSet->Data, mapped);
-                    uniformSet->UniformBuffer->RT_Unmap();
-
-                    delete uniformSet;
-                });
-            }
-
+        auto callback = [&](ShaderBuffer& buffer) { material->MapProperties(buffer); };
+        if (UpdateObjectAllocation(shader, materialBufferName, allocation, currentState,
+                                   callback)) {
             const auto& textures = material->GetTextures();
             for (uint32_t i = 0; i < (uint32_t)Material::TextureSlot::MAX; i++) {
                 auto slot = (Material::TextureSlot)i;
@@ -668,20 +730,19 @@ namespace fuujin {
         innerCall.Pipeline = data.Pipeline;
         innerCall.IndexCount = data.IndexCount;
 
-        auto shader = data.Pipeline->GetSpec().Shader;
-        innerCall.Resources = GetMaterialAllocation(data.Material, shader);
+        const auto& shader = data.Pipeline->GetSpec().Shader;
+        innerCall.Resources = { GetMaterialAllocation(data.Material, shader),
+                                GetSceneAllocation(data.SceneID, shader) };
 
-        ShaderBuffer buffer;
         auto pushConstants = shader->GetPushConstants();
         if (pushConstants) {
-            buffer = ShaderBuffer(pushConstants->GetType());
+            ShaderBuffer buffer(pushConstants->GetType());
 
             // see assets/shaders/include/Renderer.glsl
             buffer.Set("Model", data.ModelMatrix);
             buffer.Set("CameraIndex", (int32_t)data.CameraIndex);
 
-            // copy (dont have an easy way to create a wrapper reference)
-            innerCall.PushConstants = buffer.GetBuffer();
+            innerCall.PushConstants = buffer.GetBuffer().Copy();
         } else {
             FUUJIN_WARN("No push constants on shader! Cannot pass model matrix or camera index!");
         }

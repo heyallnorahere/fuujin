@@ -439,8 +439,15 @@ namespace fuujin {
         vkCmdBindIndexBuffer(cmdBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
         vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline->GetPipeline());
 
-        if (data.Resources) {
-            RT_BindAllocation(cmdBuffer, data.Resources, VK_PIPELINE_BIND_POINT_GRAPHICS);
+        std::set<uint32_t> boundSets;
+        for (const auto& allocation : data.Resources) {
+            if (!allocation) {
+                FUUJIN_ERROR("Attempted to bind nullptr allocation! Skipping");
+                continue;
+            }
+
+            auto rendererAlloc = allocation.As<VulkanRendererAllocation>();
+            RT_BindAllocation(cmdBuffer, rendererAlloc, VK_PIPELINE_BIND_POINT_GRAPHICS, boundSets);
         }
 
         if (data.PushConstants) {
@@ -543,33 +550,48 @@ namespace fuujin {
     }
 
     void VulkanRenderer::RT_BindAllocation(VkCommandBuffer cmdBuffer,
-                                           Ref<RendererAllocation> allocation,
-                                           VkPipelineBindPoint bindPoint) {
+                                           Ref<VulkanRendererAllocation> allocation,
+                                           VkPipelineBindPoint bindPoint,
+                                           std::set<uint32_t>& boundSets) {
         ZoneScoped;
         TracyVkZone(m_TracyContext, cmdBuffer, "RT_BindAllocation");
 
         RT_ResetCurrentPool();
 
-        auto rendererAlloc = allocation.As<VulkanRendererAllocation>();
-        uint64_t allocID = rendererAlloc->GetID();
-
+        uint64_t allocID = allocation->GetID();
         auto& pool = m_DescriptorPools[m_CurrentFrame];
+
         if (!pool.Allocations.contains(allocID)) {
             auto& allocData = pool.Allocations[allocID];
 
             // for ref counting
-            allocData.Allocation = rendererAlloc;
-            allocData.Bindings = rendererAlloc->GetBindings(); // intentionally copy
+            allocData.Allocation = allocation;
+            allocData.Bindings = allocation->GetBindings(); // intentionally copy
 
-            rendererAlloc->RT_AllocateDescriptorSets(m_Device, pool.DescriptorPool, allocData.Sets);
+            allocation->RT_AllocateDescriptorSets(m_Device, pool.DescriptorPool, allocData.Sets);
         }
 
         const auto& setGroups = pool.Allocations.at(allocID).Sets;
-        auto pipelineLayout = rendererAlloc->GetShader()->GetPipelineLayout();
+        auto pipelineLayout = allocation->GetShader()->GetPipelineLayout();
+
+        std::set<uint32_t> currentSets;
+        for (const auto& [id, setBindings] : setGroups) {
+            if (boundSets.contains(id)) {
+                FUUJIN_ERROR(
+                    "Set {} already bound for this render call! Aborting binding of allocation {}",
+                    id, allocID);
+
+                return;
+            }
+
+            currentSets.insert(id);
+        }
 
         for (const auto& [firstSet, sets] : setGroups) {
             vkCmdBindDescriptorSets(cmdBuffer, bindPoint, pipelineLayout, firstSet,
                                     (uint32_t)sets.size(), sets.data(), 0, nullptr);
         }
+
+        boundSets.insert(currentSets.begin(), currentSets.end());
     }
 } // namespace fuujin

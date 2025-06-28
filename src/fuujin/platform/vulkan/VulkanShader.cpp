@@ -10,7 +10,7 @@
 namespace fuujin {
     class VulkanType : public GPUType {
     public:
-        VulkanType(const Ref<VulkanShader>& shader, ShaderStage stage, spirv_cross::TypeID id) {
+        VulkanType(const VulkanShader* shader, ShaderStage stage, spirv_cross::TypeID id) {
             ZoneScoped;
 
             const auto& types = shader->GetTypes();
@@ -57,6 +57,12 @@ namespace fuujin {
             m_Name = resource.Name;
             m_Type = resource.ResourceType;
             m_Dimensions = resource.Dimensions;
+
+            const auto& types = shader->GetTypes();
+            for (const auto& [stage, id] : resource.Types) {
+                const auto& type = types.at(stage).at(id);
+                m_Types[stage] = type.Interface;
+            }
         }
 
         virtual ~VulkanResource() override = default;
@@ -346,6 +352,7 @@ namespace fuujin {
         result.Rows = type.vecsize;
         result.Columns = type.columns;
 
+        std::vector<spirv_cross::TypeID> subTypes;
         result.ElementSize = 0;
         switch (result.BaseType) {
         case spirv_cross::SPIRType::Void:
@@ -427,7 +434,7 @@ namespace fuujin {
                 }
 
                 result.Fields[name] = field;
-                ProcessType(field.Type, compiler, stage);
+                subTypes.push_back(field.Type);
             }
             break;
         case spirv_cross::SPIRType::Image:
@@ -442,7 +449,11 @@ namespace fuujin {
         }
 
         result.TotalSize = result.ElementSize * result.Rows * result.Columns;
-        result.Interface = std::shared_ptr<GPUType>(new VulkanType(this, stage, id));
+        for (auto subType : subTypes) {
+            ProcessType(subType, compiler, stage);
+        }
+
+        types[id].Interface = std::shared_ptr<GPUType>(new VulkanType(this, stage, id));
     }
 
     void VulkanShader::ProcessResources(

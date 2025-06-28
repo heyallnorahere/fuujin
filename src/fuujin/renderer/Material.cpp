@@ -2,6 +2,7 @@
 #include "fuujin/renderer/Material.h"
 
 #include "fuujin/renderer/Renderer.h"
+#include "fuujin/renderer/ShaderBuffer.h"
 
 namespace fuujin {
     static uint64_t s_MaterialID = 0;
@@ -94,26 +95,14 @@ namespace fuujin {
         Invalidate();
     }
 
-    void Material::MapProperties(const std::shared_ptr<GPUResource>& resource,
-                                 Buffer& buffer) const {
+    void Material::MapProperties(ShaderBuffer& buffer) const {
         ZoneScoped;
-
-        auto type = resource->GetType();
-        const auto& fields = type->GetFields();
 
         for (const auto& [id, data] : m_PropertyData) {
             auto fieldName = GetPropertyFieldName(id);
-            if (!fields.contains(fieldName)) {
-                FUUJIN_WARN("Material property field not found in buffer: {}", fieldName.c_str());
-                continue;
+            if (!buffer.SetData(fieldName, data)) {
+                FUUJIN_WARN("Failed to set material property: {}", fieldName.c_str());
             }
-
-            const auto& field = fields.at(fieldName);
-            size_t fieldSize = field.Type->GetSize();
-
-            // all buffer operations perform bounds checks
-            auto slice = buffer.Slice(field.Offset, fieldSize);
-            Buffer::Copy(data, slice, data.GetSize());
         }
     }
 
