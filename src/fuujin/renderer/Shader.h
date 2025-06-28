@@ -12,8 +12,11 @@ namespace fuujin {
             std::vector<size_t> Dimensions;
         };
 
+        virtual ~GPUType() = default;
+
+        virtual const std::string& GetName() const = 0;
         virtual size_t GetSize() const = 0;
-        virtual void GetFields(std::unordered_map<std::string, Field>& fields) const = 0;
+        virtual const std::unordered_map<std::string, Field>& GetFields() const = 0;
     };
 
     class GPUResource {
@@ -25,6 +28,8 @@ namespace fuujin {
             ShaderSampler = 1 << 3,
             StorageImage = 1 << 4,
         };
+
+        virtual ~GPUResource() = default;
 
         virtual const std::string& GetName() const = 0;
         virtual uint32_t GetResourceType() const = 0;
@@ -44,5 +49,6 @@ namespace fuujin {
         virtual void GetStages(std::unordered_set<ShaderStage>& stages) const = 0;
 
         virtual std::shared_ptr<GPUResource> GetResourceByName(const std::string& name) const = 0;
+        virtual std::shared_ptr<GPUResource> GetPushConstants() const = 0;
     };
 } // namespace fuujin

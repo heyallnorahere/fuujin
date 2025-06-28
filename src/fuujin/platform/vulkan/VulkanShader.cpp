@@ -13,76 +13,63 @@ namespace fuujin {
         VulkanType(const Ref<VulkanShader>& shader, ShaderStage stage, spirv_cross::TypeID id) {
             ZoneScoped;
 
-            m_Shader = shader;
-            m_Stage = stage;
-            m_ID = id;
-        }
+            const auto& types = shader->GetTypes();
+            const auto& stageTypes = types.at(stage);
+            const auto& type = stageTypes.at(id);
 
-        virtual size_t GetSize() const override {
-            ZoneScoped;
+            m_Name = type.Name;
+            m_Size = type.TotalSize;
 
-            const auto& types = m_Shader->GetTypes();
-            const auto& type = types.at(m_Stage).at(m_ID);
-
-            return type.TotalSize;
-        }
-
-        virtual void GetFields(std::unordered_map<std::string, Field>& fields) const override {
-            ZoneScoped;
-
-            const auto& types = m_Shader->GetTypes();
-            const auto& stage = types.at(m_Stage);
-            const auto& type = stage.at(m_ID);
-
-            fields.clear();
             for (const auto& [name, data] : type.Fields) {
-                auto& field = fields[name];
+                auto& field = m_Fields[name];
                 field.Dimensions = data.Dimensions;
                 field.Offset = data.Offset;
                 field.Stride = data.Stride;
 
-                const auto& referenced = stage.at(data.Type);
+                const auto& referenced = stageTypes.at(data.Type);
                 field.Type = referenced.Interface;
             }
         }
 
+        virtual ~VulkanType() override = default;
+
+        virtual const std::string& GetName() const override { return m_Name; }
+        virtual size_t GetSize() const override { return m_Size; }
+
+        virtual const std::unordered_map<std::string, Field>& GetFields() const override {
+            return m_Fields;
+        }
+
     private:
-        Ref<VulkanShader> m_Shader;
-        ShaderStage m_Stage;
-        spirv_cross::TypeID m_ID;
+        std::string m_Name;
+        size_t m_Size;
+        std::unordered_map<std::string, Field> m_Fields;
     };
 
     class VulkanResource : public GPUResource {
     public:
-        VulkanResource(const Ref<VulkanShader>& shader, uint32_t set, uint32_t binding) {
+        VulkanResource(const VulkanShader* shader, uint32_t set, uint32_t binding) {
             ZoneScoped;
 
-            m_Shader = shader;
-            m_Set = set;
-            m_Binding = binding;
+            const auto& resources = shader->GetResources();
+            const auto& resource = resources.at(set).at(binding);
+
+            m_Name = resource.Name;
+            m_Type = resource.ResourceType;
+            m_Dimensions = resource.Dimensions;
         }
 
-        virtual const std::string& GetName() const override {
-            ZoneScoped;
-            return GetResource().Name;
-        }
+        virtual ~VulkanResource() override = default;
 
-        virtual uint32_t GetResourceType() const override {
-            ZoneScoped;
-            return GetResource().ResourceType;
-        }
-
-        virtual const std::vector<size_t>& GetDimensions() const override {
-            ZoneScoped;
-            return GetResource().Dimensions;
-        }
+        virtual const std::string& GetName() const override { return m_Name; }
+        virtual uint32_t GetResourceType() const override { return m_Type; }
+        virtual const std::vector<size_t>& GetDimensions() const override { return m_Dimensions; }
 
         virtual void GetStages(std::unordered_set<ShaderStage>& stages) const override {
             ZoneScoped;
-            stages.clear();
 
-            const auto& resource = GetResource();
-            for (auto [stage, id] : resource.Types) {
+            stages.clear();
+            for (auto [stage, id] : m_Types) {
                 stages.insert(stage);
             }
         }
@@ -91,38 +78,75 @@ namespace fuujin {
             const std::optional<ShaderStage>& stage = {}) const override {
             ZoneScoped;
 
-            ShaderStage stageValue;
-            spirv_cross::TypeID id;
-
-            const auto& resource = GetResource();
             if (stage.has_value()) {
-                stageValue = stage.value();
-                if (!resource.Types.contains(stageValue)) {
+                auto stageValue = stage.value();
+                if (!m_Types.contains(stageValue)) {
                     return nullptr;
                 }
 
-                id = resource.Types.at(stageValue);
+                return m_Types.at(stageValue);
             } else {
-                auto it = resource.Types.begin();
-                stageValue = it->first;
-                id = it->second;
+                auto it = m_Types.begin();
+                return it->second;
             }
-
-            const auto& types = m_Shader->GetTypes();
-            const auto& type = types.at(stageValue).at(id);
-            return type.Interface;
         }
 
     private:
-        const ShaderResource& GetResource() const {
+        std::string m_Name;
+        uint32_t m_Type;
+        std::vector<size_t> m_Dimensions;
+        std::unordered_map<ShaderStage, std::shared_ptr<GPUType>> m_Types;
+    };
+
+    static const std::string s_PushConstantsName = "<push constants>";
+    class VulkanPushConstants : public GPUResource {
+    public:
+        VulkanPushConstants(const VulkanShader* shader) {
             ZoneScoped;
 
-            const auto& resources = m_Shader->GetResources();
-            return resources.at(m_Set).at(m_Binding);
+            const auto& data = shader->GetPushConstantData();
+            m_TotalSize = data.TotalSize;
+
+            const auto& types = shader->GetTypes();
+            for (const auto& [stage, id] : data.Types) {
+                const auto& type = types.at(stage).at(id);
+                m_Types[stage] = type.Interface;
+            }
         }
 
-        Ref<VulkanShader> m_Shader;
-        uint32_t m_Set, m_Binding;
+        virtual const std::string& GetName() const override { return s_PushConstantsName; }
+        virtual uint32_t GetResourceType() const override { return 0; }
+        virtual const std::vector<size_t>& GetDimensions() const override { return {}; }
+
+        virtual void GetStages(std::unordered_set<ShaderStage>& stages) const override {
+            ZoneScoped;
+
+            stages.clear();
+            for (auto [stage, id] : m_Types) {
+                stages.insert(stage);
+            }
+        }
+
+        virtual std::shared_ptr<GPUType> GetType(
+            const std::optional<ShaderStage>& stage = {}) const override {
+            ZoneScoped;
+
+            if (stage.has_value()) {
+                auto stageValue = stage.value();
+                if (!m_Types.contains(stageValue)) {
+                    return nullptr;
+                }
+
+                return m_Types.at(stageValue);
+            } else {
+                auto it = m_Types.begin();
+                return it->second;
+            }
+        }
+
+    private:
+        size_t m_TotalSize;
+        std::unordered_map<ShaderStage, std::shared_ptr<GPUType>> m_Types;
     };
 
     VkShaderStageFlagBits VulkanShader::ConvertStage(ShaderStage stage) {
@@ -208,6 +232,11 @@ namespace fuujin {
         }
     }
 
+    std::shared_ptr<GPUResource> VulkanShader::GetPushConstants() const {
+        ZoneScoped;
+        return m_PushConstants.Interface;
+    }
+
     std::shared_ptr<GPUResource> VulkanShader::GetResourceByName(const std::string& name) const {
         ZoneScoped;
 
@@ -280,6 +309,10 @@ namespace fuujin {
             if (stage == ShaderStage::Vertex) {
                 ProcessVertexInputs(resources.stage_inputs, compiler, stage);
             }
+        }
+
+        if (m_PushConstants.TotalSize > 0) {
+            m_PushConstants.Interface = std::shared_ptr<GPUResource>(new VulkanPushConstants(this));
         }
 
         for (auto& [set, resources] : m_Resources) {

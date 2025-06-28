@@ -444,7 +444,7 @@ namespace fuujin {
         }
 
         if (data.PushConstants) {
-            const auto& shaderData = shader->GetPushConstants();
+            const auto& shaderData = shader->GetPushConstantData();
 
             VkShaderStageFlags stages = 0;
             for (auto [stage, id] : shaderData.Types) {

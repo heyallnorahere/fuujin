@@ -376,8 +376,11 @@ namespace fuujin {
         m_Properties.Name = properties.properties.deviceName;
         m_Properties.DriverVersion = FromVulkanVersion(properties.properties.driverVersion);
 
-        m_Properties.API = "Vulkan";
-        m_Properties.APIVersion = FromVulkanVersion(properties.properties.apiVersion);
+        auto& api = m_Properties.API;
+        api.Name = "Vulkan";
+        api.Version = FromVulkanVersion(properties.properties.apiVersion);
+        api.TransposeMatrices = false;
+        api.LeftHanded = false;
 
         switch (properties.properties.deviceType) {
         case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:

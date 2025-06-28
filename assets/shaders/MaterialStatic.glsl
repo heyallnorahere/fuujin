@@ -1,9 +1,7 @@
 #version 450
+#include "include/Renderer.glsl"
 #include "include/Material.glsl"
-
-layout(push_constant) uniform PushConstants {
-    mat4 Model;
-} u_PushConstants;
+#include "include/Scene.glsl"
 
 #stage vertex
 layout(location = 0) in vec3 in_Position;
@@ -15,8 +13,9 @@ layout(location = 1) out vec2 out_UV;
 layout(location = 2) out vec3 out_WorldPosition;
 
 void main() {
+    mat4 viewProjection = GetViewProjection(u_PushConstants.CameraIndex);
     vec4 worldPosition = u_PushConstants.Model * vec4(in_Position, 1.0);
-    gl_Position = worldPosition; // todo: camera
+    gl_Position = viewProjection * worldPosition; // todo: camera
 
     mat3 normalMatrix = transpose(inverse(mat3(u_PushConstants.Model)));
     out_Normal = normalize(normalMatrix * in_Normal);

@@ -7,13 +7,20 @@ namespace fuujin {
 
     class GraphicsDevice : public RefCounted {
     public:
+        struct API {
+            std::string Name;
+            Version Version;
+
+            bool TransposeMatrices;
+            bool LeftHanded;
+        };
+
         struct Properties {
             std::string Name, Vendor;
             Version DriverVersion;
             GraphicsDeviceType Type;
 
-            std::string API;
-            Version APIVersion;
+            API API;
         };
 
         virtual ~GraphicsDevice() = default;

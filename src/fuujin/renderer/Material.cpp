@@ -98,9 +98,8 @@ namespace fuujin {
                                  Buffer& buffer) const {
         ZoneScoped;
 
-        std::unordered_map<std::string, GPUType::Field> fields;
-        std::shared_ptr<GPUType> type = resource->GetType();
-        type->GetFields(fields);
+        auto type = resource->GetType();
+        const auto& fields = type->GetFields();
 
         for (const auto& [id, data] : m_PropertyData) {
             auto fieldName = GetPropertyFieldName(id);

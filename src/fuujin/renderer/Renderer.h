@@ -35,8 +35,11 @@ namespace fuujin {
         Ref<DeviceBuffer> VertexBuffer, IndexBuffer;
         Ref<Pipeline> Pipeline;
         uint32_t IndexCount;
+        uint64_t SceneID;
 
         glm::mat4 ModelMatrix;
+        size_t CameraIndex;
+
         Ref<Material> Material;
     };
 
@@ -56,6 +59,15 @@ namespace fuujin {
 
     class Renderer {
     public:
+        struct Camera {
+            glm::vec3 Position;
+            glm::mat4 Projection, View;
+        };
+
+        struct SceneData {
+            std::vector<Camera> Cameras;
+        };
+
         Renderer() = delete;
 
         static void Init();
@@ -64,13 +76,19 @@ namespace fuujin {
         static Ref<GraphicsContext> GetContext();
         static Ref<CommandQueue> GetGraphicsQueue();
         static ShaderLibrary& GetShaderLibrary();
+        static const GraphicsDevice::API& GetAPI();
 
         static void ProcessEvent(Event& event);
 
         static Ref<RendererAllocation> CreateAllocation(const Ref<Shader>& shader);
 
-        static void FreeMaterial(uint64_t id);
         static void FreeShader(uint64_t id);
+        static void FreeMaterial(uint64_t id);
+        static void FreeScene(uint64_t id);
+
+        static void UpdateScene(uint64_t id, const SceneData& data);
+        static Ref<RendererAllocation> GetSceneAllocation(uint64_t id, const Ref<Shader>& shader);
+
         static Ref<RendererAllocation> GetMaterialAllocation(const Ref<Material>& material,
                                                              const Ref<Shader>& shader);
 

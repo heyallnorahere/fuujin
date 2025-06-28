@@ -30,6 +30,7 @@ namespace fuujin {
     struct ShaderPushConstants {
         std::unordered_map<ShaderStage, spirv_cross::TypeID> Types;
         size_t TotalSize;
+        std::shared_ptr<GPUResource> Interface;
     };
 
     struct ShaderField {
@@ -67,6 +68,8 @@ namespace fuujin {
 
         virtual void GetStages(std::unordered_set<ShaderStage>& stages) const override;
 
+        virtual std::shared_ptr<GPUResource> GetPushConstants() const override;
+
         virtual std::shared_ptr<GPUResource> GetResourceByName(
             const std::string& name) const override;
         
@@ -89,7 +92,7 @@ namespace fuujin {
 
         const Resources& GetResources() const { return m_Resources; }
         const Types& GetTypes() const { return m_Types; }
-        const ShaderPushConstants& GetPushConstants() const { return m_PushConstants; }
+        const ShaderPushConstants& GetPushConstantData() const { return m_PushConstants; }
 
     private:
         void Reflect();

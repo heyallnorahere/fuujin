@@ -140,6 +140,13 @@ namespace fuujin {
     void Buffer::Allocate(size_t size) {
         ZoneScoped;
 
+        if (size == 0) {
+            m_Owned = false;
+            Release();
+
+            return;
+        }
+
         m_Buffer = allocate(size);
         m_Size = size;
         m_Owned = true;

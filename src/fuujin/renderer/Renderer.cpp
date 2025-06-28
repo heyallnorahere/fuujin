@@ -2,6 +2,7 @@
 #include "fuujin/renderer/Renderer.h"
 
 #include "fuujin/renderer/ShaderLibrary.h"
+#include "fuujin/renderer/ShaderBuffer.h"
 
 #include "fuujin/core/Events.h"
 
@@ -32,15 +33,20 @@ namespace fuujin {
         CommandList* CmdList;
     };
 
-    struct MaterialAllocation {
+    struct ObjectAllocation {
         Ref<RendererAllocation> Allocation;
         Ref<DeviceBuffer> Buffer;
         uint64_t State;
         bool IsNew;
     };
 
-    struct MaterialData {
-        std::unordered_map<uint64_t, MaterialAllocation> Allocations;
+    struct ShaderData {
+        std::unordered_map<uint64_t, ObjectAllocation> Materials, Scenes;
+    };
+
+    struct SceneState {
+        uint64_t State;
+        Renderer::SceneData Data;
     };
 
     struct RendererData {
@@ -51,6 +57,7 @@ namespace fuujin {
             std::queue<QueueCallback> Queue;
         } RenderThread;
 
+        GraphicsDevice::Properties DeviceProperties;
         Ref<GraphicsContext> Context;
         Ref<CommandQueue> GraphicsQueue;
         std::unique_ptr<ShaderLibrary> Library;
@@ -58,7 +65,9 @@ namespace fuujin {
 
         Ref<Sampler> DefaultSampler;
         Ref<Texture> WhiteTexture;
-        std::unordered_map<uint64_t, MaterialData> MaterialData;
+
+        std::unordered_map<uint64_t, SceneState> SceneState;
+        std::unordered_map<uint64_t, ShaderData> ShaderData;
 
         uint32_t FrameCount;
         std::optional<uint32_t> CurrentFrame;
@@ -110,15 +119,8 @@ namespace fuujin {
         ZoneScoped;
         auto device = s_Data->Context->GetDevice();
 
-        GraphicsDevice::Properties properties;
-        device->GetProperties(properties);
-
-        FUUJIN_DEBUG("Graphics device:");
-        FUUJIN_DEBUG("\tName: {}", properties.Name.c_str());
-        FUUJIN_DEBUG("\tVendor: {}", properties.Vendor.c_str());
-
-        FUUJIN_DEBUG("\tDriver version: {}.{}.{}", properties.DriverVersion.Major,
-                     properties.DriverVersion.Minor, properties.DriverVersion.Patch);
+        const auto& properties = s_Data->DeviceProperties;
+        const auto& api = properties.API;
 
         std::string type;
         switch (properties.Type) {
@@ -137,11 +139,18 @@ namespace fuujin {
             break;
         }
 
-        FUUJIN_DEBUG("\tType: {}", type.c_str());
-        FUUJIN_DEBUG("\tAPI: {}", properties.API.c_str());
+        FUUJIN_INFO("Graphics device:");
+        FUUJIN_INFO("\tName: {}", properties.Name.c_str());
+        FUUJIN_INFO("\tVendor: {}", properties.Vendor.c_str());
+        FUUJIN_INFO("\tType: {}", type.c_str());
 
-        FUUJIN_DEBUG("\tAPI version: {}.{}.{}", properties.APIVersion.Major,
-                     properties.APIVersion.Minor, properties.APIVersion.Patch);
+        FUUJIN_INFO("\tDriver version: {}.{}.{}", properties.DriverVersion.Major,
+                    properties.DriverVersion.Minor, properties.DriverVersion.Patch);
+
+        FUUJIN_INFO("API: {}", api.Name.c_str());
+        FUUJIN_INFO("\tVersion: {}.{}.{}", api.Version.Major, api.Version.Minor, api.Version.Patch);
+        FUUJIN_INFO("\tTranspose matrices? {}", api.TransposeMatrices ? "yes" : "no");
+        FUUJIN_INFO("\tLeft handed? {}", api.LeftHanded ? "yes" : "no");
     }
 
     void Renderer::CreateDefaultObjects() {
@@ -169,6 +178,8 @@ namespace fuujin {
 
         s_Data->Context = GraphicsContext::Get();
         s_Data->Library = std::make_unique<ShaderLibrary>(s_Data->Context);
+
+        s_Data->Context->GetDevice()->GetProperties(s_Data->DeviceProperties);
         Renderer::Submit([]() { LogGraphicsContext(); });
 
         uint32_t frameCount = 3;
@@ -198,7 +209,7 @@ namespace fuujin {
         Wait();
         delete s_Data->API;
 
-        s_Data->MaterialData.clear();
+        s_Data->ShaderData.clear();
         s_Data->WhiteTexture.Reset();
         s_Data->DefaultSampler.Reset();
 
@@ -237,6 +248,15 @@ namespace fuujin {
         return *s_Data->Library;
     }
 
+    const GraphicsDevice::API& Renderer::GetAPI() {
+        ZoneScoped;
+        if (!s_Data) {
+            throw std::runtime_error("Renderer has not been initialized!");
+        }
+
+        return s_Data->DeviceProperties.API;
+    }
+
     void Renderer::ProcessEvent(Event& event) {
         ZoneScoped;
 
@@ -256,27 +276,66 @@ namespace fuujin {
         return s_Data->API->CreateAllocation(shader);
     }
 
-    void Renderer::FreeMaterial(uint64_t id) {
-        ZoneScoped;
-        if (!s_Data) {
-            return;
-        }
-
-        s_Data->MaterialData.erase(id);
-    }
-
     void Renderer::FreeShader(uint64_t id) {
         ZoneScoped;
         if (!s_Data) {
             return;
         }
 
-        for (auto& [materialID, data] : s_Data->MaterialData) {
-            data.Allocations.erase(id);
+        s_Data->ShaderData.erase(id);
+    }
+
+    void Renderer::FreeMaterial(uint64_t id) {
+        ZoneScoped;
+        if (!s_Data) {
+            return;
+        }
+
+        for (auto& [shaderID, data] : s_Data->ShaderData) {
+            data.Materials.erase(id);
         }
     }
 
-    struct MaterialUniformSet {
+    void Renderer::FreeScene(uint64_t id) {
+        ZoneScoped;
+        if (!s_Data) {
+            return;
+        }
+
+        s_Data->SceneState.erase(id);
+        for (auto& [shaderID, data] : s_Data->ShaderData) {
+            data.Scenes.erase(id);
+        }
+    }
+
+    void Renderer::UpdateScene(uint64_t id, const SceneData& data) {
+        ZoneScoped;
+        if (!s_Data) {
+            return;
+        }
+    }
+
+    static void CreateObjectAllocation(const Ref<Shader>& shader, const std::string& bufferName,
+                                       ObjectAllocation& allocation) {
+        ZoneScoped;
+
+        allocation.Allocation = Renderer::CreateAllocation(shader);
+        allocation.State = 0;
+        allocation.IsNew = true;
+
+        auto resource = shader->GetResourceByName(bufferName);
+        if (resource) {
+            DeviceBuffer::Spec bufferSpec;
+            bufferSpec.QueueOwnership = { QueueType::Graphics };
+            bufferSpec.Size = resource->GetType()->GetSize();
+            bufferSpec.Usage = DeviceBuffer::Usage::Uniform;
+
+            allocation.Buffer = s_Data->Context->CreateBuffer(bufferSpec);
+            allocation.Allocation->Bind(bufferName, allocation.Buffer);
+        }
+    }
+
+    struct AllocationUniformSet {
         Buffer Data;
         Ref<DeviceBuffer> UniformBuffer;
     };
@@ -286,42 +345,27 @@ namespace fuujin {
         ZoneScoped;
 
         // see assets/shaders/include/Material.glsl
-        static const std::string materialBufferName = "MaterialBuffer";
-
-        auto bufferResource = shader->GetResourceByName(materialBufferName);
-
-        uint64_t materialID = material->GetID();
-        auto& materialData = s_Data->MaterialData[materialID];
+        static const std::string materialBufferName = "Material";
 
         uint64_t shaderID = shader->GetID();
-        if (!materialData.Allocations.contains(shaderID)) {
-            auto& newAllocation = materialData.Allocations[shaderID];
-            newAllocation.Allocation = CreateAllocation(shader);
-            newAllocation.State = 0;
-            newAllocation.IsNew = true;
+        auto& shaderData = s_Data->ShaderData[shaderID];
 
-            if (bufferResource) {
-                DeviceBuffer::Spec bufferSpec;
-                bufferSpec.QueueOwnership = { QueueType::Graphics };
-                bufferSpec.Size = bufferResource->GetType()->GetSize();
-                bufferSpec.Usage = DeviceBuffer::Usage::Uniform;
-
-                newAllocation.Buffer = s_Data->Context->CreateBuffer(bufferSpec);
-                newAllocation.Allocation->Bind(materialBufferName, newAllocation.Buffer);
-            }
-
-            // todo: bind renderer buffers (lighting, camera)
+        uint64_t materialID = material->GetID();
+        if (!shaderData.Materials.contains(materialID)) {
+            auto& newAllocation = shaderData.Materials[materialID];
+            CreateObjectAllocation(shader, materialBufferName, newAllocation);
         }
 
-        auto& allocation = materialData.Allocations[shaderID];
+        auto& allocation = shaderData.Materials[materialID];
         uint64_t currentState = material->GetState();
 
         if (currentState != allocation.State || allocation.IsNew) {
             allocation.State = currentState;
             allocation.IsNew = false;
 
+            auto bufferResource = shader->GetResourceByName(materialBufferName);
             if (bufferResource) {
-                auto uniformSet = new MaterialUniformSet;
+                auto uniformSet = new AllocationUniformSet;
                 uniformSet->UniformBuffer = allocation.Buffer;
 
                 uniformSet->Data = Buffer(allocation.Buffer->GetSpec().Size);
@@ -613,15 +657,34 @@ namespace fuujin {
     void Renderer::RenderWithMaterial(const MaterialRenderCall& data) {
         ZoneScoped;
 
+        glm::mat4 model = data.ModelMatrix;
+        if (s_Data->DeviceProperties.API.TransposeMatrices) {
+            model = glm::transpose(model);
+        }
+
         IndexedRenderCall innerCall;
         innerCall.VertexBuffer = data.VertexBuffer;
         innerCall.IndexBuffer = data.IndexBuffer;
         innerCall.Pipeline = data.Pipeline;
         innerCall.IndexCount = data.IndexCount;
 
-        // todo: cleaner solution
-        innerCall.PushConstants = Buffer::Wrapper(&data.ModelMatrix, sizeof(glm::mat4));
-        innerCall.Resources = GetMaterialAllocation(data.Material, data.Pipeline->GetSpec().Shader);
+        auto shader = data.Pipeline->GetSpec().Shader;
+        innerCall.Resources = GetMaterialAllocation(data.Material, shader);
+
+        ShaderBuffer buffer;
+        auto pushConstants = shader->GetPushConstants();
+        if (pushConstants) {
+            buffer = ShaderBuffer(pushConstants->GetType());
+
+            // see assets/shaders/include/Renderer.glsl
+            buffer.Set("Model", data.ModelMatrix);
+            buffer.Set("CameraIndex", (int32_t)data.CameraIndex);
+
+            // copy (dont have an easy way to create a wrapper reference)
+            innerCall.PushConstants = buffer.GetBuffer();
+        } else {
+            FUUJIN_WARN("No push constants on shader! Cannot pass model matrix or camera index!");
+        }
 
         RenderIndexed(innerCall);
     }
