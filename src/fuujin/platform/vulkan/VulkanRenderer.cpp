@@ -52,6 +52,7 @@ namespace fuujin {
         };
 
         SetDescriptor(descriptor.Set, descriptor.Binding, index, data, VulkanBindingType::Buffer);
+        return true;
     }
 
     bool VulkanRendererAllocation::Bind(const std::string& name, Ref<Texture> texture,
@@ -78,6 +79,7 @@ namespace fuujin {
         };
 
         SetDescriptor(descriptor.Set, descriptor.Binding, index, data, VulkanBindingType::Image);
+        return true;
     }
 
     struct SetAllocate {

@@ -105,6 +105,8 @@ namespace fuujin {
     };
 
     static const std::string s_PushConstantsName = "<push constants>";
+    static const std::vector<size_t> s_PushConstantsDimensions = {};
+
     class VulkanPushConstants : public GPUResource {
     public:
         VulkanPushConstants(const VulkanShader* shader) {
@@ -122,7 +124,10 @@ namespace fuujin {
 
         virtual const std::string& GetName() const override { return s_PushConstantsName; }
         virtual uint32_t GetResourceType() const override { return 0; }
-        virtual const std::vector<size_t>& GetDimensions() const override { return {}; }
+
+        virtual const std::vector<size_t>& GetDimensions() const override {
+            return s_PushConstantsDimensions;
+        }
 
         virtual void GetStages(std::unordered_set<ShaderStage>& stages) const override {
             ZoneScoped;
