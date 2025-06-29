@@ -1,0 +1,46 @@
+#pragma once
+#include "fuujin/asset/Asset.h"
+
+namespace fuujin {
+    class AssetManager {
+    public:
+        static constexpr char PreferredSeparator = '/';
+
+        AssetManager() = delete;
+
+        static void Clear();
+
+        static fs::path NormalizePath(const fs::path& path);
+        static bool LoadPath(const fs::path& path, const fs::path& key);
+        static void LoadDirectory(const fs::path& directory,
+                                  const std::optional<fs::path>& pathPrefix = {});
+
+        static void RegisterAssetType(AssetType type,
+                                      std::unique_ptr<AssetSerializer>&& serializer);
+
+        template <typename _Ty, typename... Args>
+        static void RegisterAssetType(AssetType type, Args&&... args) {
+            ZoneScoped;
+            static_assert(std::is_base_of_v<AssetSerializer, _Ty>,
+                          "Passed type does not extend AssetSerializer!");
+
+            auto instance = new _Ty(std::forward(args)...);
+            RegisterAssetType(type, std::unique_ptr<AssetSerializer>(instance));
+        }
+
+        static Ref<Asset> GetAsset(const fs::path& path);
+
+        template <typename _Ty>
+        static Ref<_Ty> GetAsset(const fs::path& path) {
+            ZoneScoped;
+            static_assert(std::is_base_of_v<Asset, _Ty>, "Passed type does not extend Asset!");
+
+            Ref<Asset> asset = GetAsset(path);
+            if (GetAssetType<_Ty>() != asset->GetAssetType()) {
+                throw std::runtime_error("Invalid asset cast!");
+            }
+
+            return asset.As<_Ty>();
+        }
+    };
+} // namespace fuujin

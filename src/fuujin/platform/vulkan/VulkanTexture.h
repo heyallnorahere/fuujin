@@ -39,6 +39,8 @@ namespace fuujin {
         virtual const Spec& GetSpec() const override { return m_Spec; }
         virtual Ref<DeviceImage> GetImage() const override { return m_Image; }
 
+        virtual const fs::path& GetPath() const override { return m_Spec.Path; }
+
         Ref<VulkanImage> GetVulkanImage() const { return m_Image; }
 
     private:
@@ -49,4 +51,9 @@ namespace fuujin {
 
         Ref<VulkanImage> m_Image;
     };
+
+    template <>
+    inline std::optional<AssetType> GetAssetType<VulkanTexture>() {
+        return GetAssetType<Texture>();
+    }
 } // namespace fuujin

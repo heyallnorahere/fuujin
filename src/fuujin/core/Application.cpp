@@ -7,6 +7,8 @@
 #include "fuujin/renderer/Renderer.h"
 #include "fuujin/renderer/GraphicsContext.h"
 
+#include "fuujin/asset/AssetManager.h"
+
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 
@@ -78,6 +80,7 @@ namespace fuujin {
         m_Data->AppView = View::Create("風神", { 1600, 900 });
 
         Renderer::Init();
+        AssetManager::LoadDirectory("assets", "fuujin");
     }
 
     Application::~Application() {

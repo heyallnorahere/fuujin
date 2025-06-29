@@ -94,7 +94,8 @@ namespace fuujin {
 
         static Ref<Texture> LoadTexture(const fs::path& path, const Ref<Sampler>& sampler = {});
         static Ref<Texture> CreateTexture(uint32_t width, uint32_t height, Texture::Format format,
-                                          const Buffer& data, const Ref<Sampler>& sampler = {});
+                                          const Buffer& data, const Ref<Sampler>& sampler = {},
+                                          const fs::path& path = fs::path());
 
         // submits a job to the render thread
         // all jobs will be executed in order submitted

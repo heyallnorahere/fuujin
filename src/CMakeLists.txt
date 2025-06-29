@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 list(APPEND FUUJIN_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR})
-list(APPEND FUUJIN_LIBRARIES TracyClient spdlog::spdlog glm::glm spirv-cross-core stb)
+list(APPEND FUUJIN_LIBRARIES TracyClient spdlog::spdlog glm::glm spirv-cross-core stb assimp::assimp yaml-cpp::yaml-cpp)
 
 set(ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
 set(SHADER_DIR "${ASSET_DIR}/shaders")

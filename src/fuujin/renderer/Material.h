@@ -1,5 +1,5 @@
 #pragma once
-#include "fuujin/core/Ref.h"
+#include "fuujin/asset/Asset.h"
 
 #include "fuujin/core/Buffer.h"
 
@@ -9,7 +9,7 @@
 
 namespace fuujin {
     class ShaderBuffer;
-    class Material : public RefCounted {
+    class Material : public Asset {
     public:
         enum class TextureSlot : uint32_t { Albedo = 0, Specular, Ambient, Normal, MAX };
 
@@ -31,11 +31,14 @@ namespace fuujin {
         static std::string GetPropertyFieldName(Property id);
         static std::string GetTextureName(TextureSlot slot);
 
-        Material();
+        Material(const fs::path& path = fs::path());
         virtual ~Material() override;
 
         Material(const Material&) = delete;
         Material& operator=(const Material&) = delete;
+
+        virtual const fs::path& GetPath() const override { return m_Path; }
+        virtual AssetType GetAssetType() const override { return AssetType::Material; }
 
         uint64_t GetID() const { return m_ID; }
         uint64_t GetState() const { return m_State; }
@@ -63,6 +66,7 @@ namespace fuujin {
         void SetPipelineSpec(Pipeline::Spec& spec) const;
 
     private:
+        fs::path m_Path;
         uint64_t m_ID, m_State;
 
         std::map<TextureSlot, Ref<Texture>> m_Textures;

@@ -36,6 +36,21 @@
 #define SPDLOG_ACTIVE_LEVEL 0
 #include <spdlog/spdlog.h>
 
+#include <yaml-cpp/yaml.h>
+
+template <glm::length_t L, typename _Ty, glm::qualifier Q>
+YAML::Emitter& operator<<(YAML::Emitter& yaml, const glm::vec<L, _Ty, Q>& value) {
+    yaml << YAML::Flow;
+    yaml << YAML::BeginSeq;
+    
+    for (glm::length_t i = 0; i < L; i++) {
+        yaml << value[i];
+    }
+
+    yaml << YAML::EndSeq;
+    return yaml;
+}
+
 namespace fuujin {
     using Duration = std::chrono::duration<double>;
 

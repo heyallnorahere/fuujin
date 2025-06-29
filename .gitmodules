@@ -31,3 +31,9 @@
 [submodule "vendor/stb"]
 	path = vendor/stb
 	url = https://github.com/heyallnorahere/stb.git
+[submodule "vendor/assimp"]
+	path = vendor/assimp
+	url = https://github.com/assimp/assimp.git
+[submodule "vendor/yaml-cpp"]
+	path = vendor/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp.git

@@ -46,11 +46,12 @@ namespace fuujin {
     }
 
 
-    Material::Material() {
+    Material::Material(const fs::path& path) {
         ZoneScoped;
 
         m_ID = s_MaterialID++;
         m_State = 0;
+        m_Path = path;
 
         static const glm::vec4 white = glm::vec4(1.f);
         SetProperty(Property::AlbedoColor, white);

@@ -472,7 +472,7 @@ namespace fuujin {
 
         size_t dataSize = (size_t)width * height * channels;
         auto texture = CreateTexture((uint32_t)width, (uint32_t)height, Texture::Format::RGBA8,
-                                     Buffer::Wrapper(dataRaw, dataSize), sampler);
+                                     Buffer::Wrapper(dataRaw, dataSize), sampler, path);
 
         stbi_image_free(dataRaw);
         return texture;
@@ -510,7 +510,8 @@ namespace fuujin {
     }
 
     Ref<Texture> Renderer::CreateTexture(uint32_t width, uint32_t height, Texture::Format format,
-                                         const Buffer& data, const Ref<Sampler>& sampler) {
+                                         const Buffer& data, const Ref<Sampler>& sampler,
+                                         const fs::path& path) {
         ZoneScoped;
         if (data.IsEmpty()) {
             FUUJIN_WARN("Attempted to create texture with an empty buffer! Returning null");
@@ -524,6 +525,7 @@ namespace fuujin {
 
         Texture::Spec textureSpec;
         textureSpec.Sampler = sampler.IsPresent() ? sampler : s_Data->DefaultSampler;
+        textureSpec.Path = path;
 
         textureSpec.Width = width;
         textureSpec.Height = height;

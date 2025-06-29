@@ -11,7 +11,12 @@
             "binaryDir": "build",
             "cacheVariables": {
                 "TRACY_ENABLE": "OFF",
-                "SHADERC_ENABLE_SHARED_CRT": "ON"
+
+                "SHADERC_ENABLE_SHARED_CRT": "ON",
+
+                "ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT": "OFF",
+                "ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT": "OFF",
+                "ASSIMP_BUILD_GLTF_IMPORTER": "ON"
             }
         },
         {
@@ -19,6 +24,7 @@
             "inherits": "default",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
+
                 "TRACY_ENABLE": "ON",
                 "TRACY_CALLSTACK": "ON",
                 "TRACY_FIBERS": "ON",
