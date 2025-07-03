@@ -11,9 +11,13 @@ namespace fuujin {
         static void Clear();
 
         static fs::path NormalizePath(const fs::path& path);
-        static bool LoadPath(const fs::path& path, const fs::path& key);
+        static std::optional<AssetType> DetermineAssetType(const fs::path& path);
+
+        static bool LoadPath(const fs::path& realPath, const fs::path& virtualPath);
         static void LoadDirectory(const fs::path& directory,
                                   const std::optional<fs::path>& pathPrefix = {});
+        
+        static std::optional<fs::path> GetVirtualPath(const fs::path& real);
 
         static void RegisterAssetType(AssetType type,
                                       std::unique_ptr<AssetSerializer>&& serializer);

@@ -73,4 +73,12 @@ namespace fuujin {
         std::unordered_map<Property, Buffer> m_PropertyData;
         PipelineProperties m_Pipeline;
     };
+
+    class MaterialSerializer : public AssetSerializer {
+    public:
+        virtual Ref<Asset> Deserialize(const fs::path& path) const override;
+        virtual bool Serialize(const Ref<Asset>& asset) const override;
+
+        virtual const std::vector<std::string>& GetExtensions() const override;
+    };
 } // namespace fuujin

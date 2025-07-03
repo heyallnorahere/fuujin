@@ -38,18 +38,33 @@
 
 #include <yaml-cpp/yaml.h>
 
-template <glm::length_t L, typename _Ty, glm::qualifier Q>
-YAML::Emitter& operator<<(YAML::Emitter& yaml, const glm::vec<L, _Ty, Q>& value) {
-    yaml << YAML::Flow;
-    yaml << YAML::BeginSeq;
-    
-    for (glm::length_t i = 0; i < L; i++) {
-        yaml << value[i];
-    }
+namespace YAML {
+    template <glm::length_t L, typename _Ty, glm::qualifier Q>
+    struct convert<glm::vec<L, _Ty, Q>> {
+        using vector = glm::vec<L, _Ty, Q>;
 
-    yaml << YAML::EndSeq;
-    return yaml;
-}
+        static Node encode(const vector& value) {
+            Node node;
+            for (glm::length_t i = 0; i < L; i++) {
+                node.push_back(value[i]);
+            }
+
+            return node;
+        }
+
+        static bool decode(const Node& node, vector& value) {
+            if (!node.IsSequence()) {
+                return false;
+            }
+
+            for (glm::length_t i = 0; i < L; i++) {
+                value[i] = node[i].as<_Ty>();
+            }
+
+            return true;
+        }
+    };
+} // namespace YAML
 
 namespace fuujin {
     using Duration = std::chrono::duration<double>;
