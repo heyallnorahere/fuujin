@@ -12,6 +12,7 @@ namespace fuujin {
         std::unordered_map<fs::path, AssetType> PathTypeMap;
         std::unordered_map<std::string, AssetType> ExtensionMap;
         std::unordered_map<fs::path, fs::path> RealToVirtual;
+        std::vector<AssetType> LoadOrder;
     };
 
     static std::unique_ptr<AssetManagerData> s_Data;
@@ -105,8 +106,6 @@ namespace fuujin {
             return;
         }
 
-        static const std::vector<AssetType> loadOrder = { AssetType::Texture, AssetType::Material };
-
         auto directoryPath = fs::absolute(directory);
         auto directoryText = directoryPath.lexically_normal().string();
         FUUJIN_INFO("Scanning asset directory: {}", directoryText.c_str());
@@ -148,7 +147,7 @@ namespace fuujin {
                     directoryText.c_str());
 
         size_t assetsLoaded = 0;
-        for (auto type : loadOrder) {
+        for (auto type : s_Data->LoadOrder) {
             if (!loadList.contains(type)) {
                 continue;
             }
@@ -190,6 +189,7 @@ namespace fuujin {
         }
 
         s_Data->AssetTypes[type].Serializer = std::move(serializer);
+        s_Data->LoadOrder.push_back(type);
     }
 
     Ref<Asset> AssetManager::GetAsset(const fs::path& path) {

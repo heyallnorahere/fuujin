@@ -55,6 +55,7 @@ namespace fuujin {
         const PipelineProperties& GetPipeline() const { return m_Pipeline; }
 
         void SetPropertyData(Property name, const Buffer& data);
+        const std::map<Property, Buffer>& GetPropertyData() const { return m_PropertyData; }
 
         template <typename _Ty>
         void SetProperty(Property name, const _Ty& data) {
@@ -70,7 +71,7 @@ namespace fuujin {
         uint64_t m_ID, m_State;
 
         std::map<TextureSlot, Ref<Texture>> m_Textures;
-        std::unordered_map<Property, Buffer> m_PropertyData;
+        std::map<Property, Buffer> m_PropertyData;
         PipelineProperties m_Pipeline;
     };
 

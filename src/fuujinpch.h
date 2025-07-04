@@ -45,6 +45,8 @@ namespace YAML {
 
         static Node encode(const vector& value) {
             Node node;
+            node.SetStyle(EmitterStyle::Flow);
+
             for (glm::length_t i = 0; i < L; i++) {
                 node.push_back(value[i]);
             }
