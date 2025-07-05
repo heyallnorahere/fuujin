@@ -7,6 +7,7 @@
 #include "fuujin/core/Events.h"
 
 #include "fuujin/asset/AssetManager.h"
+#include "fuujin/asset/ModelSource.h"
 
 #include <thread>
 #include <queue>
@@ -198,6 +199,7 @@ namespace fuujin {
 
         AssetManager::RegisterAssetType<TextureSerializer>();
         AssetManager::RegisterAssetType<MaterialSerializer>();
+        AssetManager::RegisterAssetType<ModelSourceSerializer>();
     }
 
     void Renderer::Shutdown() {
