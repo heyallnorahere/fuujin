@@ -17,7 +17,7 @@ namespace fuujin {
         m_Device = device;
         m_Fence = VK_NULL_HANDLE;
 
-        Renderer::Submit([=]() { RT_Create(signaled); }, "Create fence");
+        Renderer::Submit([this, signaled]() { RT_Create(signaled); }, "Create fence");
     }
 
     VulkanFence::~VulkanFence() {
@@ -79,7 +79,7 @@ namespace fuujin {
         m_Device = device;
         m_Semaphore = VK_NULL_HANDLE;
 
-        Renderer::Submit([=]() { RT_Create(); }, "Create semaphore");
+        Renderer::Submit([this]() { RT_Create(); }, "Create semaphore");
     }
 
     VulkanSemaphore::~VulkanSemaphore() {
@@ -114,7 +114,7 @@ namespace fuujin {
         m_Pool = pool;
         m_Buffer = VK_NULL_HANDLE;
 
-        Renderer::Submit([=]() { RT_Alloc(); }, "Allocate command buffer");
+        Renderer::Submit([this]() { RT_Alloc(); }, "Allocate command buffer");
     }
 
     VulkanCommandBuffer::~VulkanCommandBuffer() {
@@ -217,7 +217,7 @@ namespace fuujin {
         m_Device = device;
         m_Type = type;
 
-        Renderer::Submit([=]() { RT_Create(); }, "Set up command queue");
+        Renderer::Submit([this]() { RT_Create(); }, "Set up command queue");
     }
 
     VulkanCommandQueue::~VulkanCommandQueue() {

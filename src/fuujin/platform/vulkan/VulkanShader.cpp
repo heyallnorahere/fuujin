@@ -207,7 +207,7 @@ namespace fuujin {
         m_Code = code; // we need a copy
         m_ID = s_ShaderID++;
 
-        Renderer::Submit([=]() { RT_Load(); }, "Load shader modules");
+        Renderer::Submit([this]() { RT_Load(); }, "Load shader modules");
 
         Reflect();
     }
