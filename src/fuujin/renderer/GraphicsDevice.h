@@ -7,9 +7,9 @@ namespace fuujin {
 
     class GraphicsDevice : public RefCounted {
     public:
-        struct API {
+        struct APISpec {
             std::string Name;
-            Version Version;
+            Version APIVersion;
 
             bool TransposeMatrices;
             bool LeftHanded;
@@ -20,7 +20,7 @@ namespace fuujin {
             Version DriverVersion;
             GraphicsDeviceType Type;
 
-            API API;
+            APISpec API;
         };
 
         virtual ~GraphicsDevice() = default;

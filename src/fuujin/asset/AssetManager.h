@@ -16,20 +16,19 @@ namespace fuujin {
         static bool LoadPath(const fs::path& realPath, const fs::path& virtualPath);
         static void LoadDirectory(const fs::path& directory,
                                   const std::optional<fs::path>& pathPrefix = {});
-        
+
         static std::optional<fs::path> GetVirtualPath(const fs::path& real);
 
-        static void RegisterAssetType(AssetType type,
-                                      std::unique_ptr<AssetSerializer>&& serializer);
+        static void RegisterAssetType(std::unique_ptr<AssetSerializer>&& serializer);
 
         template <typename _Ty, typename... Args>
-        static void RegisterAssetType(AssetType type, Args&&... args) {
+        static void RegisterAssetType(Args&&... args) {
             ZoneScoped;
             static_assert(std::is_base_of_v<AssetSerializer, _Ty>,
                           "Passed type does not extend AssetSerializer!");
 
             auto instance = new _Ty(std::forward(args)...);
-            RegisterAssetType(type, std::unique_ptr<AssetSerializer>(instance));
+            RegisterAssetType(std::unique_ptr<AssetSerializer>(instance));
         }
 
         static Ref<Asset> GetAsset(const fs::path& path);
@@ -40,6 +39,10 @@ namespace fuujin {
             static_assert(std::is_base_of_v<Asset, _Ty>, "Passed type does not extend Asset!");
 
             Ref<Asset> asset = GetAsset(path);
+            if (!asset) {
+                return nullptr;
+            }
+
             if (GetAssetType<_Ty>() != asset->GetAssetType()) {
                 throw std::runtime_error("Invalid asset cast!");
             }

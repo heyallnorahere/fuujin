@@ -46,19 +46,19 @@ namespace fuujin {
         }
 
         auto& data = m_Shaders[identifier];
-        if (data.Shader) {
-            Renderer::FreeShader(data.Shader->GetID());
+        if (data.LoadedShader) {
+            Renderer::FreeShader(data.LoadedShader->GetID());
         }
 
         if (data.Spec.Load.has_value()) {
             Shader::Code code;
             data.Spec.Load.value()(code);
-            data.Shader = m_Context->LoadShader(code);
+            data.LoadedShader = m_Context->LoadShader(code);
         } else {
-            data.Shader = m_Context->LoadShader(data.Spec.StaticCode);
+            data.LoadedShader = m_Context->LoadShader(data.Spec.StaticCode);
         }
 
-        if (data.Shader.IsEmpty()) {
+        if (data.LoadedShader.IsEmpty()) {
             throw std::runtime_error("Failed to load shader!");
         }
     }
@@ -76,7 +76,7 @@ namespace fuujin {
 
         Ref<Shader> shader;
         if (m_Shaders.contains(identifier)) {
-            shader = m_Shaders.at(identifier).Shader;
+            shader = m_Shaders.at(identifier).LoadedShader;
         }
 
         return shader;
@@ -121,7 +121,7 @@ namespace fuujin {
             ShaderSpec spec;
             spec.StaticCode = shaderCode;
 
-            Load("assets/shaders" + id, spec);
+            Load("fuujin/shaders" + id, spec);
         }
     }
 }

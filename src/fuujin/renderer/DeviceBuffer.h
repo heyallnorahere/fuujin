@@ -20,7 +20,7 @@ namespace fuujin {
 
         struct Spec {
             size_t Size;
-            Usage Usage;
+            Usage BufferUsage;
             std::unordered_set<QueueType> QueueOwnership;
         };
 

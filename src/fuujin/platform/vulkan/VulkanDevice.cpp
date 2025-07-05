@@ -378,7 +378,7 @@ namespace fuujin {
 
         auto& api = m_Properties.API;
         api.Name = "Vulkan";
-        api.Version = FromVulkanVersion(properties.properties.apiVersion);
+        api.APIVersion = FromVulkanVersion(properties.properties.apiVersion);
         api.TransposeMatrices = false;
         api.LeftHanded = false;
 

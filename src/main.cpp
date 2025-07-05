@@ -1,5 +1,6 @@
 #include "fuujin.h"
 
+#include "fuujin/asset/AssetManager.h"
 #include "fuujin/renderer/Renderer.h"
 #include "fuujin/renderer/ShaderLibrary.h"
 
@@ -105,14 +106,19 @@ class TestLayer : public Layer {
 public:
     TestLayer() {
         ZoneScoped;
-        LoadResources();
 
-        Time = 0.f;
+        m_Time = 0.f;
+        m_ResourcesLoaded = false;
     }
 
     virtual void Update(Duration delta) override {
         ZoneScoped;
-        Time += delta.count();
+        m_Time += delta.count();
+
+        if (!m_ResourcesLoaded) {
+            LoadResources();
+            m_ResourcesLoaded = true;
+        }
 
         auto context = Renderer::GetContext();
         auto swapchain = context->GetSwapchain();
@@ -124,7 +130,7 @@ public:
             aspect = 1.f;
         }
 
-        float theta = Time * s_PI;
+        float theta = m_Time * s_PI;
         glm::vec3 radial = glm::vec3(glm::sin(theta), 0.f, glm::cos(theta));
 
         glm::vec3 position = radial * 5.f;
@@ -141,13 +147,13 @@ public:
         m_Call.ModelMatrix = glm::mat4(1.f);
 
         static constexpr float hueMax = 360.f;
-        float hue = Time * hueMax * 0.75f;
+        float hue = m_Time * hueMax * 0.75f;
         while (hue > hueMax) {
             hue -= hueMax;
         }
 
         glm::vec4 color = glm::vec4(hsv2rgb(glm::vec3(hue, 1.f, 1.f)), 1.f);
-        m_Call.Material->SetProperty(Material::Property::AlbedoColor, color);
+        m_Call.RenderMaterial->SetProperty(Material::Property::AlbedoColor, color);
 
         Renderer::RenderWithMaterial(m_Call);
     }
@@ -163,16 +169,16 @@ private:
         staging.Size = actual.Size = s_Vertices.size() * sizeof(Vertex);
 
         staging.QueueOwnership = { QueueType::Transfer };
-        staging.Usage = DeviceBuffer::Usage::Staging;
+        staging.BufferUsage = DeviceBuffer::Usage::Staging;
 
         actual.QueueOwnership = { QueueType::Graphics, QueueType::Transfer };
-        actual.Usage = DeviceBuffer::Usage::Vertex;
+        actual.BufferUsage = DeviceBuffer::Usage::Vertex;
 
         m_VertexStaging = context->CreateBuffer(staging);
         m_Call.VertexBuffer = context->CreateBuffer(actual);
 
         staging.Size = actual.Size = s_Indices.size() * sizeof(uint32_t);
-        actual.Usage = DeviceBuffer::Usage::Index;
+        actual.BufferUsage = DeviceBuffer::Usage::Index;
 
         m_IndexStaging = context->CreateBuffer(staging);
         m_Call.IndexBuffer = context->CreateBuffer(actual);
@@ -180,26 +186,22 @@ private:
         m_Call.SceneID = 0;
         m_Call.CameraIndex = 0;
 
-        m_Call.Material = Ref<Material>::Create();
-        m_Call.Material->GetPipeline().Wireframe = false;
+        m_Call.RenderMaterial = AssetManager::GetAsset<Material>("fuujin/materials/Chiito.mat");
 
         Pipeline::Spec pipelineSpec;
         pipelineSpec.Target = context->GetSwapchain();
-        pipelineSpec.Shader = library.Get("assets/shaders/MaterialStatic.glsl");
-        pipelineSpec.Type = Pipeline::Type::Graphics;
-        pipelineSpec.FrontFace = FrontFace::CCW;
+        pipelineSpec.PipelineShader = library.Get("fuujin/shaders/MaterialStatic.glsl");
+        pipelineSpec.PipelineType = Pipeline::Type::Graphics;
+        pipelineSpec.PolygonFrontFace = FrontFace::CCW;
         pipelineSpec.DisableCulling = true;
 
-        m_Call.Material->SetPipelineSpec(pipelineSpec);
-        m_Call.Pipeline = context->CreatePipeline(pipelineSpec);
+        m_Call.RenderMaterial->SetPipelineSpec(pipelineSpec);
+        m_Call.RenderPipeline = context->CreatePipeline(pipelineSpec);
 
         DeviceBuffer::Spec uboSpec;
         uboSpec.QueueOwnership = { QueueType::Graphics };
         uboSpec.Size = sizeof(glm::vec3);
-        uboSpec.Usage = DeviceBuffer::Usage::Uniform;
-
-        auto texture = Renderer::LoadTexture("assets/textures/texture.png");
-        m_Call.Material->SetTexture(Material::TextureSlot::Albedo, texture);
+        uboSpec.BufferUsage = DeviceBuffer::Usage::Uniform;
 
         fuujin::Renderer::Submit([this]() { RT_CopyBuffers(); });
     }
@@ -236,8 +238,9 @@ private:
         fence->Wait();
     }
 
-    float Time;
+    float m_Time;
 
+    bool m_ResourcesLoaded;
     MaterialRenderCall m_Call;
     Ref<DeviceBuffer> m_VertexStaging, m_IndexStaging;
 };

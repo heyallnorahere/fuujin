@@ -74,7 +74,7 @@ namespace fuujin {
             imageInfo->imageView = raw->GetVulkanImage()->GetView();
             imageInfo->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-            auto sampler = raw->GetSpec().Sampler.As<VulkanSampler>();
+            auto sampler = raw->GetSpec().TextureSampler.As<VulkanSampler>();
             imageInfo->sampler = sampler->GetSampler();
         };
 
@@ -426,12 +426,12 @@ namespace fuujin {
 
         cmdlist.AddDependency(data.VertexBuffer);
         cmdlist.AddDependency(data.IndexBuffer);
-        cmdlist.AddDependency(data.Pipeline);
+        cmdlist.AddDependency(data.RenderPipeline);
 
         auto vertexBuffer = data.VertexBuffer.As<VulkanBuffer>()->Get();
         auto indexBuffer = data.IndexBuffer.As<VulkanBuffer>()->Get();
-        auto vkPipeline = data.Pipeline.As<VulkanPipeline>();
-        auto shader = vkPipeline->GetSpec().Shader.As<VulkanShader>();
+        auto vkPipeline = data.RenderPipeline.As<VulkanPipeline>();
+        auto shader = vkPipeline->GetSpec().PipelineShader.As<VulkanShader>();
         auto cmdBuffer = ((VulkanCommandBuffer&)cmdlist).Get();
 
         TracyVkZone(m_TracyContext, cmdBuffer, "RT_RenderIndexed");

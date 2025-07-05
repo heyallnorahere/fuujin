@@ -24,7 +24,7 @@ namespace fuujin {
 
     struct IndexedRenderCall {
         Ref<DeviceBuffer> VertexBuffer, IndexBuffer;
-        Ref<Pipeline> Pipeline;
+        Ref<Pipeline> RenderPipeline;
         uint32_t IndexCount;
 
         Buffer PushConstants;
@@ -33,14 +33,14 @@ namespace fuujin {
 
     struct MaterialRenderCall {
         Ref<DeviceBuffer> VertexBuffer, IndexBuffer;
-        Ref<Pipeline> Pipeline;
+        Ref<Pipeline> RenderPipeline;
         uint32_t IndexCount;
         uint64_t SceneID;
 
         glm::mat4 ModelMatrix;
         size_t CameraIndex;
 
-        Ref<Material> Material;
+        Ref<Material> RenderMaterial;
     };
 
     class RendererAPI {
@@ -76,7 +76,7 @@ namespace fuujin {
         static Ref<GraphicsContext> GetContext();
         static Ref<CommandQueue> GetGraphicsQueue();
         static ShaderLibrary& GetShaderLibrary();
-        static const GraphicsDevice::API& GetAPI();
+        static const GraphicsDevice::APISpec& GetAPI();
 
         static void ProcessEvent(Event& event);
 
@@ -92,7 +92,6 @@ namespace fuujin {
         static Ref<RendererAllocation> GetMaterialAllocation(const Ref<Material>& material,
                                                              const Ref<Shader>& shader);
 
-        static Ref<Texture> LoadTexture(const fs::path& path, const Ref<Sampler>& sampler = {});
         static Ref<Texture> CreateTexture(uint32_t width, uint32_t height, Texture::Format format,
                                           const Buffer& data, const Ref<Sampler>& sampler = {},
                                           const fs::path& path = fs::path());

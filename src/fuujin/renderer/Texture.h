@@ -24,13 +24,13 @@ namespace fuujin {
         enum class Feature { ShaderStorage, ColorAttachment, DepthAttachment, Transfer };
 
         struct Spec {
-            Ref<Sampler> Sampler;
+            Ref<Sampler> TextureSampler;
             fs::path Path;
 
             uint32_t Width, Height, Depth;
             uint32_t MipLevels;
-            Format Format;
-            Type Type;
+            Format ImageFormat;
+            Type TextureType;
             std::set<Feature> AdditionalFeatures;
         };
 
@@ -44,4 +44,13 @@ namespace fuujin {
     inline std::optional<AssetType> GetAssetType<Texture>() {
         return AssetType::Texture;
     }
+
+    class TextureSerializer : public AssetSerializer {
+    public:
+        virtual Ref<Asset> Deserialize(const fs::path& path) const override;
+        virtual bool Serialize(const Ref<Asset>& asset) const override;
+
+        virtual const std::vector<std::string>& GetExtensions() const override;
+        virtual AssetType GetType() const override;
+    };
 } // namespace fuujin

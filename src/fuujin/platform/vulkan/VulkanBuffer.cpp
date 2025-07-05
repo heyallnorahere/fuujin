@@ -36,7 +36,7 @@ namespace fuujin {
     VkDescriptorType VulkanBuffer::GetDescriptorType() const {
         ZoneScoped;
 
-        switch (m_Spec.Usage) {
+        switch (m_Spec.BufferUsage) {
         case Usage::Uniform:
             return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         case Usage::Storage:
@@ -127,7 +127,7 @@ namespace fuujin {
         }
 
         bool deviceOnly = false;
-        switch (m_Spec.Usage) {
+        switch (m_Spec.BufferUsage) {
         case Usage::Vertex:
             createInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
             deviceOnly = true;

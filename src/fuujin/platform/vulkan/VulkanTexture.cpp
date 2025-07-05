@@ -115,7 +115,7 @@ namespace fuujin {
         spec.Extent.width = m_Spec.Width;
         spec.Extent.height = m_Spec.Height;
         spec.Extent.depth = m_Spec.Depth;
-        spec.Format = ConvertFormat(m_Spec.Format);
+        spec.Format = ConvertFormat(m_Spec.ImageFormat);
         spec.Usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         spec.MipLevels = m_Spec.MipLevels;
         spec.ArrayLayers = 1;
@@ -123,7 +123,7 @@ namespace fuujin {
         spec.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT; // todo: depth?
         spec.Samples = VK_SAMPLE_COUNT_1_BIT;         // todo: multisampling attachments?
 
-        switch (m_Spec.Type) {
+        switch (m_Spec.TextureType) {
         case Type::_2D:
             spec.Type = VK_IMAGE_TYPE_2D;
             spec.ViewType = VK_IMAGE_VIEW_TYPE_2D;

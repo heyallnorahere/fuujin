@@ -11,7 +11,7 @@ namespace fuujin {
 
     struct ShaderData {
         ShaderSpec Spec;
-        Ref<Shader> Shader;
+        Ref<Shader> LoadedShader;
     };
 
     class ShaderLibrary {

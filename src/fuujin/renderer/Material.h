@@ -75,11 +75,17 @@ namespace fuujin {
         PipelineProperties m_Pipeline;
     };
 
+    template <>
+    inline std::optional<AssetType> GetAssetType<Material>() {
+        return AssetType::Material;
+    }
+
     class MaterialSerializer : public AssetSerializer {
     public:
         virtual Ref<Asset> Deserialize(const fs::path& path) const override;
         virtual bool Serialize(const Ref<Asset>& asset) const override;
 
         virtual const std::vector<std::string>& GetExtensions() const override;
+        virtual AssetType GetType() const override;
     };
 } // namespace fuujin

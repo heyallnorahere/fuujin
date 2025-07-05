@@ -25,7 +25,7 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
 
-                "TRACY_ENABLE": "ON",
+                "TRACY_ENABLE": "OFF",
                 "TRACY_CALLSTACK": "ON",
                 "TRACY_FIBERS": "ON",
                 "TRACY_SYMBOL_OFFLINE_RESOLVE": "ON",

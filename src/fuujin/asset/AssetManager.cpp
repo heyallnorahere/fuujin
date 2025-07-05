@@ -113,14 +113,14 @@ namespace fuujin {
         size_t assetCount = 0;
         std::map<AssetType, std::vector<LoadData>> loadList;
         for (const auto& entry : fs::recursive_directory_iterator(directoryPath)) {
-            if (!entry.is_directory()) {
+            if (entry.is_directory()) {
                 continue;
             }
 
             fs::path fullPath = entry.path();
             fs::path assetPath;
             if (pathPrefix.has_value()) {
-                assetPath = pathPrefix.value() / fullPath.lexically_relative(directory);
+                assetPath = pathPrefix.value() / fs::relative(fullPath, directory);
             } else {
                 assetPath = fs::relative(fullPath);
             }
@@ -177,15 +177,24 @@ namespace fuujin {
         return s_Data->RealToVirtual.at(real);
     }
 
-    void AssetManager::RegisterAssetType(AssetType type,
-                                         std::unique_ptr<AssetSerializer>&& serializer) {
+    void AssetManager::RegisterAssetType(std::unique_ptr<AssetSerializer>&& serializer) {
         ZoneScoped;
         if (!s_Data) {
             s_Data = std::make_unique<AssetManagerData>();
         }
 
+        auto type = serializer->GetType();
         if (s_Data->AssetTypes.contains(type)) {
             throw std::runtime_error("Asset type already registered!");
+        }
+
+        const auto& extensions = serializer->GetExtensions();
+        for (const auto& extension : extensions) {
+            if (s_Data->ExtensionMap.contains(extension)) {
+                throw std::runtime_error("Extension " + extension + " already registered!");
+            }
+
+            s_Data->ExtensionMap[extension] = type;
         }
 
         s_Data->AssetTypes[type].Serializer = std::move(serializer);

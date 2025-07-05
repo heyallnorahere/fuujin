@@ -31,14 +31,14 @@ namespace fuujin {
         };
 
         struct Spec {
-            Type Type;
+            Type PipelineType;
             DepthSpec Depth;
-            FrontFace FrontFace = FrontFace::CCW;
+            FrontFace PolygonFrontFace = FrontFace::CCW;
             bool DisableCulling = false;
             bool Wireframe = false;
-            ColorBlending ColorBlending = ColorBlending::Default;
+            ColorBlending Blending = ColorBlending::Default;
 
-            Ref<Shader> Shader;
+            Ref<Shader> PipelineShader;
             Ref<RenderTarget> Target;
         };
 

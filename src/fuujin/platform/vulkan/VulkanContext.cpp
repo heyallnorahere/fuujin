@@ -421,9 +421,13 @@ namespace fuujin {
             throw std::runtime_error("Failed to allocate command buffer for Tracy initialization!");
         }
 
+#ifdef TRACY_ENABLE
         m_Data->TracyContext = TracyVkContext(instance->GetInstance(), device->GetPhysicalDevice(),
                                               device->GetDevice(), queue->GetQueue(), cmdBuffer,
                                               vkGetInstanceProcAddr, vkGetDeviceProcAddr);
+#else
+        m_Data->TracyContext = nullptr;
+#endif
 
         vkFreeCommandBuffers(device->GetDevice(), allocInfo.commandPool, 1, &cmdBuffer);
     }

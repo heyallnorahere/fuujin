@@ -23,5 +23,6 @@ namespace fuujin {
         virtual bool Serialize(const Ref<Asset>& asset) const = 0;
 
         virtual const std::vector<std::string>& GetExtensions() const = 0;
+        virtual AssetType GetType() const = 0;
     };
 } // namespace fuujin

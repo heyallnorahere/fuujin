@@ -6,6 +6,8 @@
 
 #include "fuujin/core/Events.h"
 
+#include "fuujin/asset/AssetManager.h"
+
 #include <thread>
 #include <queue>
 #include <mutex>
@@ -13,12 +15,6 @@
 
 #include <spdlog/stopwatch.h>
 #include <spdlog/fmt/chrono.h>
-
-#define STB_IMAGE_IMPLEMENTATION
-#define STBI_MALLOC(size) ::fuujin::allocate(size)
-#define STBI_REALLOC(block, size) ::fuujin::reallocate(block, size)
-#define STBI_FREE(block) ::fuujin::freemem(block)
-#include <stb_image.h>
 
 using namespace std::chrono_literals;
 
@@ -44,7 +40,7 @@ namespace fuujin {
         std::unordered_map<uint64_t, ObjectAllocation> Materials, Scenes;
     };
 
-    struct SceneState {
+    struct RendererSceneState {
         uint64_t State;
         Renderer::SceneData Data;
     };
@@ -66,7 +62,7 @@ namespace fuujin {
         Ref<Sampler> DefaultSampler;
         Ref<Texture> WhiteTexture;
 
-        std::unordered_map<uint64_t, SceneState> SceneState;
+        std::unordered_map<uint64_t, RendererSceneState> SceneState;
         std::unordered_map<uint64_t, RendererShaderData> ShaderData;
 
         uint32_t FrameCount;
@@ -148,7 +144,9 @@ namespace fuujin {
                     properties.DriverVersion.Minor, properties.DriverVersion.Patch);
 
         FUUJIN_INFO("API: {}", api.Name.c_str());
-        FUUJIN_INFO("\tVersion: {}.{}.{}", api.Version.Major, api.Version.Minor, api.Version.Patch);
+        FUUJIN_INFO("\tVersion: {}.{}.{}", api.APIVersion.Major, api.APIVersion.Minor,
+                    api.APIVersion.Patch);
+
         FUUJIN_INFO("\tTranspose matrices? {}", api.TransposeMatrices ? "yes" : "no");
         FUUJIN_INFO("\tLeft handed? {}", api.LeftHanded ? "yes" : "no");
     }
@@ -197,6 +195,9 @@ namespace fuujin {
             "Fetch graphics queue");
 
         CreateDefaultObjects();
+
+        AssetManager::RegisterAssetType<TextureSerializer>();
+        AssetManager::RegisterAssetType<MaterialSerializer>();
     }
 
     void Renderer::Shutdown() {
@@ -205,6 +206,8 @@ namespace fuujin {
             FUUJIN_WARN("Renderer not initialized - skipping");
             return;
         }
+
+        AssetManager::Clear();
 
         Wait();
         delete s_Data->API;
@@ -248,7 +251,7 @@ namespace fuujin {
         return *s_Data->Library;
     }
 
-    const GraphicsDevice::API& Renderer::GetAPI() {
+    const GraphicsDevice::APISpec& Renderer::GetAPI() {
         ZoneScoped;
         if (!s_Data) {
             throw std::runtime_error("Renderer has not been initialized!");
@@ -336,7 +339,7 @@ namespace fuujin {
             DeviceBuffer::Spec bufferSpec;
             bufferSpec.QueueOwnership = { QueueType::Graphics };
             bufferSpec.Size = resource->GetType()->GetSize();
-            bufferSpec.Usage = DeviceBuffer::Usage::Uniform;
+            bufferSpec.BufferUsage = DeviceBuffer::Usage::Uniform;
 
             allocation.Buffer = s_Data->Context->CreateBuffer(bufferSpec);
             allocation.Allocation->Bind(bufferName, allocation.Buffer);
@@ -456,31 +459,9 @@ namespace fuujin {
         return allocation.Allocation;
     }
 
-    Ref<Texture> Renderer::LoadTexture(const fs::path& path, const Ref<Sampler>& sampler) {
-        ZoneScoped;
-        stbi_set_flip_vertically_on_load(true);
-
-        auto pathString = path.string();
-        FUUJIN_INFO("Loading 2D texture from path: {}", pathString.c_str());
-
-        int width, height, channels;
-        auto dataRaw = stbi_load(pathString.c_str(), &width, &height, &channels, 4);
-
-        if (dataRaw == nullptr) {
-            return nullptr;
-        }
-
-        size_t dataSize = (size_t)width * height * channels;
-        auto texture = CreateTexture((uint32_t)width, (uint32_t)height, Texture::Format::RGBA8,
-                                     Buffer::Wrapper(dataRaw, dataSize), sampler, path);
-
-        stbi_image_free(dataRaw);
-        return texture;
-    }
-
     struct TextureCreationInfo {
         Ref<DeviceBuffer> StagingBuffer;
-        Ref<Texture> Texture;
+        Ref<Texture> Instance;
         Buffer ImageData;
     };
 
@@ -495,11 +476,11 @@ namespace fuujin {
         auto& cmdlist = transferQueue->RT_Get();
         cmdlist.RT_Begin();
 
-        auto image = createInfo->Texture->GetImage();
+        auto image = createInfo->Instance->GetImage();
         createInfo->StagingBuffer->RT_CopyToImage(cmdlist, image);
         cmdlist.AddDependency(createInfo->StagingBuffer);
 
-        if (createInfo->Texture->GetSpec().MipLevels > 1) {
+        if (createInfo->Instance->GetSpec().MipLevels > 1) {
             // todo: generate mipmaps
         }
 
@@ -513,33 +494,40 @@ namespace fuujin {
                                          const Buffer& data, const Ref<Sampler>& sampler,
                                          const fs::path& path) {
         ZoneScoped;
+        if (!s_Data) {
+            FUUJIN_ERROR(
+                "Attempted to create texture with renderer not initialized! Returning null");
+
+            return nullptr;
+        }
+
         if (data.IsEmpty()) {
-            FUUJIN_WARN("Attempted to create texture with an empty buffer! Returning null");
+            FUUJIN_ERROR("Attempted to create texture with an empty buffer! Returning null");
             return nullptr;
         }
 
         DeviceBuffer::Spec stagingSpec;
         stagingSpec.QueueOwnership = { QueueType::Transfer };
         stagingSpec.Size = data.GetSize();
-        stagingSpec.Usage = DeviceBuffer::Usage::Staging;
+        stagingSpec.BufferUsage = DeviceBuffer::Usage::Staging;
 
         Texture::Spec textureSpec;
-        textureSpec.Sampler = sampler.IsPresent() ? sampler : s_Data->DefaultSampler;
+        textureSpec.TextureSampler = sampler.IsPresent() ? sampler : s_Data->DefaultSampler;
         textureSpec.Path = path;
 
         textureSpec.Width = width;
         textureSpec.Height = height;
         textureSpec.Depth = 1;
         textureSpec.MipLevels = 1; // todo: mipmaps
-        textureSpec.Format = Texture::Format::RGBA8;
-        textureSpec.Type = Texture::Type::_2D;
+        textureSpec.ImageFormat = format;
+        textureSpec.TextureType = Texture::Type::_2D;
 
         auto stagingBuffer = s_Data->Context->CreateBuffer(stagingSpec);
         auto texture = s_Data->Context->CreateTexture(textureSpec);
 
         auto createInfo = new TextureCreationInfo;
         createInfo->StagingBuffer = stagingBuffer;
-        createInfo->Texture = texture;
+        createInfo->Instance = texture;
         createInfo->ImageData = data;
 
         Renderer::Submit([=]() { RT_LoadTextureData(createInfo); });
@@ -729,11 +717,11 @@ namespace fuujin {
         IndexedRenderCall innerCall;
         innerCall.VertexBuffer = data.VertexBuffer;
         innerCall.IndexBuffer = data.IndexBuffer;
-        innerCall.Pipeline = data.Pipeline;
+        innerCall.RenderPipeline = data.RenderPipeline;
         innerCall.IndexCount = data.IndexCount;
 
-        const auto& shader = data.Pipeline->GetSpec().Shader;
-        innerCall.Resources = { GetMaterialAllocation(data.Material, shader),
+        const auto& shader = data.RenderPipeline->GetSpec().PipelineShader;
+        innerCall.Resources = { GetMaterialAllocation(data.RenderMaterial, shader),
                                 GetSceneAllocation(data.SceneID, shader) };
 
         auto pushConstants = shader->GetPushConstants();

@@ -41,7 +41,6 @@ namespace fuujin {
             return SetData(name, data);
         }
 
-        template <>
         bool Set(const std::string& name, const glm::mat4& value) {
             ZoneScoped;
 
@@ -62,7 +61,6 @@ namespace fuujin {
             return GetData(name, data);
         }
 
-        template <>
         bool Get(const std::string& name, glm::mat4& value) const {
             ZoneScoped;
 

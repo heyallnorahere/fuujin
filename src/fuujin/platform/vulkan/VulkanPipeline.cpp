@@ -33,7 +33,7 @@ namespace fuujin {
     void VulkanPipeline::RT_Create() {
         ZoneScoped;
 
-        switch (m_Spec.Type) {
+        switch (m_Spec.PipelineType) {
         case Type::Compute:
             RT_CreateComputePipeline();
             break;
@@ -48,7 +48,7 @@ namespace fuujin {
     void VulkanPipeline::RT_CreateComputePipeline() {
         ZoneScoped;
 
-        auto shader = m_Spec.Shader.As<VulkanShader>();
+        auto shader = m_Spec.PipelineShader.As<VulkanShader>();
         const auto& modules = shader->GetModules();
 
         if (!modules.contains(ShaderStage::Compute)) {
@@ -84,7 +84,7 @@ namespace fuujin {
             throw std::runtime_error("Invalid render target type!");
         }
 
-        auto shader = m_Spec.Shader.As<VulkanShader>();
+        auto shader = m_Spec.PipelineShader.As<VulkanShader>();
         const auto& modules = shader->GetModules();
 
         std::vector<VkPipelineShaderStageCreateInfo> shaderCreateInfo;
@@ -122,7 +122,7 @@ namespace fuujin {
         rasterization.polygonMode = m_Spec.Wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
         rasterization.lineWidth = 1.f;
 
-        switch (m_Spec.FrontFace) {
+        switch (m_Spec.PolygonFrontFace) {
         case FrontFace::CCW:
             rasterization.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
             break;
@@ -165,12 +165,12 @@ namespace fuujin {
         colorBlend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         colorBlend.logicOpEnable = VK_FALSE;
 
-        if (m_Spec.ColorBlending != ColorBlending::None) {
+        if (m_Spec.Blending != ColorBlending::None) {
             colorBlendAttachment.blendEnable = VK_TRUE;
             colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
             colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
-            switch (m_Spec.ColorBlending) {
+            switch (m_Spec.Blending) {
             case ColorBlending::Default:
                 colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
                 colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;

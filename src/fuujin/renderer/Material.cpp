@@ -350,4 +350,6 @@ namespace fuujin {
     const std::vector<std::string>& MaterialSerializer::GetExtensions() const {
         return s_MaterialExtensions;
     }
+
+    AssetType MaterialSerializer::GetType() const { return AssetType::Material; }
 } // namespace fuujin
