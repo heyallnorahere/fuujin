@@ -95,6 +95,44 @@ namespace fuujin {
         return true;
     }
 
+    bool AssetManager::AddAsset(const Ref<Asset>& asset, const fs::path& virtualPath) {
+        ZoneScoped;
+
+        auto realPath = asset->GetPath();
+        if (realPath.empty()) {
+            FUUJIN_ERROR("Cannot add asset with empty path! Skipping register");
+            return false;
+        }
+
+        auto type = asset->GetAssetType();
+        if (!s_Data || !s_Data->AssetTypes.contains(type)) {
+            FUUJIN_ERROR("Asset type has not been registered yet!");
+            return false;
+        }
+
+        auto& typeData = s_Data->AssetTypes[type];
+        auto assetPath = NormalizePath(virtualPath);
+
+        auto virtualText = assetPath.string();
+        if (s_Data->PathTypeMap.contains(assetPath)) {
+            FUUJIN_ERROR("Asset at virtual path {} has already been registered! Skipping register",
+                         virtualText.c_str());
+            
+            return false;
+        }
+
+        typeData.Assets[assetPath] = asset;
+        s_Data->PathTypeMap[assetPath] = type;
+        s_Data->RealToVirtual[realPath] = virtualPath;
+
+        auto realText = realPath.string();
+        if (!typeData.Serializer->Serialize(asset)) {
+            FUUJIN_WARN("Failed to serialize asset to path {} on add", realText.c_str());
+        }
+
+        return true;
+    }
+
     struct LoadData {
         fs::path Real, Virtual;
     };
@@ -117,7 +155,7 @@ namespace fuujin {
                 continue;
             }
 
-            fs::path fullPath = entry.path();
+            fs::path fullPath = entry.path().lexically_normal();
             fs::path assetPath;
             if (pathPrefix.has_value()) {
                 assetPath = pathPrefix.value() / fs::relative(fullPath, directory);
@@ -199,6 +237,15 @@ namespace fuujin {
 
         s_Data->AssetTypes[type].Serializer = std::move(serializer);
         s_Data->LoadOrder.push_back(type);
+    }
+
+    const AssetSerializer* AssetManager::GetSerializer(AssetType type) {
+        ZoneScoped;
+        if (!s_Data || !s_Data->AssetTypes.contains(type)) {
+            return nullptr;
+        }
+
+        return s_Data->AssetTypes.at(type).Serializer.get();
     }
 
     Ref<Asset> AssetManager::GetAsset(const fs::path& path) {

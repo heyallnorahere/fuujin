@@ -18,7 +18,6 @@ namespace fuujin {
             SpecularColor,
             AmbientColor,
             Shininess,
-            HasNormalMap,
 
             MAX
         };

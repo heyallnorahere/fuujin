@@ -32,6 +32,8 @@ namespace fuujin {
 
         struct Spec {
             Type PipelineType;
+            std::map<uint32_t, uint32_t> AttributeBindings;
+
             DepthSpec Depth;
             FrontFace PolygonFrontFace = FrontFace::CCW;
             bool DisableCulling = false;

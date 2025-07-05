@@ -518,24 +518,20 @@ namespace fuujin {
         }
     }
 
-    struct AttributeData {
-        size_t Size;
-        VkFormat Format;
-    };
-
     void VulkanShader::ProcessVertexInputs(
         const spirv_cross::SmallVector<spirv_cross::Resource>& inputs,
         const spirv_cross::Compiler& compiler, ShaderStage stage) {
         ZoneScoped;
 
-        std::map<uint32_t, AttributeData> attributes;
+        m_VertexAttributes.clear();
         for (const auto& resource : inputs) {
             uint32_t location = compiler.get_decoration(resource.id, spv::DecorationLocation);
-            auto& attr = attributes[location];
+            uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 
             ProcessType(resource.base_type_id, compiler, stage);
             const auto& type = m_Types.at(stage).at(resource.base_type_id);
 
+            auto& attr = m_VertexAttributes[location];
             attr.Size = type.TotalSize;
 
             bool found = true;
@@ -606,32 +602,6 @@ namespace fuujin {
                 attr.Format = VK_FORMAT_UNDEFINED;
             }
         }
-
-        size_t offset = 0;
-        m_VertexAttributes.clear();
-
-        for (const auto& [location, attr] : attributes) {
-            VkVertexInputAttributeDescription desc{};
-            desc.location = location;
-            desc.format = attr.Format;
-            desc.binding = 0;
-            desc.offset = (uint32_t)offset;
-
-            m_VertexAttributes.push_back(desc);
-            offset += attr.Size;
-        }
-
-        std::memset(&m_VertexBinding, 0, sizeof(VkVertexInputBindingDescription));
-        m_VertexBinding.binding = 0;
-        m_VertexBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        m_VertexBinding.stride = (uint32_t)offset;
-
-        std::memset(&m_VertexInput, 0, sizeof(VkPipelineVertexInputStateCreateInfo));
-        m_VertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        m_VertexInput.vertexBindingDescriptionCount = 1;
-        m_VertexInput.pVertexBindingDescriptions = &m_VertexBinding;
-        m_VertexInput.vertexAttributeDescriptionCount = (uint32_t)m_VertexAttributes.size();
-        m_VertexInput.pVertexAttributeDescriptions = m_VertexAttributes.data();
     }
 
     void VulkanShader::RT_Load() {

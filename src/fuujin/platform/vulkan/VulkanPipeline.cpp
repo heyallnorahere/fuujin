@@ -106,6 +106,48 @@ namespace fuujin {
         dynamicState.dynamicStateCount = (uint32_t)dynamicStates.size();
         dynamicState.pDynamicStates = dynamicStates.data();
 
+        std::vector<VkVertexInputAttributeDescription> vertexAttributes;
+        std::vector<VkVertexInputBindingDescription> vertexBindings;
+        std::map<uint32_t, size_t> bindingOffsets;
+
+        const auto& attributes = shader->GetVertexAttributes();
+        for (const auto& [location, attr] : attributes) {
+            uint32_t binding = 0;
+            if (m_Spec.AttributeBindings.contains(location)) {
+                binding = m_Spec.AttributeBindings.at(location);
+            }
+
+            VkVertexInputAttributeDescription desc{};
+            desc.location = location;
+            desc.format = attr.Format;
+            desc.binding = binding;
+
+            if (bindingOffsets.contains(binding)) {
+                desc.offset = (uint32_t)bindingOffsets.at(binding);
+            } else {
+                bindingOffsets[binding] = 0;
+            }
+
+            vertexAttributes.push_back(desc);
+            bindingOffsets[binding] += attr.Size;
+        }
+
+        for (const auto& [binding, stride] : bindingOffsets) {
+            VkVertexInputBindingDescription desc{};
+            desc.binding = binding;
+            desc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            desc.stride = (uint32_t)stride;
+
+            vertexBindings.push_back(desc);
+        }
+
+        VkPipelineVertexInputStateCreateInfo vertexInput{};
+        vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInput.vertexBindingDescriptionCount = (uint32_t)vertexBindings.size();
+        vertexInput.pVertexBindingDescriptions = vertexBindings.data();
+        vertexInput.vertexAttributeDescriptionCount = (uint32_t)vertexAttributes.size();
+        vertexInput.pVertexAttributeDescriptions = vertexAttributes.data();
+
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
         inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -202,7 +244,7 @@ namespace fuujin {
         createInfo.renderPass = renderPass->Get();
         createInfo.stageCount = (uint32_t)shaderCreateInfo.size();
         createInfo.pStages = shaderCreateInfo.data();
-        createInfo.pVertexInputState = &shader->GetVertexInput();
+        createInfo.pVertexInputState = &vertexInput;
         createInfo.pInputAssemblyState = &inputAssembly;
         createInfo.pTessellationState = nullptr;
         createInfo.pViewportState = &viewport;

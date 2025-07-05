@@ -19,7 +19,7 @@ namespace fuujin {
 
     class Texture : public Asset {
     public:
-        enum class Format { RGBA8 = 0 };
+        enum class Format { RGBA8 = 0, RGB8 };
         enum class Type { _2D = 0, _3D, Cube };
         enum class Feature { ShaderStorage, ColorAttachment, DepthAttachment, Transfer };
 

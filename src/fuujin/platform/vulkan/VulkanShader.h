@@ -57,6 +57,11 @@ namespace fuujin {
         using Types =
             std::unordered_map<ShaderStage, std::unordered_map<spirv_cross::TypeID, ShaderType>>;
 
+        struct VertexAttribute {
+            size_t Size;
+            VkFormat Format;
+        };
+
         static VkShaderStageFlagBits ConvertStage(ShaderStage stage);
         static VkDescriptorType ConvertDescriptorType(uint32_t resourceType);
 
@@ -72,7 +77,7 @@ namespace fuujin {
 
         virtual std::shared_ptr<GPUResource> GetResourceByName(
             const std::string& name) const override;
-        
+
         std::shared_ptr<GPUResource> GetResourceByDescriptor(
             const ResourceDescriptor& descriptor) const;
 
@@ -88,7 +93,9 @@ namespace fuujin {
             return m_SetLayouts;
         }
 
-        const VkPipelineVertexInputStateCreateInfo& GetVertexInput() const { return m_VertexInput; }
+        const std::map<uint32_t, VertexAttribute>& GetVertexAttributes() const {
+            return m_VertexAttributes;
+        }
 
         const Resources& GetResources() const { return m_Resources; }
         const Types& GetTypes() const { return m_Types; }
@@ -120,9 +127,7 @@ namespace fuujin {
         std::map<uint32_t, VkDescriptorSetLayout> m_SetLayouts;
         VkPipelineLayout m_PipelineLayout;
 
-        VkPipelineVertexInputStateCreateInfo m_VertexInput;
-        VkVertexInputBindingDescription m_VertexBinding;
-        std::vector<VkVertexInputAttributeDescription> m_VertexAttributes;
+        std::map<uint32_t, VertexAttribute> m_VertexAttributes;
 
         Resources m_Resources;
         Types m_Types;

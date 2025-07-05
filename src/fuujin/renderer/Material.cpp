@@ -96,8 +96,6 @@ namespace fuujin {
             return "Ambient";
         case Property::Shininess:
             return "Shininess";
-        case Property::HasNormalMap:
-            return "HasNormalMap";
         default:
             throw std::runtime_error("Invalid property ID");
         }
@@ -135,7 +133,6 @@ namespace fuujin {
         SetProperty(Property::SpecularColor, white);
         SetProperty(Property::AmbientColor, white);
         SetProperty(Property::Shininess, 256.f);
-        SetProperty(Property::HasNormalMap, false);
 
         m_Pipeline.Wireframe = false;
     }
@@ -149,14 +146,7 @@ namespace fuujin {
         ZoneScoped;
 
         m_Textures[slot] = texture;
-        switch (slot) {
-        case TextureSlot::Normal:
-            SetProperty(Property::HasNormalMap, true);
-            break;
-        default:
-            Invalidate();
-            break;
-        }
+        Invalidate();
     }
 
     void Material::SetPropertyData(Property name, const Buffer& data) {
@@ -182,6 +172,9 @@ namespace fuujin {
                 FUUJIN_WARN("Failed to set material property: {}", fieldName.c_str());
             }
         }
+
+        bool hasNormalMap = m_Textures.contains(TextureSlot::Normal);
+        buffer.Set("HasNormalMap", hasNormalMap);
     }
 
     void Material::SetPipelineSpec(Pipeline::Spec& spec) const {
@@ -209,8 +202,6 @@ namespace fuujin {
         stream.close();
 
         auto textureNode = node["Textures"];
-        auto propertyNode = node["Properties"];
-
         if (textureNode.IsSequence()) {
             for (auto data : textureNode) {
                 auto slot = data["Slot"].as<Material::TextureSlot>();
@@ -234,6 +225,7 @@ namespace fuujin {
             FUUJIN_DEBUG("No textures specified - skipping texture search");
         }
 
+        auto propertyNode = node["Properties"];
         if (propertyNode.IsSequence()) {
             for (auto data : propertyNode) {
                 auto name = data["Name"].as<Material::Property>();
@@ -252,6 +244,16 @@ namespace fuujin {
             }
         } else {
             FUUJIN_DEBUG("No properties specified - skipping property deserialization");
+        }
+
+        auto pipelineNode = node["Pipeline"];
+        if (pipelineNode.IsMap()) {
+            auto& spec = material->GetPipeline();
+
+            auto wireframeNode = pipelineNode["Wireframe"];
+            if (wireframeNode.IsDefined()) {
+                spec.Wireframe = wireframeNode.as<bool>();
+            }
         }
 
         return material;
@@ -325,9 +327,14 @@ namespace fuujin {
             propertiesNode.push_back(propertyNode);
         }
 
+        YAML::Node pipelineNode;
+        auto& spec = material->GetPipeline();
+        pipelineNode["Wireframe"] = spec.Wireframe;
+
         YAML::Node node;
         node["Textures"] = texturesNode;
         node["Properties"] = propertiesNode;
+        node["Pipeline"] = pipelineNode;
 
         if (realPath.has_parent_path()) {
             auto directory = realPath.parent_path();

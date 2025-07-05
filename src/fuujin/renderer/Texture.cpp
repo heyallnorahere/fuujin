@@ -32,10 +32,21 @@ namespace fuujin {
             return nullptr;
         }
 
+        Texture::Format format;
+        switch (channels) {
+        case 3:
+            format = Texture::Format::RGB8;
+            break;
+        case 4:
+            format = Texture::Format::RGBA8;
+            break;
+        default:
+            throw std::runtime_error("Invalid channel count!");
+        }
+
         size_t dataSize = (size_t)width * height * channels;
-        auto texture =
-            Renderer::CreateTexture((uint32_t)width, (uint32_t)height, Texture::Format::RGBA8,
-                                    Buffer::Wrapper(dataRaw, dataSize), {}, path);
+        auto texture = Renderer::CreateTexture((uint32_t)width, (uint32_t)height, format,
+                                               Buffer::Wrapper(dataRaw, dataSize), {}, path);
 
         FUUJIN_INFO("Loaded image at path {} to 2D texture", pathString.c_str());
         stbi_image_free(dataRaw);

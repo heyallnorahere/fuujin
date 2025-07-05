@@ -3,7 +3,7 @@ struct Camera {
     mat4 Projection, View;
 };
 
-layout(set = 1, binding = 0, std140) uniform Scene {
+layout(set = 0, binding = 0, std140) uniform Scene {
     Camera Cameras[10];
 } u_Scene;
 

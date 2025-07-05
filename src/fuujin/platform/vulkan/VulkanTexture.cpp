@@ -36,6 +36,8 @@ namespace fuujin {
         switch (format) {
         case Format::RGBA8:
             return VK_FORMAT_R8G8B8A8_UNORM;
+        case Format::RGB8:
+            return VK_FORMAT_R8G8B8_UNORM;
         default:
             throw std::runtime_error("Invalid texture format!");
         }

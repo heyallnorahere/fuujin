@@ -1,9 +1,9 @@
 #version 450
-#include "include/Renderer.glsl"
-#include "include/Material.glsl"
-#include "include/Scene.glsl"
 
 #stage vertex
+#include "include/Renderer.glsl"
+#include "include/Scene.glsl"
+
 layout(location = 0) in vec3 in_Position;
 layout(location = 1) in vec3 in_Normal;
 layout(location = 2) in vec2 in_UV;
@@ -24,6 +24,8 @@ void main() {
 }
 
 #stage fragment
+#include "include/Material.glsl"
+
 layout(location = 0) in vec3 in_Normal;
 layout(location = 1) in vec2 in_UV;
 layout(location = 2) in vec3 in_WorldPosition;
@@ -31,8 +33,5 @@ layout(location = 2) in vec3 in_WorldPosition;
 layout(location = 0) out vec4 out_Color;
 
 void main() {
-    vec3 normal = normalize(in_Normal);
-
-    // no fancy lighting
-    out_Color = MaterialAlbedo(in_UV);
+    out_Color = MaterialOutputColor(in_Normal, in_UV, in_WorldPosition);
 }
