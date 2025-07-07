@@ -3,6 +3,7 @@
 #include "fuujin/asset/AssetManager.h"
 #include "fuujin/renderer/Renderer.h"
 #include "fuujin/renderer/ShaderLibrary.h"
+#include "fuujin/renderer/Model.h"
 
 #include <numbers>
 
@@ -68,17 +69,11 @@ static glm::vec3 hsv2rgb(const glm::vec3& in) {
     return out;
 }
 
-struct Vertex {
-    glm::vec3 Position;
-    glm::vec3 Normal;
-    glm::vec2 UV;
-};
-
 static const std::vector<uint32_t> s_Indices = { 0, 1, 2 };
-static const std::vector<Vertex> s_Vertices = {
-    { glm::vec3(0.5f, -0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec2(1.f, 0.f) },
-    { glm::vec3(0.f, 0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec2(0.5f, 1.f) },
-    { glm::vec3(-0.5f, -0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec2(0.f, 0.f) }
+static const std::vector<fuujin::Vertex> s_Vertices = {
+    { glm::vec3(0.5f, -0.5f, 0.f), glm::vec2(1.f, 0.f), glm::vec3(0.f, 0.f, 1.f) },
+    { glm::vec3(0.f, 0.5f, 0.f), glm::vec2(0.5f, 1.f), glm::vec3(0.f, 0.f, 1.f) },
+    { glm::vec3(-0.5f, -0.5f, 0.f), glm::vec2(0.f, 0.f), glm::vec3(0.f, 0.f, 1.f) }
 };
 
 template <typename _Ty>
@@ -145,6 +140,9 @@ public:
         Renderer::UpdateScene(0, scene);
 
         m_Call.ModelMatrix = glm::mat4(1.f);
+        m_Call.SceneID = 0;
+        m_Call.CameraIndex = 0;
+        m_Call.Target = swapchain;
 
         static constexpr float hueMax = 360.f;
         float hue = m_Time * hueMax * 0.75f;
@@ -153,96 +151,24 @@ public:
         }
 
         glm::vec4 color = glm::vec4(hsv2rgb(glm::vec3(hue, 1.f, 1.f)), 1.f);
-        m_Call.RenderMaterial->SetProperty(Material::Property::AlbedoColor, color);
+        auto material = m_Call.RenderedModel->GetMeshes()[0]->GetMaterial();
+        material->SetProperty(Material::Property::AlbedoColor, color);
 
-        Renderer::RenderWithMaterial(m_Call);
+        Renderer::RenderModel(m_Call);
     }
 
 private:
     void LoadResources() {
         ZoneScoped;
 
-        auto context = Renderer::GetContext();
-        auto& library = Renderer::GetShaderLibrary();
-
-        DeviceBuffer::Spec staging, actual;
-        staging.Size = actual.Size = s_Vertices.size() * sizeof(Vertex);
-
-        staging.QueueOwnership = { QueueType::Transfer };
-        staging.BufferUsage = DeviceBuffer::Usage::Staging;
-
-        actual.QueueOwnership = { QueueType::Graphics, QueueType::Transfer };
-        actual.BufferUsage = DeviceBuffer::Usage::Vertex;
-
-        m_VertexStaging = context->CreateBuffer(staging);
-        m_Call.VertexBuffer = context->CreateBuffer(actual);
-
-        staging.Size = actual.Size = s_Indices.size() * sizeof(uint32_t);
-        actual.BufferUsage = DeviceBuffer::Usage::Index;
-
-        m_IndexStaging = context->CreateBuffer(staging);
-        m_Call.IndexBuffer = context->CreateBuffer(actual);
-        m_Call.IndexCount = (uint32_t)s_Indices.size();
-        m_Call.SceneID = 0;
-        m_Call.CameraIndex = 0;
-
-        m_Call.RenderMaterial = AssetManager::GetAsset<Material>("fuujin/materials/Chiito.mat");
-
-        Pipeline::Spec pipelineSpec;
-        pipelineSpec.Target = context->GetSwapchain();
-        pipelineSpec.PipelineShader = library.Get("fuujin/shaders/MaterialStatic.glsl");
-        pipelineSpec.PipelineType = Pipeline::Type::Graphics;
-        pipelineSpec.PolygonFrontFace = FrontFace::CCW;
-        pipelineSpec.DisableCulling = true;
-
-        m_Call.RenderMaterial->SetPipelineSpec(pipelineSpec);
-        m_Call.RenderPipeline = context->CreatePipeline(pipelineSpec);
-
-        DeviceBuffer::Spec uboSpec;
-        uboSpec.QueueOwnership = { QueueType::Graphics };
-        uboSpec.Size = sizeof(glm::vec3);
-        uboSpec.BufferUsage = DeviceBuffer::Usage::Uniform;
-
-        fuujin::Renderer::Submit([this]() { RT_CopyBuffers(); });
-    }
-
-    void RT_CopyBuffers() {
-        ZoneScoped;
-
-        auto mapped = m_VertexStaging->RT_Map();
-        Buffer::Copy(Buffer::Wrapper(s_Vertices), mapped);
-        m_VertexStaging->RT_Unmap();
-
-        mapped = m_IndexStaging->RT_Map();
-        Buffer::Copy(Buffer::Wrapper(s_Indices), mapped);
-        m_IndexStaging->RT_Unmap();
-
-        auto context = Renderer::GetContext();
-        auto queue = context->GetQueue(fuujin::QueueType::Transfer);
-        auto fence = context->CreateFence();
-
-        auto& cmdList = queue->RT_Get();
-        cmdList.RT_Begin();
-
-        m_VertexStaging->RT_CopyToBuffer(cmdList, m_Call.VertexBuffer);
-        m_IndexStaging->RT_CopyToBuffer(cmdList, m_Call.IndexBuffer);
-
-        cmdList.AddDependency(m_VertexStaging);
-        cmdList.AddDependency(m_IndexStaging);
-
-        m_VertexStaging.Reset();
-        m_IndexStaging.Reset();
-
-        cmdList.RT_End();
-        queue->RT_Submit(cmdList, fence);
-        fence->Wait();
+        m_Call.RenderedModel = AssetManager::GetAsset<Model>("fuujin/models/Triangle.model");
+        Renderer::Wait();
     }
 
     float m_Time;
 
     bool m_ResourcesLoaded;
-    MaterialRenderCall m_Call;
-    Ref<DeviceBuffer> m_VertexStaging, m_IndexStaging;
+    ModelRenderCall m_Call;
 };
 
 void InitializeApplication() { Application::PushLayer<TestLayer>(); }

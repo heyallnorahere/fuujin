@@ -29,8 +29,9 @@ vec4 MaterialAmbient(vec2 uv) {
     return u_Material.Ambient * tex;
 }
 
-vec4 MaterialOutputColor(vec3 unorm, vec2 uv, vec3 position) {
+vec4 MaterialOutputColor(vec3 unorm, vec3 utan, vec2 uv, vec3 position) {
     vec3 normal = normalize(unorm);
+    vec3 tangent = normalize(utan);
 
     // no fancy lighting
     return MaterialAlbedo(uv);

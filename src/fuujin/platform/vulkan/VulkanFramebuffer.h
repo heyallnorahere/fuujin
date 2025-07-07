@@ -31,6 +31,8 @@ namespace fuujin {
         virtual uint32_t GetWidth() const override { return m_Spec.Extent.width; }
         virtual uint32_t GetHeight() const override { return m_Spec.Extent.height; }
 
+        virtual uint32_t GetID() const override { return m_Spec.RenderPass->GetID(); }
+
         virtual void AddImageDependency(CommandList& cmdList) override;
 
         virtual void RT_BeginRender(CommandList& cmdList) override;

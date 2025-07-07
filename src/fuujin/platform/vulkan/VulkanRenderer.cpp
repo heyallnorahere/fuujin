@@ -424,11 +424,15 @@ namespace fuujin {
     void VulkanRenderer::RT_RenderIndexed(CommandList& cmdlist, const IndexedRenderCall& data) {
         ZoneScoped;
 
-        cmdlist.AddDependency(data.VertexBuffer);
+        std::vector<VkBuffer> vertexBuffers;
+        for (const auto& buffer : data.VertexBuffers) {
+            vertexBuffers.push_back(buffer.As<VulkanBuffer>()->Get());
+            cmdlist.AddDependency(buffer);
+        }
+
         cmdlist.AddDependency(data.IndexBuffer);
         cmdlist.AddDependency(data.RenderPipeline);
 
-        auto vertexBuffer = data.VertexBuffer.As<VulkanBuffer>()->Get();
         auto indexBuffer = data.IndexBuffer.As<VulkanBuffer>()->Get();
         auto vkPipeline = data.RenderPipeline.As<VulkanPipeline>();
         auto shader = vkPipeline->GetSpec().PipelineShader.As<VulkanShader>();
@@ -436,8 +440,9 @@ namespace fuujin {
 
         TracyVkZone(m_TracyContext, cmdBuffer, "RT_RenderIndexed");
 
-        VkDeviceSize offset = 0;
-        vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &vertexBuffer, &offset);
+        uint32_t bufferCount = (uint32_t)vertexBuffers.size();
+        std::vector<VkDeviceSize> offsets(bufferCount, 0);
+        vkCmdBindVertexBuffers(cmdBuffer, 0, bufferCount, vertexBuffers.data(), offsets.data());
         vkCmdBindIndexBuffer(cmdBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
         vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline->GetPipeline());
 

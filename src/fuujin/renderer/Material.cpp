@@ -177,13 +177,6 @@ namespace fuujin {
         buffer.Set("HasNormalMap", hasNormalMap);
     }
 
-    void Material::SetPipelineSpec(Pipeline::Spec& spec) const {
-        ZoneScoped;
-
-        spec.Wireframe = m_Pipeline.Wireframe;
-        // todo: more properties
-    }
-
     Ref<Asset> MaterialSerializer::Deserialize(const fs::path& path) const {
         ZoneScoped;
 
@@ -202,7 +195,7 @@ namespace fuujin {
         stream.close();
 
         auto textureNode = node["Textures"];
-        if (textureNode.IsSequence()) {
+        if (textureNode.IsDefined()) {
             for (auto data : textureNode) {
                 auto slot = data["Slot"].as<Material::TextureSlot>();
                 fs::path virtualPath = data["Asset"].as<std::string>();
@@ -226,13 +219,13 @@ namespace fuujin {
         }
 
         auto propertyNode = node["Properties"];
-        if (propertyNode.IsSequence()) {
+        if (propertyNode.IsDefined()) {
             for (auto data : propertyNode) {
                 auto name = data["Name"].as<Material::Property>();
 
                 auto valueNode = data["Value"];
                 std::vector<float> values;
-                if (valueNode.IsSequence()) {
+                if (valueNode.IsDefined()) {
                     values = valueNode.as<std::vector<float>>();
                 } else if (valueNode.IsScalar()) {
                     values = { valueNode.as<float>() };

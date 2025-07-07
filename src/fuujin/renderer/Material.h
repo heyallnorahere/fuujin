@@ -63,7 +63,6 @@ namespace fuujin {
         }
 
         void MapProperties(ShaderBuffer& buffer) const;
-        void SetPipelineSpec(Pipeline::Spec& spec) const;
 
     private:
         fs::path m_Path;

@@ -2,7 +2,6 @@
 #include "fuujin/asset/ModelSource.h"
 
 #include <assimp/Importer.hpp>
-#include <assimp/IOSystem.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
@@ -32,7 +31,8 @@ namespace fuujin {
 
         static constexpr uint32_t flags = aiProcess_Triangulate | aiProcess_GenNormals |
                                           aiProcess_ValidateDataStructure |
-                                          aiProcess_LimitBoneWeights | aiProcess_CalcTangentSpace;
+                                          aiProcess_LimitBoneWeights | aiProcess_CalcTangentSpace |
+                                          aiProcess_PopulateArmatureData;
 
         auto pathText = path.string();
         auto importer = new Assimp::Importer;

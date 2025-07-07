@@ -55,12 +55,42 @@ namespace YAML {
         }
 
         static bool decode(const Node& node, vector& value) {
-            if (!node.IsSequence()) {
+            if (!node.IsSequence() || node.size() != (size_t)L) {
                 return false;
             }
 
             for (glm::length_t i = 0; i < L; i++) {
                 value[i] = node[i].as<_Ty>();
+            }
+
+            return true;
+        }
+    };
+
+    // note that this serializes matrices to appear transposed
+    // glm matrices are column-major
+    template <glm::length_t C, glm::length_t R, typename _Ty, glm::qualifier Q>
+    struct convert<glm::mat<C, R, _Ty, Q>> {
+        using matrix = glm::mat<C, R, _Ty, Q>;
+
+        static Node encode(const matrix& value) {
+            Node node;
+            node.SetStyle(EmitterStyle::Block);
+
+            for (glm::length_t i = 0; i < C; i++) {
+                node.push_back(value[i]);
+            }
+
+            return node;
+        }  
+
+        static bool decode(const Node& node, matrix& value) {
+            if (!node.IsSequence() || node.size() != (size_t)C) {
+                return false;
+            }
+
+            for (glm::length_t i = 0; i < C; i++) {
+                value[i] = node[i].as<class matrix::col_type>();
             }
 
             return true;

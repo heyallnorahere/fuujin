@@ -19,6 +19,8 @@ namespace fuujin {
         virtual uint32_t GetHeight() const = 0;
         virtual RenderTargetType GetType() const = 0;
 
+        virtual uint32_t GetID() const = 0;
+
         virtual Ref<Fence> GetCurrentFence() const { return {}; }
     };
 

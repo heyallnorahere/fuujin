@@ -8,6 +8,7 @@
 #include "fuujin/renderer/Pipeline.h"
 #include "fuujin/renderer/Texture.h"
 #include "fuujin/renderer/Material.h"
+#include "fuujin/renderer/Model.h"
 
 namespace fuujin {
     class Event;
@@ -23,7 +24,8 @@ namespace fuujin {
     };
 
     struct IndexedRenderCall {
-        Ref<DeviceBuffer> VertexBuffer, IndexBuffer;
+        std::vector<Ref<DeviceBuffer>> VertexBuffers;
+        Ref<DeviceBuffer> IndexBuffer;
         Ref<Pipeline> RenderPipeline;
         uint32_t IndexCount;
 
@@ -32,15 +34,27 @@ namespace fuujin {
     };
 
     struct MaterialRenderCall {
-        Ref<DeviceBuffer> VertexBuffer, IndexBuffer;
+        std::vector<Ref<DeviceBuffer>> VertexBuffers;
+        Ref<DeviceBuffer> IndexBuffer;
         Ref<Pipeline> RenderPipeline;
         uint32_t IndexCount;
-        uint64_t SceneID;
 
         glm::mat4 ModelMatrix;
         size_t CameraIndex;
 
+        uint64_t SceneID;
         Ref<Material> RenderMaterial;
+        std::vector<Ref<RendererAllocation>> AdditionalResources;
+    };
+
+    struct ModelRenderCall {
+        Ref<Model> RenderedModel;
+        Ref<RenderTarget> Target;
+
+        uint64_t SceneID;
+
+        glm::mat4 ModelMatrix;
+        size_t CameraIndex;
     };
 
     class RendererAPI {
@@ -68,6 +82,11 @@ namespace fuujin {
             std::vector<Camera> Cameras;
         };
 
+        struct MeshBuffers {
+            std::vector<Ref<DeviceBuffer>> VertexBuffers;
+            Ref<DeviceBuffer> IndexBuffer;
+        };
+
         Renderer() = delete;
 
         static void Init();
@@ -85,12 +104,19 @@ namespace fuujin {
         static void FreeShader(uint64_t id);
         static void FreeMaterial(uint64_t id);
         static void FreeScene(uint64_t id);
+        static void FreeMesh(uint64_t id);
 
         static void UpdateScene(uint64_t id, const SceneData& data);
         static Ref<RendererAllocation> GetSceneAllocation(uint64_t id, const Ref<Shader>& shader);
 
         static Ref<RendererAllocation> GetMaterialAllocation(const Ref<Material>& material,
                                                              const Ref<Shader>& shader);
+
+        static Ref<Pipeline> GetMaterialPipeline(const Ref<Shader>& shader,
+                                                 const Ref<RenderTarget>& target,
+                                                 const Material::PipelineProperties& spec);
+
+        static const MeshBuffers& GetMeshBuffers(const std::unique_ptr<Mesh>& mesh);
 
         static Ref<Texture> CreateTexture(uint32_t width, uint32_t height, Texture::Format format,
                                           const Buffer& data, const Ref<Sampler>& sampler = {},
@@ -124,7 +150,12 @@ namespace fuujin {
 
         static void RenderWithMaterial(const MaterialRenderCall& data);
 
+        static void RenderModel(const ModelRenderCall& data);
+
     private:
         static void CreateDefaultObjects();
+
+        static size_t HashMaterialPipelineSpec(const Material::PipelineProperties& spec,
+                                               uint32_t renderTarget);
     };
 } // namespace fuujin

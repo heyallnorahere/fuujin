@@ -30,6 +30,8 @@ namespace fuujin {
         virtual uint32_t GetWidth() const override { return m_Extent.width; }
         virtual uint32_t GetHeight() const override { return m_Extent.height; }
 
+        virtual uint32_t GetID() const override { return m_RenderPass->GetID(); }
+
         virtual void RequestResize(const ViewSize& viewSize) override;
 
         virtual uint32_t GetImageIndex() const override { return m_CurrentImage; }

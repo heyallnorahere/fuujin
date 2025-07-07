@@ -25,6 +25,11 @@ namespace fuujin {
         const aiScene* m_Scene;
     };
 
+    template <>
+    inline std::optional<AssetType> GetAssetType<ModelSource>() {
+        return AssetType::ModelSource;
+    }
+
     class ModelSourceSerializer : public AssetSerializer {
     public:
         virtual Ref<Asset> Deserialize(const fs::path& path) const override;

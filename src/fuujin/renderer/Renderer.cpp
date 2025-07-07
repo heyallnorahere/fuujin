@@ -3,6 +3,7 @@
 
 #include "fuujin/renderer/ShaderLibrary.h"
 #include "fuujin/renderer/ShaderBuffer.h"
+#include "fuujin/renderer/Model.h"
 
 #include "fuujin/core/Events.h"
 
@@ -39,6 +40,7 @@ namespace fuujin {
 
     struct RendererShaderData {
         std::unordered_map<uint64_t, ObjectAllocation> Materials, Scenes;
+        std::unordered_map<size_t, Ref<Pipeline>> MaterialPipelines;
     };
 
     struct RendererSceneState {
@@ -65,6 +67,7 @@ namespace fuujin {
 
         std::unordered_map<uint64_t, RendererSceneState> SceneState;
         std::unordered_map<uint64_t, RendererShaderData> ShaderData;
+        std::unordered_map<uint64_t, Renderer::MeshBuffers> MeshBuffers;
 
         uint32_t FrameCount;
         std::optional<uint32_t> CurrentFrame;
@@ -200,6 +203,7 @@ namespace fuujin {
         AssetManager::RegisterAssetType<TextureSerializer>();
         AssetManager::RegisterAssetType<MaterialSerializer>();
         AssetManager::RegisterAssetType<ModelSourceSerializer>();
+        AssetManager::RegisterAssetType<ModelSerializer>();
     }
 
     void Renderer::Shutdown() {
@@ -214,6 +218,7 @@ namespace fuujin {
         Wait();
         delete s_Data->API;
 
+        s_Data->MeshBuffers.clear();
         s_Data->ShaderData.clear();
         s_Data->WhiteTexture.Reset();
         s_Data->DefaultSampler.Reset();
@@ -311,6 +316,15 @@ namespace fuujin {
         for (auto& [shaderID, data] : s_Data->ShaderData) {
             data.Scenes.erase(id);
         }
+    }
+
+    void Renderer::FreeMesh(uint64_t id) {
+        ZoneScoped;
+        if (!s_Data || !s_Data->MeshBuffers.contains(id)) {
+            return;
+        }
+
+        s_Data->MeshBuffers.erase(id);
     }
 
     void Renderer::UpdateScene(uint64_t id, const SceneData& data) {
@@ -459,6 +473,163 @@ namespace fuujin {
         }
 
         return allocation.Allocation;
+    }
+
+    size_t Renderer::HashMaterialPipelineSpec(const Material::PipelineProperties& spec,
+                                              uint32_t renderTarget) {
+        ZoneScoped;
+        size_t hash = 0;
+
+        hash |= renderTarget;
+
+        if (spec.Wireframe) {
+            hash |= (1 << 8);
+        }
+
+        return hash;
+    }
+
+    Ref<Pipeline> Renderer::GetMaterialPipeline(const Ref<Shader>& shader,
+                                                const Ref<RenderTarget>& target,
+                                                const Material::PipelineProperties& spec) {
+        ZoneScoped;
+        if (!s_Data) {
+            return nullptr;
+        }
+
+        uint64_t shaderID = shader->GetID();
+        auto& shaderData = s_Data->ShaderData[shaderID];
+
+        size_t hash = HashMaterialPipelineSpec(spec, target->GetID());
+        if (shaderData.MaterialPipelines.contains(hash)) {
+            return shaderData.MaterialPipelines.at(hash);
+        }
+
+        Pipeline::Spec pipelineSpec;
+        pipelineSpec.PipelineType = Pipeline::Type::Graphics;
+        pipelineSpec.PipelineShader = shader;
+        pipelineSpec.Target = target;
+        pipelineSpec.PolygonFrontFace = FrontFace::CCW;
+        pipelineSpec.Wireframe = spec.Wireframe;
+
+        return shaderData.MaterialPipelines[hash] = s_Data->Context->CreatePipeline(pipelineSpec);
+    }
+
+    template <glm::length_t L>
+    struct SizedBoneVertex {
+        static constexpr glm::length_t MaxBones = L;
+
+        glm::vec<L, float, glm::defaultp> Weights;
+        glm::vec<L, int32_t, glm::defaultp> Indices;
+    };
+
+    using BoneVertex = SizedBoneVertex<4>;
+
+    struct MeshLoadData {
+        Renderer::MeshBuffers Actual, Staging;
+        std::vector<Buffer> Vertices;
+        std::vector<uint32_t> Indices;
+    };
+
+    static void RT_PopulateMeshBuffers(MeshLoadData* data) {
+        ZoneScoped;
+
+        auto queue = s_Data->Context->GetQueue(QueueType::Transfer);
+        auto& cmdlist = queue->RT_Get();
+        cmdlist.RT_Begin();
+
+        auto mapped = data->Staging.IndexBuffer->RT_Map();
+        Buffer::Copy(Buffer::Wrapper(data->Indices), mapped);
+        data->Staging.IndexBuffer->RT_Unmap();
+
+        data->Staging.IndexBuffer->RT_CopyToBuffer(cmdlist, data->Actual.IndexBuffer);
+        cmdlist.AddDependency(data->Staging.IndexBuffer);
+        cmdlist.AddDependency(data->Actual.IndexBuffer);
+
+        for (size_t i = 0; i < data->Vertices.size(); i++) {
+            const auto& vertexData = data->Vertices[i];
+            const auto& staging = data->Staging.VertexBuffers[i];
+            const auto& actual = data->Actual.VertexBuffers[i];
+
+            mapped = staging->RT_Map();
+            Buffer::Copy(vertexData, mapped);
+            staging->RT_Unmap();
+
+            staging->RT_CopyToBuffer(cmdlist, actual);
+            cmdlist.AddDependency(staging);
+            cmdlist.AddDependency(actual);
+        }
+
+        cmdlist.RT_End();
+        queue->RT_Submit(cmdlist);
+
+        delete data;
+    }
+
+    const Renderer::MeshBuffers& Renderer::GetMeshBuffers(const std::unique_ptr<Mesh>& mesh) {
+        ZoneScoped;
+
+        uint64_t id = mesh->GetID();
+        if (!s_Data->MeshBuffers.contains(id)) {
+            FUUJIN_INFO("Creating vertex and index buffers for mesh {}", id);
+
+            const auto& vertices = mesh->GetVertices();
+
+            auto data = new MeshLoadData;
+            data->Vertices.push_back(Buffer::Wrapper(vertices).Copy());
+            data->Indices = mesh->GetIndices();
+
+            const auto& bones = mesh->GetBones();
+            if (!bones.empty()) {
+                FUUJIN_INFO("Generating bone vertices for mesh {}", id);
+
+                size_t vertexCount = vertices.size();
+                std::vector<size_t> boneCount(vertexCount, 0);
+                std::vector<BoneVertex> boneVertices(vertexCount, BoneVertex{});
+
+                for (const auto& bone : bones) {
+                    for (const auto& [index, weight] : bone.Weights) {
+                        auto& vertexBoneCount = boneCount[index];
+                        auto& vertex = boneVertices[index];
+
+                        if (vertexBoneCount >= BoneVertex::MaxBones) {
+                            throw std::runtime_error("Cannot have more than " +
+                                                     std::to_string(BoneVertex::MaxBones) +
+                                                     " bones per vertex!");
+                        }
+
+                        vertex.Indices[vertexBoneCount] = (int32_t)index;
+                        vertex.Weights[vertexBoneCount] = weight;
+                        vertexBoneCount++;
+                    }
+                }
+
+                data->Vertices.push_back(Buffer::Wrapper(boneVertices).Copy());
+            }
+
+            DeviceBuffer::Spec staging, actual;
+            staging.QueueOwnership = { QueueType::Transfer };
+            staging.BufferUsage = DeviceBuffer::Usage::Staging;
+            actual.QueueOwnership = { QueueType::Transfer, QueueType::Graphics };
+            actual.BufferUsage = DeviceBuffer::Usage::Index;
+            actual.Size = staging.Size = data->Indices.size() * sizeof(uint32_t);
+
+            data->Staging.IndexBuffer = s_Data->Context->CreateBuffer(staging);
+            data->Actual.IndexBuffer = s_Data->Context->CreateBuffer(actual);
+
+            actual.BufferUsage = DeviceBuffer::Usage::Vertex;
+            for (const auto& vertices : data->Vertices) {
+                actual.Size = staging.Size = vertices.GetSize();
+
+                data->Actual.VertexBuffers.push_back(s_Data->Context->CreateBuffer(actual));
+                data->Staging.VertexBuffers.push_back(s_Data->Context->CreateBuffer(staging));
+            }
+
+            s_Data->MeshBuffers[id] = data->Actual;
+            Renderer::Submit([data] { RT_PopulateMeshBuffers(data); });
+        }
+
+        return s_Data->MeshBuffers[id];
     }
 
     struct TextureCreationInfo {
@@ -717,7 +888,7 @@ namespace fuujin {
         }
 
         IndexedRenderCall innerCall;
-        innerCall.VertexBuffer = data.VertexBuffer;
+        innerCall.VertexBuffers = data.VertexBuffers;
         innerCall.IndexBuffer = data.IndexBuffer;
         innerCall.RenderPipeline = data.RenderPipeline;
         innerCall.IndexCount = data.IndexCount;
@@ -725,6 +896,10 @@ namespace fuujin {
         const auto& shader = data.RenderPipeline->GetSpec().PipelineShader;
         innerCall.Resources = { GetMaterialAllocation(data.RenderMaterial, shader),
                                 GetSceneAllocation(data.SceneID, shader) };
+
+        for (const auto& allocation : data.AdditionalResources) {
+            innerCall.Resources.push_back(allocation);
+        }
 
         auto pushConstants = shader->GetPushConstants();
         if (pushConstants) {
@@ -740,5 +915,38 @@ namespace fuujin {
         }
 
         RenderIndexed(innerCall);
+    }
+
+    void Renderer::RenderModel(const ModelRenderCall& data) {
+        ZoneScoped;
+
+        const auto& meshes = data.RenderedModel->GetMeshes();
+        for (const auto& mesh : meshes) {
+            bool isSkinned = !mesh->GetBones().empty();
+            std::string shaderIdentifier = isSkinned ? "fuujin/shaders/MaterialSkinned.glsl"
+                                                     : "fuujin/shaders/MaterialStatic.glsl";
+
+            const auto& buffers = GetMeshBuffers(mesh);
+            const auto& shader = s_Data->Library->Get(shaderIdentifier);
+
+            const auto& material = mesh->GetMaterial();
+            auto pipeline = GetMaterialPipeline(shader, data.Target, material->GetPipeline());
+
+            MaterialRenderCall innerCall;
+            innerCall.VertexBuffers = buffers.VertexBuffers;
+            innerCall.IndexBuffer = buffers.IndexBuffer;
+            innerCall.IndexCount = (uint32_t)mesh->GetIndices().size();
+            innerCall.RenderMaterial = material;
+            innerCall.RenderPipeline = pipeline;
+            innerCall.SceneID = data.SceneID;
+            innerCall.ModelMatrix = data.ModelMatrix;
+            innerCall.CameraIndex = data.CameraIndex;
+
+            if (isSkinned) {
+                // todo: allocation for skinning
+            }
+
+            RenderWithMaterial(innerCall);
+        }
     }
 }; // namespace fuujin
