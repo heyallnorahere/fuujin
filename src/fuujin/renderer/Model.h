@@ -81,6 +81,7 @@ namespace fuujin {
         std::string m_Name;
 
         std::vector<Bone> m_Bones;
+        std::unordered_map<std::string, size_t> m_BoneMap;
     };
 
     class Model : public Asset {

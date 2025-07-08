@@ -63,6 +63,10 @@ namespace fuujin {
         ZoneScoped;
         FUUJIN_DEBUG("Adding bone {} to armature {}", name.c_str(), m_Name.c_str());
 
+        if (m_BoneMap.contains(name)) {
+            throw std::runtime_error("Bone named " + name + " already exists on this armature!");
+        }
+
         size_t index = m_Bones.size();
         auto& bone = m_Bones.emplace_back();
 
@@ -76,16 +80,15 @@ namespace fuujin {
             m_Bones[parentBone].Children.insert(index);
         }
 
+        m_BoneMap[name] = index;
         return index;
     }
 
     std::optional<size_t> Armature::FindBone(const std::string& name) const {
         ZoneScoped;
 
-        for (size_t i = 0; i < m_Bones.size(); i++) {
-            if (m_Bones[i].Name == name) {
-                return i;
-            }
+        if (m_BoneMap.contains(name)) {
+            return m_BoneMap.at(name);
         }
 
         return {};
@@ -341,7 +344,7 @@ namespace fuujin {
 
                 YAML::Node boneNode;
                 boneNode["Index"] = bone.Index;
-                boneNode["Weights"] = bone.Weights;
+                boneNode["Weights"] = weightsNode;
 
                 bonesNode.push_back(boneNode);
             }

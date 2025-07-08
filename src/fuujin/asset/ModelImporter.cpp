@@ -1,0 +1,411 @@
+#include "fuujinpch.h"
+#include "fuujin/asset/ModelImporter.h"
+
+#include "fuujin/asset/AssetManager.h"
+
+#include <assimp/scene.h>
+
+namespace fuujin {
+    template <typename _Ty>
+    static void ConvertAssimpMatrix(const aiMatrix4x4t<_Ty>& mat,
+                                    glm::mat<4, 4, _Ty, glm::defaultp>& result) {
+        ZoneScoped;
+
+        // row major to column major
+        // aiMatrix4x4t<_Ty> is row major (mat.{row}{column})
+        // glm::mat<4, 4, _Ty, Q> is column major (result[{column}][{row}])
+
+        // row 1
+        result[0][0] = mat.a1;
+        result[1][0] = mat.a2;
+        result[2][0] = mat.a3;
+        result[3][0] = mat.a4;
+
+        // row 2
+        result[0][1] = mat.b1;
+        result[1][1] = mat.b2;
+        result[2][1] = mat.b3;
+        result[3][1] = mat.b4;
+
+        // row 3
+        result[0][2] = mat.c1;
+        result[1][2] = mat.c2;
+        result[2][2] = mat.c3;
+        result[3][2] = mat.c4;
+
+        // row 4
+        result[0][3] = mat.d1;
+        result[1][3] = mat.d2;
+        result[2][3] = mat.d3;
+        result[3][3] = mat.d4;
+    }
+
+    template <typename _Ty>
+    static glm::vec<4, _Ty, glm::defaultp> ConvertAssimpColor(const aiColor4t<_Ty>& color) {
+        ZoneScoped;
+
+        glm::vec<4, _Ty, glm::defaultp> result;
+        result.r = color.r;
+        result.g = color.g;
+        result.b = color.b;
+        result.a = color.a;
+
+        return result;
+    }
+
+    ModelImporter::ModelImporter() {
+        ZoneScoped;
+
+        m_Scene = nullptr;
+    }
+
+    std::optional<fs::path> ModelImporter::Import(const Ref<ModelSource>& source) {
+        ZoneScoped;
+
+        m_SourcePath = source->GetPath();
+        auto virtualSourcePath = AssetManager::GetVirtualPath(m_SourcePath);
+
+        auto sourcePathText = m_SourcePath.string();
+        if (!virtualSourcePath.has_value()) {
+            FUUJIN_ERROR("Model source at path {} is not registered! Aborting import",
+                         sourcePathText.c_str());
+
+            return {};
+        }
+
+        m_ModelDirectory = m_SourcePath.parent_path();
+        auto modelPrefix = virtualSourcePath.value().parent_path();
+
+        static const std::string materialDirectorySuffix = "materials";
+        m_MaterialDirectory = m_ModelDirectory / materialDirectorySuffix;
+        m_MaterialPrefix = AssetManager::NormalizePath(modelPrefix / materialDirectorySuffix);
+        fs::create_directories(m_MaterialDirectory);
+
+        auto sourceFilename = m_SourcePath.filename();
+        auto modelFilename = sourceFilename.replace_extension(".model");
+        auto modelPath = m_ModelDirectory / modelFilename;
+        auto virtualModelPath = modelPrefix / modelFilename;
+
+        auto resultPathText = modelPath.string();
+        FUUJIN_INFO("Importing model at {} to {}", sourcePathText.c_str(), resultPathText.c_str());
+
+        m_Scene = source->GetScene();
+        m_Model = Ref<Model>::Create(modelPath);
+
+        glm::mat4 rootTransform;
+        ConvertAssimpMatrix(m_Scene->mRootNode->mTransformation, rootTransform);
+
+        try {
+            ProcessNode(m_Scene->mRootNode, glm::inverse(rootTransform));
+        } catch (const std::runtime_error& exc) {
+            FUUJIN_ERROR("Model import error: {}", exc.what());
+            return {};
+        }
+
+        if (!AssetManager::AddAsset(m_Model, virtualModelPath)) {
+            FUUJIN_ERROR("Failed to add model to registry!");
+            return {};
+        }
+
+        m_Model.Reset();
+        m_Materials.clear();
+
+        return virtualModelPath;
+    }
+
+    void ModelImporter::ProcessNode(aiNode* node, const glm::mat4& parentTransform) {
+        ZoneScoped;
+
+        glm::mat4 nodeTransform;
+        ConvertAssimpMatrix(node->mTransformation, nodeTransform);
+
+        // parent transform is applied before current node's transform
+        glm::mat4 absoluteTransform = nodeTransform * parentTransform;
+
+        for (unsigned int i = 0; i < node->mNumMeshes; i++) {
+            auto meshIndex = node->mMeshes[i];
+            auto meshSource = m_Scene->mMeshes[meshIndex];
+
+            ProcessMesh(node, meshSource, absoluteTransform);
+        }
+
+        for (unsigned int i = 0; i < node->mNumChildren; i++) {
+            auto child = node->mChildren[i];
+            ProcessNode(child, absoluteTransform);
+        }
+    }
+
+    void ModelImporter::ProcessMesh(aiNode* node, aiMesh* mesh, const glm::mat4& transform) {
+        ZoneScoped;
+
+        bool hasUV = mesh->HasTextureCoords(0);
+        if (!hasUV) {
+            FUUJIN_WARN("Mesh has no UV coordinates!");
+        }
+
+        bool hasNormals = mesh->HasNormals();
+        if (!hasNormals) {
+            FUUJIN_WARN("Mesh has no normals!");
+        }
+
+        bool hasTangents = mesh->HasTangentsAndBitangents();
+        if (!hasTangents) {
+            FUUJIN_WARN("Mesh has no tangents!");
+        }
+
+        std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
+
+        for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
+            FUUJIN_TRACE("Vertex {}", i);
+            auto& vertex = vertices.emplace_back(Vertex{});
+
+            auto position = mesh->mVertices[i];
+            FUUJIN_TRACE("Position: <{}, {}, {}>", position.x, position.y, position.z);
+
+            vertex.Position.x = position.x;
+            vertex.Position.y = position.y;
+            vertex.Position.z = position.z;
+
+            if (hasUV) {
+                auto uv = mesh->mTextureCoords[0][i];
+                FUUJIN_TRACE("UV: <{}, {}>", uv.x, uv.y);
+
+                vertex.UV.x = uv.x;
+                vertex.UV.y = uv.y;
+            }
+
+            if (hasNormals) {
+                auto normal = mesh->mNormals[i];
+                FUUJIN_TRACE("Normal: <{}, {}, {}>", normal.x, normal.y, normal.z);
+
+                vertex.Normal.x = normal.x;
+                vertex.Normal.y = normal.y;
+                vertex.Normal.z = normal.z;
+            }
+
+            if (hasTangents) {
+                auto tangent = mesh->mTangents[i];
+                FUUJIN_TRACE("Tangent: <{}, {}, {}>", tangent.x, tangent.y, tangent.z);
+
+                vertex.Tangent.x = tangent.x;
+                vertex.Tangent.y = tangent.y;
+                vertex.Tangent.z = tangent.z;
+            }
+        }
+
+        for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+            const auto& face = mesh->mFaces[i];
+            if (face.mNumIndices != Mesh::IndicesPerFace) {
+                FUUJIN_ERROR("Mesh not triangulated! Skipping mesh");
+                return;
+            }
+
+            FUUJIN_TRACE("Face {}", i);
+            for (unsigned int j = 0; j < face.mNumIndices; j++) {
+                uint32_t index = (uint32_t)face.mIndices[j];
+                FUUJIN_TRACE("Index {}: {}", j, index);
+
+                indices.push_back(index);
+            }
+        }
+
+        size_t armatureIndex = 0;
+        aiNode* armatureNode = nullptr;
+
+        const auto& armatures = m_Model->GetArmatures();
+        Armature* armature = nullptr;
+
+        for (unsigned int i = 0; i < mesh->mNumBones; i++) {
+            auto bone = mesh->mBones[i];
+
+            if (armatureNode == nullptr) {
+                armatureNode = bone->mArmature;
+                armatureIndex = GetArmature(armatureNode);
+                armature = armatures[armatureIndex].get();
+            } else if (armatureNode != bone->mArmature) {
+                throw std::runtime_error("Cannot use more than one armature per mesh!");
+            }
+
+            auto& imported = m_ImportedBones[bone->mNode];
+            imported.Processed = false;
+            imported.Name = bone->mName.C_Str();
+            imported.Existing = armature->FindBone(imported.Name);
+            imported.Pointer = bone;
+        }
+
+        std::vector<BoneReference> bones;
+        for (const auto& [node, imported] : m_ImportedBones) {
+            ProcessBone(node, armature, bones);
+        }
+
+        auto material = GetMaterial(mesh->mMaterialIndex);
+        auto result = std::make_unique<Mesh>(material, vertices, indices, bones, armatureIndex);
+
+        m_ImportedBones.clear();
+        m_Model->AddMesh(std::move(result));
+    }
+
+    void ModelImporter::ProcessBone(aiNode* node, Armature* armature,
+                                    std::vector<BoneReference>& bones) {
+        ZoneScoped;
+        if (!m_ImportedBones.contains(node)) {
+            return;
+        }
+
+        auto& imported = m_ImportedBones[node];
+        FUUJIN_TRACE("Processing bone: {}", imported.Name.c_str());
+
+        if (imported.Processed) {
+            FUUJIN_DEBUG("Bone {} already processed - skipping", imported.Name.c_str());
+            return;
+        }
+
+        if (!imported.Existing.has_value()) {
+            std::optional<size_t> parent;
+            if (m_ImportedBones.contains(node->mParent)) {
+                const auto& parentData = m_ImportedBones.at(node->mParent);
+                parent = parentData.Existing;
+
+                if (!parent.has_value()) {
+                    FUUJIN_DEBUG("Parent of bone {} has not been processed yet - skip",
+                                 imported.Name.c_str());
+
+                    return;
+                }
+            }
+
+            glm::mat4 transform, offset;
+            ConvertAssimpMatrix(node->mTransformation, transform);
+            ConvertAssimpMatrix(imported.Pointer->mOffsetMatrix, offset);
+
+            imported.Existing = armature->AddBone(parent, imported.Name, transform, offset);
+        }
+
+        BoneReference reference;
+        reference.Index = imported.Existing.value();
+
+        for (unsigned int i = 0; i < imported.Pointer->mNumWeights; i++) {
+            const auto& weight = imported.Pointer->mWeights[i];
+
+            uint32_t index = (uint32_t)weight.mVertexId;
+            float value = weight.mWeight;
+            FUUJIN_TRACE("Weight for vertex {}: {}", index, value);
+
+            reference.Weights[index] = value;
+        }
+
+        bones.push_back(reference);
+        imported.Processed = true;
+
+        for (unsigned int i = 0; i < node->mNumChildren; i++) {
+            auto child = node->mChildren[i];
+            ProcessBone(child, armature, bones);
+        }
+    }
+
+    Ref<Material> ModelImporter::GetMaterial(unsigned int index) {
+        ZoneScoped;
+
+        if (m_Materials.contains(index)) {
+            return m_Materials.at(index);
+        }
+
+        auto source = m_Scene->mMaterials[index];
+        auto name = source->GetName();
+        FUUJIN_INFO("Processing material: {}", name.C_Str());
+
+        fs::path filename = std::string(name.C_Str()) + ".mat";
+        fs::path realPath = m_MaterialDirectory / filename;
+        fs::path virtualPath = m_MaterialPrefix / filename;
+        auto material = Ref<Material>::Create(realPath);
+
+        aiColor4D color;
+        float scalar;
+
+        if (source->Get(AI_MATKEY_COLOR_DIFFUSE, color) == aiReturn_SUCCESS) {
+            material->SetProperty(Material::Property::AlbedoColor, color);
+            FUUJIN_TRACE("Albedo color: <{}, {}, {}, {}>", color.r, color.g, color.b, color.a);
+        }
+
+        if (source->Get(AI_MATKEY_COLOR_SPECULAR, color) == aiReturn_SUCCESS) {
+            material->SetProperty(Material::Property::SpecularColor, ConvertAssimpColor(color));
+            FUUJIN_TRACE("Specular color: <{}, {}, {}, {}>", color.r, color.g, color.b, color.a);
+        }
+
+        if (source->Get(AI_MATKEY_COLOR_AMBIENT, color) == aiReturn_SUCCESS) {
+            material->SetProperty(Material::Property::AmbientColor, ConvertAssimpColor(color));
+            FUUJIN_TRACE("Ambient color: <{}, {}, {}, {}>", color.r, color.g, color.b, color.a);
+        }
+
+        if (source->Get(AI_MATKEY_SHININESS, scalar) == aiReturn_SUCCESS) {
+            material->SetProperty(Material::Property::Shininess, scalar);
+            FUUJIN_TRACE("Shininess: {}", scalar);
+        }
+
+        static const std::unordered_map<aiTextureType, Material::TextureSlot> slotMap = {
+            { aiTextureType_DIFFUSE, Material::TextureSlot::Albedo },
+            { aiTextureType_SPECULAR, Material::TextureSlot::Specular },
+            { aiTextureType_AMBIENT, Material::TextureSlot::Ambient },
+            { aiTextureType_NORMALS, Material::TextureSlot::Normal },
+        };
+
+        for (const auto& [type, slot] : slotMap) {
+            if (source->GetTextureCount(type) == 0) {
+                continue;
+            }
+
+            aiString stringPath;
+            if (source->GetTexture(type, 0, &stringPath) != aiReturn_SUCCESS) {
+                continue;
+            }
+
+            fs::path realTexturePath = stringPath.C_Str();
+            if (realTexturePath.is_relative()) {
+                realTexturePath = m_ModelDirectory / realTexturePath;
+            }
+
+            realTexturePath = realTexturePath.lexically_normal();
+            auto virtualTexturePath = AssetManager::GetVirtualPath(realTexturePath);
+
+            Ref<Texture> texture;
+            if (virtualTexturePath.has_value()) {
+                texture = AssetManager::GetAsset<Texture>(virtualTexturePath.value());
+            }
+
+            auto texturePathText = realTexturePath.string();
+            if (texture.IsEmpty()) {
+                FUUJIN_ERROR("Failed to find texture of path {} - skipping",
+                             texturePathText.c_str());
+
+                continue;
+            }
+
+            material->SetTexture(slot, texture);
+        }
+
+        if (!AssetManager::AddAsset(material, virtualPath)) {
+            FUUJIN_WARN("Failed to add material to asset registry - this will create broken links");
+        }
+
+        m_Materials[index] = material;
+        return material;
+    }
+
+    size_t ModelImporter::GetArmature(aiNode* node) {
+        ZoneScoped;
+
+        if (m_ArmatureMap.contains(node)) {
+            return m_ArmatureMap.at(node);
+        }
+
+        std::string name = node->mName.C_Str();
+        auto armature = std::make_unique<Armature>(name);
+        FUUJIN_DEBUG("Creating new armature: {}", name.c_str());
+
+        size_t index = m_Model->GetArmatures().size();
+        m_Model->AddArmature(std::move(armature));
+
+        return index;
+    }
+} // namespace fuujin

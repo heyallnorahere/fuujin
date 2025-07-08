@@ -225,7 +225,7 @@ namespace fuujin {
 
                 auto valueNode = data["Value"];
                 std::vector<float> values;
-                if (valueNode.IsDefined()) {
+                if (valueNode.IsSequence()) {
                     values = valueNode.as<std::vector<float>>();
                 } else if (valueNode.IsScalar()) {
                     values = { valueNode.as<float>() };

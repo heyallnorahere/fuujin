@@ -248,6 +248,22 @@ namespace fuujin {
         return s_Data->AssetTypes.at(type).Serializer.get();
     }
 
+    bool AssetManager::AssetExists(const fs::path& path, bool isPathVirtual) {
+        ZoneScoped;
+
+        fs::path usedPath = path;
+        if (!isPathVirtual) {
+            auto virtualPath = GetVirtualPath(path);
+            if (!virtualPath.has_value()) {
+                return false;
+            }
+
+            usedPath = virtualPath.value();
+        }
+
+        return s_Data->PathTypeMap.contains(usedPath);
+    }
+
     Ref<Asset> AssetManager::GetAsset(const fs::path& path) {
         ZoneScoped;
         if (!s_Data) {

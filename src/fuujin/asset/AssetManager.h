@@ -34,6 +34,7 @@ namespace fuujin {
             RegisterAssetType(std::unique_ptr<AssetSerializer>(instance));
         }
 
+        static bool AssetExists(const fs::path& path, bool isPathVirtual = true);
         static Ref<Asset> GetAsset(const fs::path& path);
 
         template <typename _Ty>
@@ -46,8 +47,10 @@ namespace fuujin {
                 return nullptr;
             }
 
-            if (GetAssetType<_Ty>() != asset->GetAssetType()) {
-                throw std::runtime_error("Invalid asset cast!");
+            if constexpr (!std::is_same_v<Asset, _Ty>) {
+                if (GetAssetType<_Ty>() != asset->GetAssetType()) {
+                    throw std::runtime_error("Invalid asset cast!");
+                }
             }
 
             return asset.As<_Ty>();

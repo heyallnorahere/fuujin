@@ -1,6 +1,8 @@
 #include "fuujin.h"
 
 #include "fuujin/asset/AssetManager.h"
+#include "fuujin/asset/ModelImporter.h"
+
 #include "fuujin/renderer/Renderer.h"
 #include "fuujin/renderer/ShaderLibrary.h"
 #include "fuujin/renderer/Model.h"
@@ -9,72 +11,6 @@
 
 using namespace std::chrono_literals;
 using namespace fuujin;
-
-// https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
-static glm::vec3 hsv2rgb(const glm::vec3& in) {
-    float hh, p, q, t, ff;
-    int32_t i;
-    glm::vec3 out;
-
-    if (in.y <= 0.f) { // < is bogus, just shuts up warnings
-        out.r = in.z;
-        out.g = in.z;
-        out.b = in.z;
-        return out;
-    }
-    hh = in.x;
-    if (hh >= 360.f)
-        hh = 0.f;
-    hh /= 60.f;
-    i = (long)hh;
-    ff = hh - i;
-    p = in.z * (1.f - in.y);
-    q = in.z * (1.f - (in.y * ff));
-    t = in.z * (1.f - (in.y * (1.f - ff)));
-
-    switch (i) {
-    case 0:
-        out.r = in.z;
-        out.g = t;
-        out.b = p;
-        break;
-    case 1:
-        out.r = q;
-        out.g = in.z;
-        out.b = p;
-        break;
-    case 2:
-        out.r = p;
-        out.g = in.z;
-        out.b = t;
-        break;
-
-    case 3:
-        out.r = p;
-        out.g = q;
-        out.b = in.z;
-        break;
-    case 4:
-        out.r = t;
-        out.g = p;
-        out.b = in.z;
-        break;
-    case 5:
-    default:
-        out.r = in.z;
-        out.g = p;
-        out.b = q;
-        break;
-    }
-    return out;
-}
-
-static const std::vector<uint32_t> s_Indices = { 0, 1, 2 };
-static const std::vector<fuujin::Vertex> s_Vertices = {
-    { glm::vec3(0.5f, -0.5f, 0.f), glm::vec2(1.f, 0.f), glm::vec3(0.f, 0.f, 1.f) },
-    { glm::vec3(0.f, 0.5f, 0.f), glm::vec2(0.5f, 1.f), glm::vec3(0.f, 0.f, 1.f) },
-    { glm::vec3(-0.5f, -0.5f, 0.f), glm::vec2(0.f, 0.f), glm::vec3(0.f, 0.f, 1.f) }
-};
 
 template <typename _Ty>
 inline glm::mat<4, 4, _Ty, glm::defaultp> Perspective(_Ty fovy, _Ty aspect, _Ty zNear, _Ty zFar) {
@@ -125,10 +61,17 @@ public:
             aspect = 1.f;
         }
 
-        float theta = m_Time * s_PI;
-        glm::vec3 radial = glm::vec3(glm::sin(theta), 0.f, glm::cos(theta));
+        float yaw = m_Time * s_PI;
+        float sinYaw = glm::sin(yaw);
+        float cosYaw = glm::cos(yaw);
 
+        float pitch = sinYaw * s_PI / 8.f;
+        float sinPitch = glm::sin(pitch);
+        float cosPitch = glm::cos(pitch);
+
+        glm::vec3 radial = glm::vec3(cosYaw * cosPitch, sinPitch, sinYaw * cosPitch);
         glm::vec3 position = radial * 5.f;
+        
         glm::vec3 up = glm::vec3(0.f, 1.f, 0.f);
         glm::vec3 direction = -radial;
 
@@ -150,10 +93,6 @@ public:
             hue -= hueMax;
         }
 
-        glm::vec4 color = glm::vec4(hsv2rgb(glm::vec3(hue, 1.f, 1.f)), 1.f);
-        auto material = m_Call.RenderedModel->GetMeshes()[0]->GetMaterial();
-        material->SetProperty(Material::Property::AlbedoColor, color);
-
         Renderer::RenderModel(m_Call);
     }
 
@@ -161,7 +100,26 @@ private:
     void LoadResources() {
         ZoneScoped;
 
-        m_Call.RenderedModel = AssetManager::GetAsset<Model>("fuujin/models/Triangle.model");
+        static const std::string modelName = "Cube.model";
+        static const std::string sourceName = "Cube.gltf";
+
+        static const fs::path modelDirectory = "fuujin/models";
+        static const fs::path modelPath = modelDirectory / modelName;
+        static const fs::path sourcePath = modelDirectory / sourceName;
+
+        if (!AssetManager::AssetExists(modelPath)) {
+            auto source = AssetManager::GetAsset<ModelSource>(sourcePath);
+            if (source.IsEmpty()) {
+                throw std::runtime_error("Failed to find model source to import!");
+            }
+
+            ModelImporter importer;
+            if (importer.Import(source).value_or("") != modelPath) {
+                throw std::runtime_error("Failed to import model!");
+            }
+        }
+
+        m_Call.RenderedModel = AssetManager::GetAsset<Model>(modelPath);
         Renderer::Wait();
     }
 
