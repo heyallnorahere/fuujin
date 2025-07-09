@@ -11,7 +11,6 @@
 
 namespace fuujin {
     static uint64_t s_MeshID = 0;
-    static uint64_t s_ArmatureID = 0;
 
     static const std::vector<std::string> s_ModelExtensions = { "model" };
 
@@ -51,15 +50,14 @@ namespace fuujin {
         Renderer::FreeMesh(m_ID);
     }
 
-    Armature::Armature(const std::string& name) {
+    Armature::Armature(const std::string& name, size_t node) {
         ZoneScoped;
 
-        m_ID = s_ArmatureID++;
         m_Name = name;
+        m_Node = node;
     }
 
-    size_t Armature::AddBone(const std::optional<size_t>& parent, const std::string& name,
-                             const glm::mat4& transform, const glm::mat4& offset) {
+    size_t Armature::AddBone(const std::string& name, size_t node, const glm::mat4& offset) {
         ZoneScoped;
         FUUJIN_DEBUG("Adding bone {} to armature {}", name.c_str(), m_Name.c_str());
 
@@ -70,25 +68,31 @@ namespace fuujin {
         size_t index = m_Bones.size();
         auto& bone = m_Bones.emplace_back();
 
-        bone.Parent = parent;
         bone.Name = name;
-        bone.Transform = transform;
+        bone.Node = node;
         bone.Offset = offset;
 
-        if (parent.has_value()) {
-            size_t parentBone = parent.value();
-            m_Bones[parentBone].Children.insert(index);
-        }
-
         m_BoneMap[name] = index;
+        m_NodeBoneMap[node] = index;
+
         return index;
     }
 
-    std::optional<size_t> Armature::FindBone(const std::string& name) const {
+    std::optional<size_t> Armature::FindBoneByName(const std::string& name) const {
         ZoneScoped;
 
         if (m_BoneMap.contains(name)) {
             return m_BoneMap.at(name);
+        }
+
+        return {};
+    }
+
+    std::optional<size_t> Armature::FindBoneByNode(size_t node) const {
+        ZoneScoped;
+
+        if (m_NodeBoneMap.contains(node)) {
+            return m_NodeBoneMap.at(node);
         }
 
         return {};
@@ -110,6 +114,46 @@ namespace fuujin {
         ZoneScoped;
 
         m_Armatures.push_back(std::move(armature));
+    }
+
+    size_t Model::AddNode(const std::string& name, const glm::mat4& transform,
+                          const std::unordered_set<size_t>& meshes,
+                          const std::optional<size_t>& parent) {
+        ZoneScoped;
+
+        if (m_NodeMap.contains(name)) {
+            throw std::runtime_error("Duplicate node: " + name);
+        }
+
+        size_t index = m_Nodes.size();
+
+        auto& node = m_Nodes.emplace_back();
+        node.Name = name;
+        node.Transform = transform;
+        node.Meshes = meshes;
+        node.Parent = parent;
+
+        if (parent.has_value()) {
+            size_t parentIndex = parent.value();
+            m_Nodes[parentIndex].Children.insert(index);
+        }
+
+        m_NodeMap[name] = index;
+        if (!meshes.empty()) {
+            m_MeshNodes.insert(index);
+        }
+
+        return index;
+    }
+
+    std::optional<size_t> Model::FindNode(const std::string& name) {
+        ZoneScoped;
+
+        if (m_NodeMap.contains(name)) {
+            return m_NodeMap.at(name);
+        }
+
+        return {};
     }
 
     static std::unique_ptr<Mesh> DeserializeMesh(const YAML::Node& node) {
@@ -219,22 +263,18 @@ namespace fuujin {
         ZoneScoped;
 
         auto name = node["Name"].as<std::string>();
-        auto armature = std::make_unique<Armature>(name);
+        auto nodeIndex = node["Node"].as<size_t>();
+        auto armature = std::make_unique<Armature>(name, nodeIndex);
 
         const auto& bonesNode = node["Bones"];
         for (const auto& boneNode : bonesNode) {
             std::optional<size_t> parent;
 
-            const auto& parentNode = boneNode["Parent"];
-            if (parentNode.IsDefined()) {
-                parent = parentNode.as<size_t>();
-            }
-
             auto boneName = boneNode["Name"].as<std::string>();
-            auto transform = boneNode["Transform"].as<glm::mat4>();
+            auto boneNodeIndex = boneNode["Node"].as<size_t>();
             auto offset = boneNode["Offset"].as<glm::mat4>();
 
-            armature->AddBone(parent, name, transform, offset);
+            armature->AddBone(boneName, boneNodeIndex, offset);
         }
 
         return armature;
@@ -256,6 +296,28 @@ namespace fuujin {
         file.close();
 
         auto model = Ref<Model>::Create(path);
+
+        const auto& nodesNode = node["Nodes"];
+        for (const auto& nodeNode : nodesNode) {
+            auto name = nodeNode["Name"].as<std::string>();
+            auto transform = nodeNode["Transform"].as<glm::mat4>();
+
+            std::unordered_set<size_t> meshes;
+            const auto& meshIndicesNode = nodeNode["Meshes"];
+            if (meshIndicesNode.IsDefined()) {
+                for (const auto& meshIndexNode : meshIndicesNode) {
+                    meshes.insert(meshIndexNode.as<size_t>());
+                }
+            }
+
+            const auto& parentNode = nodeNode["Parent"];
+            std::optional<size_t> parent;
+            if (parentNode.IsDefined()) {
+                parent = parentNode.as<size_t>();
+            }
+
+            model->AddNode(name, transform, meshes, parent);
+        }
 
         const auto& meshesNode = node["Meshes"];
         if (meshesNode.IsDefined()) {
@@ -360,6 +422,7 @@ namespace fuujin {
         ZoneScoped;
 
         node["Name"] = armature->GetName();
+        node["Node"] = armature->GetNode();
 
         const auto& bones = armature->GetBones();
         YAML::Node bonesNode;
@@ -367,14 +430,14 @@ namespace fuujin {
         for (const auto& bone : bones) {
             YAML::Node boneNode;
 
-            if (bone.Parent.has_value()) {
-                boneNode["Parent"] = bone.Parent.value();
-            }
-
             boneNode["Name"] = bone.Name;
-            boneNode["Transform"] = bone.Transform;
+            boneNode["Node"] = bone.Node;
             boneNode["Offset"] = bone.Offset;
+
+            bonesNode.push_back(boneNode);
         }
+
+        node["Bones"] = bonesNode;
 
         return true;
     }
@@ -389,6 +452,7 @@ namespace fuujin {
         auto model = asset.As<Model>();
         const auto& meshes = model->GetMeshes();
         const auto& armatures = model->GetArmatures();
+        const auto& nodes = model->GetNodes();
 
         YAML::Node meshesNode;
         size_t skippedMeshes = 0;
@@ -409,6 +473,25 @@ namespace fuujin {
             return false;
         }
 
+        YAML::Node nodesNode;
+        for (const auto& nodeData : nodes) {
+            YAML::Node meshesNode;
+            for (size_t meshIndex : nodeData.Meshes) {
+                meshesNode.push_back(meshIndex);
+            }
+
+            YAML::Node nodeNode;
+            nodeNode["Name"] = nodeData.Name;
+            nodeNode["Transform"] = nodeData.Transform;
+            nodeNode["Meshes"] = meshesNode;
+
+            if (nodeData.Parent.has_value()) {
+                nodeNode["Parent"] = nodeData.Parent.value();
+            }
+
+            nodesNode.push_back(nodeNode);
+        }
+
         YAML::Node armaturesNode;
         size_t skippedArmatures = 0;
         for (const auto& armature : armatures) {
@@ -425,6 +508,7 @@ namespace fuujin {
 
         YAML::Node node;
         node["Meshes"] = meshesNode;
+        node["Nodes"] = nodesNode;
 
         if (skippedArmatures != armatures.size()) {
             node["Armatures"] = armaturesNode;

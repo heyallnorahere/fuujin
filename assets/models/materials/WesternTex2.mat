@@ -1,0 +1,14 @@
+Textures:
+  - Slot: Albedo
+    Asset: fuujin/textures/PolygonWestern_Texture1.png
+Properties:
+  - Name: Albedo
+    Value: [1, 1, 1, 1]
+  - Name: Specular
+    Value: [1, 1, 1, 1]
+  - Name: Ambient
+    Value: [1, 1, 1, 1]
+  - Name: Shininess
+    Value: 200
+Pipeline:
+  Wireframe: false

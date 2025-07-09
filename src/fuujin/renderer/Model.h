@@ -18,11 +18,9 @@ namespace fuujin {
     };
 
     struct Bone {
-        std::optional<size_t> Parent;
         std::string Name;
-        glm::mat4 Transform;
         glm::mat4 Offset;
-        std::unordered_set<size_t> Children;
+        size_t Node;
     };
 
     class Mesh {
@@ -60,32 +58,41 @@ namespace fuujin {
 
     class Armature {
     public:
-        Armature(const std::string& name);
+        Armature(const std::string& name, size_t node);
         ~Armature() = default;
 
         Armature(const Armature&) = delete;
         Armature& operator=(const Armature&) = delete;
 
-        size_t AddBone(const std::optional<size_t>& parent, const std::string& name,
-                       const glm::mat4& transform, const glm::mat4& offset);
-        
-        std::optional<size_t> FindBone(const std::string& name) const;
+        size_t AddBone(const std::string& name, size_t node, const glm::mat4& offset);
 
-        uint64_t GetID() { return m_ID; }
+        std::optional<size_t> FindBoneByName(const std::string& name) const;
+        std::optional<size_t> FindBoneByNode(size_t node) const;
+
         const std::string& GetName() const { return m_Name; }
+        size_t GetNode() const { return m_Node; }
 
         const std::vector<Bone>& GetBones() const { return m_Bones; }
 
     private:
-        uint64_t m_ID;
         std::string m_Name;
+        size_t m_Node;
 
         std::vector<Bone> m_Bones;
         std::unordered_map<std::string, size_t> m_BoneMap;
+        std::unordered_map<size_t, size_t> m_NodeBoneMap;
     };
 
     class Model : public Asset {
     public:
+        struct Node {
+            std::string Name;
+            glm::mat4 Transform;
+            std::unordered_set<size_t> Meshes;
+            std::optional<size_t> Parent;
+            std::unordered_set<size_t> Children;
+        };
+
         Model(const fs::path& path);
         virtual ~Model() override = default;
 
@@ -98,14 +105,27 @@ namespace fuujin {
         void AddMesh(std::unique_ptr<Mesh>&& mesh);
         void AddArmature(std::unique_ptr<Armature>&& armature);
 
+        size_t AddNode(const std::string& name, const glm::mat4& transform,
+                       const std::unordered_set<size_t>& meshes,
+                       const std::optional<size_t>& parent);
+
+        std::optional<size_t> FindNode(const std::string& name);
+
         const std::vector<std::unique_ptr<Mesh>>& GetMeshes() const { return m_Meshes; }
         const std::vector<std::unique_ptr<Armature>>& GetArmatures() const { return m_Armatures; }
+
+        const std::vector<Node>& GetNodes() const { return m_Nodes; }
+        const std::unordered_set<size_t>& GetMeshNodes() const { return m_MeshNodes; }
 
     private:
         fs::path m_Path;
 
         std::vector<std::unique_ptr<Mesh>> m_Meshes;
         std::vector<std::unique_ptr<Armature>> m_Armatures;
+
+        std::vector<Node> m_Nodes;
+        std::unordered_map<std::string, size_t> m_NodeMap;
+        std::unordered_set<size_t> m_MeshNodes;
     };
 
     template <>

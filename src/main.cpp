@@ -100,8 +100,8 @@ private:
     void LoadResources() {
         ZoneScoped;
 
-        static const std::string modelName = "Cube.model";
-        static const std::string sourceName = "Cube.gltf";
+        static const std::string modelName = "Gunman.model";
+        static const std::string sourceName = "Gunman.gltf";
 
         static const fs::path modelDirectory = "fuujin/models";
         static const fs::path modelPath = modelDirectory / modelName;
@@ -120,6 +120,8 @@ private:
         }
 
         m_Call.RenderedModel = AssetManager::GetAsset<Model>(modelPath);
+        m_Call.ModelAnimator = Ref<Animator>::Create(m_Call.RenderedModel);
+
         Renderer::Wait();
     }
 

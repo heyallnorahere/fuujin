@@ -92,11 +92,13 @@ namespace fuujin {
         m_Scene = source->GetScene();
         m_Model = Ref<Model>::Create(modelPath);
 
-        glm::mat4 rootTransform;
-        ConvertAssimpMatrix(m_Scene->mRootNode->mTransformation, rootTransform);
-
         try {
-            ProcessNode(m_Scene->mRootNode, glm::inverse(rootTransform));
+            ProcessNode(m_Scene->mRootNode);
+
+            for (unsigned int i = 0; i < m_Scene->mNumMeshes; i++) {
+                auto mesh = m_Scene->mMeshes[i];
+                ProcessMesh(mesh);
+            }
         } catch (const std::runtime_error& exc) {
             FUUJIN_ERROR("Model import error: {}", exc.what());
             return {};
@@ -109,33 +111,43 @@ namespace fuujin {
 
         m_Model.Reset();
         m_Materials.clear();
+        m_NodeMap.clear();
+        m_ArmatureMap.clear();
 
         return virtualModelPath;
     }
 
-    void ModelImporter::ProcessNode(aiNode* node, const glm::mat4& parentTransform) {
+    void ModelImporter::ProcessNode(aiNode* node) {
         ZoneScoped;
+
+        if (m_NodeMap.contains(node)) {
+            FUUJIN_DEBUG("Node {} already processed - skipping", node->mName.C_Str());
+            return;
+        }
 
         glm::mat4 nodeTransform;
         ConvertAssimpMatrix(node->mTransformation, nodeTransform);
 
-        // parent transform is applied before current node's transform
-        glm::mat4 absoluteTransform = nodeTransform * parentTransform;
+        std::optional<size_t> parent;
+        if (node->mParent != nullptr) {
+            parent = m_NodeMap.at(node->mParent);
+        }
 
+        std::unordered_set<size_t> meshes;
         for (unsigned int i = 0; i < node->mNumMeshes; i++) {
             auto meshIndex = node->mMeshes[i];
-            auto meshSource = m_Scene->mMeshes[meshIndex];
-
-            ProcessMesh(node, meshSource, absoluteTransform);
+            meshes.insert((size_t)meshIndex);
         }
+
+        m_NodeMap[node] = m_Model->AddNode(node->mName.C_Str(), nodeTransform, meshes, parent);
 
         for (unsigned int i = 0; i < node->mNumChildren; i++) {
             auto child = node->mChildren[i];
-            ProcessNode(child, absoluteTransform);
+            ProcessNode(child);
         }
     }
 
-    void ModelImporter::ProcessMesh(aiNode* node, aiMesh* mesh, const glm::mat4& transform) {
+    void ModelImporter::ProcessMesh(aiMesh* mesh) {
         ZoneScoped;
 
         bool hasUV = mesh->HasTextureCoords(0);
@@ -230,13 +242,13 @@ namespace fuujin {
             auto& imported = m_ImportedBones[bone->mNode];
             imported.Processed = false;
             imported.Name = bone->mName.C_Str();
-            imported.Existing = armature->FindBone(imported.Name);
+            imported.Existing = armature->FindBoneByName(imported.Name);
             imported.Pointer = bone;
         }
 
         std::vector<BoneReference> bones;
         for (const auto& [node, imported] : m_ImportedBones) {
-            ProcessBone(node, armature, bones);
+            ProcessBone(node, imported, armature, bones);
         }
 
         auto material = GetMaterial(mesh->mMaterialIndex);
@@ -246,44 +258,24 @@ namespace fuujin {
         m_Model->AddMesh(std::move(result));
     }
 
-    void ModelImporter::ProcessBone(aiNode* node, Armature* armature,
+    void ModelImporter::ProcessBone(aiNode* node, const ImportedBone& imported, Armature* armature,
                                     std::vector<BoneReference>& bones) {
         ZoneScoped;
-        if (!m_ImportedBones.contains(node)) {
-            return;
-        }
-
-        auto& imported = m_ImportedBones[node];
         FUUJIN_TRACE("Processing bone: {}", imported.Name.c_str());
 
-        if (imported.Processed) {
-            FUUJIN_DEBUG("Bone {} already processed - skipping", imported.Name.c_str());
-            return;
-        }
-
+        BoneReference reference;
         if (!imported.Existing.has_value()) {
-            std::optional<size_t> parent;
-            if (m_ImportedBones.contains(node->mParent)) {
-                const auto& parentData = m_ImportedBones.at(node->mParent);
-                parent = parentData.Existing;
-
-                if (!parent.has_value()) {
-                    FUUJIN_DEBUG("Parent of bone {} has not been processed yet - skip",
-                                 imported.Name.c_str());
-
-                    return;
-                }
-            }
-
-            glm::mat4 transform, offset;
-            ConvertAssimpMatrix(node->mTransformation, transform);
+            glm::mat4 offset;
             ConvertAssimpMatrix(imported.Pointer->mOffsetMatrix, offset);
 
-            imported.Existing = armature->AddBone(parent, imported.Name, transform, offset);
-        }
+            // no-op if node already processed
+            ProcessNode(node);
+            size_t nodeIndex = m_NodeMap.at(node);
 
-        BoneReference reference;
-        reference.Index = imported.Existing.value();
+            reference.Index = armature->AddBone(imported.Name, nodeIndex, offset);
+        } else {
+            reference.Index = imported.Existing.value();
+        }
 
         for (unsigned int i = 0; i < imported.Pointer->mNumWeights; i++) {
             const auto& weight = imported.Pointer->mWeights[i];
@@ -296,12 +288,6 @@ namespace fuujin {
         }
 
         bones.push_back(reference);
-        imported.Processed = true;
-
-        for (unsigned int i = 0; i < node->mNumChildren; i++) {
-            auto child = node->mChildren[i];
-            ProcessBone(child, armature, bones);
-        }
     }
 
     Ref<Material> ModelImporter::GetMaterial(unsigned int index) {
@@ -399,8 +385,13 @@ namespace fuujin {
             return m_ArmatureMap.at(node);
         }
 
+        // no-op if already inside node or already processed
+        ProcessNode(node);
+
         std::string name = node->mName.C_Str();
-        auto armature = std::make_unique<Armature>(name);
+        size_t nodeIndex = m_NodeMap.at(node);
+
+        auto armature = std::make_unique<Armature>(name, nodeIndex);
         FUUJIN_DEBUG("Creating new armature: {}", name.c_str());
 
         size_t index = m_Model->GetArmatures().size();

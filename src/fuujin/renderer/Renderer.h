@@ -9,6 +9,7 @@
 #include "fuujin/renderer/Texture.h"
 #include "fuujin/renderer/Material.h"
 #include "fuujin/renderer/Model.h"
+#include "fuujin/animation/Animator.h"
 
 namespace fuujin {
     class Event;
@@ -41,6 +42,7 @@ namespace fuujin {
 
         glm::mat4 ModelMatrix;
         size_t CameraIndex;
+        std::unordered_map<std::string, Buffer> PushConstants;
 
         uint64_t SceneID;
         Ref<Material> RenderMaterial;
@@ -49,6 +51,7 @@ namespace fuujin {
 
     struct ModelRenderCall {
         Ref<Model> RenderedModel;
+        Ref<Animator> ModelAnimator;
         Ref<RenderTarget> Target;
 
         uint64_t SceneID;
@@ -105,6 +108,7 @@ namespace fuujin {
         static void FreeMaterial(uint64_t id);
         static void FreeScene(uint64_t id);
         static void FreeMesh(uint64_t id);
+        static void FreeAnimator(uint64_t id);
 
         static void UpdateScene(uint64_t id, const SceneData& data);
         static Ref<RendererAllocation> GetSceneAllocation(uint64_t id, const Ref<Shader>& shader);
@@ -117,6 +121,9 @@ namespace fuujin {
                                                  const Material::PipelineProperties& spec);
 
         static const MeshBuffers& GetMeshBuffers(const std::unique_ptr<Mesh>& mesh);
+
+        static Ref<RendererAllocation> GetAnimatorAllocation(const Ref<Animator>& animator,
+                                                             const Ref<Shader>& shader);
 
         static Ref<Texture> CreateTexture(uint32_t width, uint32_t height, Texture::Format format,
                                           const Buffer& data, const Ref<Sampler>& sampler = {},

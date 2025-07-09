@@ -8,6 +8,9 @@
 #include "fuujin/renderer/GraphicsContext.h"
 
 #include "fuujin/asset/AssetManager.h"
+#include "fuujin/asset/ModelSource.h"
+
+#include "fuujin/animation/Animation.h"
 
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/rotating_file_sink.h>
@@ -80,6 +83,13 @@ namespace fuujin {
         m_Data->AppView = View::Create("風神", { 1600, 900 });
 
         Renderer::Init();
+
+        AssetManager::RegisterAssetType<TextureSerializer>();
+        AssetManager::RegisterAssetType<MaterialSerializer>();
+        AssetManager::RegisterAssetType<ModelSourceSerializer>();
+        AssetManager::RegisterAssetType<ModelSerializer>();
+        AssetManager::RegisterAssetType<AnimationSerializer>();
+
         AssetManager::LoadDirectory("assets", "fuujin");
     }
 
@@ -87,6 +97,7 @@ namespace fuujin {
         ZoneScoped;
 
         m_Data->LayerStack.clear();
+        AssetManager::Clear();
         Renderer::Shutdown();
 
         delete m_Data;
@@ -132,14 +143,14 @@ namespace fuujin {
 
         Renderer::NewFrame();
         Renderer::PushRenderTarget(Renderer::GetContext()->GetSwapchain());
-        
+
         for (const auto& layer : m_Data->LayerStack) {
             layer->Update(delta);
         }
-        
+
         Renderer::PopRenderTarget();
         Renderer::Wait();
-        
+
         m_Data->AppView->Update();
     }
 } // namespace fuujin

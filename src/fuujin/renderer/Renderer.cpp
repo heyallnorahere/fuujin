@@ -7,9 +7,6 @@
 
 #include "fuujin/core/Events.h"
 
-#include "fuujin/asset/AssetManager.h"
-#include "fuujin/asset/ModelSource.h"
-
 #include <thread>
 #include <queue>
 #include <mutex>
@@ -39,7 +36,7 @@ namespace fuujin {
     };
 
     struct RendererShaderData {
-        std::unordered_map<uint64_t, ObjectAllocation> Materials, Scenes;
+        std::unordered_map<uint64_t, ObjectAllocation> Materials, Scenes, Animators;
         std::unordered_map<size_t, Ref<Pipeline>> MaterialPipelines;
     };
 
@@ -199,11 +196,6 @@ namespace fuujin {
             "Fetch graphics queue");
 
         CreateDefaultObjects();
-
-        AssetManager::RegisterAssetType<TextureSerializer>();
-        AssetManager::RegisterAssetType<MaterialSerializer>();
-        AssetManager::RegisterAssetType<ModelSourceSerializer>();
-        AssetManager::RegisterAssetType<ModelSerializer>();
     }
 
     void Renderer::Shutdown() {
@@ -212,8 +204,6 @@ namespace fuujin {
             FUUJIN_WARN("Renderer not initialized - skipping");
             return;
         }
-
-        AssetManager::Clear();
 
         Wait();
         delete s_Data->API;
@@ -325,6 +315,17 @@ namespace fuujin {
         }
 
         s_Data->MeshBuffers.erase(id);
+    }
+
+    void Renderer::FreeAnimator(uint64_t id) {
+        ZoneScoped;
+        if (!s_Data) {
+            return;
+        }
+
+        for (auto& [shaderID, shaderData] : s_Data->ShaderData) {
+            shaderData.Animators.erase(id);
+        }
     }
 
     void Renderer::UpdateScene(uint64_t id, const SceneData& data) {
@@ -512,6 +513,10 @@ namespace fuujin {
         pipelineSpec.PolygonFrontFace = FrontFace::CCW;
         pipelineSpec.Wireframe = spec.Wireframe;
 
+        // skinning attributes (bone IDs, weights)
+        pipelineSpec.AttributeBindings[4] = 1;
+        pipelineSpec.AttributeBindings[5] = 1;
+
         return shaderData.MaterialPipelines[hash] = s_Data->Context->CreatePipeline(pipelineSpec);
     }
 
@@ -630,6 +635,42 @@ namespace fuujin {
         }
 
         return s_Data->MeshBuffers[id];
+    }
+
+    Ref<RendererAllocation> Renderer::GetAnimatorAllocation(const Ref<Animator>& animator,
+                                                            const Ref<Shader>& shader) {
+        ZoneScoped;
+
+        const auto& boneTransforms = animator->GetBoneTransforms();
+        if (boneTransforms.empty()) {
+            return nullptr; // no point
+        }
+
+        // see assets/shaders/MaterialSkinned.glsl
+        static const std::string boneBufferName = "Bones";
+
+        if (!shader->GetResourceByName(boneBufferName)) {
+            return nullptr;
+        }
+
+        uint64_t shaderID = shader->GetID();
+        auto& shaderData = s_Data->ShaderData[shaderID];
+
+        uint64_t animatorID = animator->GetID();
+        if (!shaderData.Animators.contains(animatorID)) {
+            auto& newAllocation = shaderData.Animators[animatorID];
+            CreateObjectAllocation(shader, boneBufferName, newAllocation);
+        }
+
+        auto callback = [&](ShaderBuffer& buffer) {
+            auto src = Buffer::Wrapper(boneTransforms);
+            Buffer::Copy(src, buffer.GetBuffer(), src.GetSize());
+        };
+
+        auto& allocation = shaderData.Animators[animatorID];
+        UpdateObjectAllocation(shader, boneBufferName, allocation, animator->GetState(), callback);
+
+        return allocation.Allocation;
     }
 
     struct TextureCreationInfo {
@@ -909,6 +950,10 @@ namespace fuujin {
             buffer.Set("Model", data.ModelMatrix);
             buffer.Set("CameraIndex", (int32_t)data.CameraIndex);
 
+            for (const auto& [name, fieldData] : data.PushConstants) {
+                buffer.SetData(name, fieldData);
+            }
+
             innerCall.PushConstants = buffer.GetBuffer().Copy();
         } else {
             FUUJIN_WARN("No push constants on shader! Cannot pass model matrix or camera index!");
@@ -920,33 +965,53 @@ namespace fuujin {
     void Renderer::RenderModel(const ModelRenderCall& data) {
         ZoneScoped;
 
+        data.ModelAnimator->Update();
+        const auto& nodeTransforms = data.ModelAnimator->GetNodeTransforms();
+        const auto& boneOffsets = data.ModelAnimator->GetArmatureOffsets();
+
+        const auto& nodes = data.RenderedModel->GetNodes();
         const auto& meshes = data.RenderedModel->GetMeshes();
-        for (const auto& mesh : meshes) {
-            bool isSkinned = !mesh->GetBones().empty();
-            std::string shaderIdentifier = isSkinned ? "fuujin/shaders/MaterialSkinned.glsl"
-                                                     : "fuujin/shaders/MaterialStatic.glsl";
+        const auto& meshNodes = data.RenderedModel->GetMeshNodes();
 
-            const auto& buffers = GetMeshBuffers(mesh);
-            const auto& shader = s_Data->Library->Get(shaderIdentifier);
+        for (size_t index : meshNodes) {
+            const auto& node = nodes[index];
 
-            const auto& material = mesh->GetMaterial();
-            auto pipeline = GetMaterialPipeline(shader, data.Target, material->GetPipeline());
+            for (size_t meshIndex : node.Meshes) {
+                const auto& mesh = meshes[meshIndex];
 
-            MaterialRenderCall innerCall;
-            innerCall.VertexBuffers = buffers.VertexBuffers;
-            innerCall.IndexBuffer = buffers.IndexBuffer;
-            innerCall.IndexCount = (uint32_t)mesh->GetIndices().size();
-            innerCall.RenderMaterial = material;
-            innerCall.RenderPipeline = pipeline;
-            innerCall.SceneID = data.SceneID;
-            innerCall.ModelMatrix = data.ModelMatrix;
-            innerCall.CameraIndex = data.CameraIndex;
+                bool isSkinned = !mesh->GetBones().empty();
+                std::string shaderIdentifier = isSkinned ? "fuujin/shaders/MaterialSkinned.glsl"
+                                                         : "fuujin/shaders/MaterialStatic.glsl";
 
-            if (isSkinned) {
-                // todo: allocation for skinning
+                const auto& buffers = GetMeshBuffers(mesh);
+                const auto& shader = s_Data->Library->Get(shaderIdentifier);
+
+                const auto& material = mesh->GetMaterial();
+                auto pipeline = GetMaterialPipeline(shader, data.Target, material->GetPipeline());
+
+                MaterialRenderCall innerCall;
+                innerCall.VertexBuffers = buffers.VertexBuffers;
+                innerCall.IndexBuffer = buffers.IndexBuffer;
+                innerCall.IndexCount = (uint32_t)mesh->GetIndices().size();
+                innerCall.RenderMaterial = material;
+                innerCall.RenderPipeline = pipeline;
+                innerCall.SceneID = data.SceneID;
+                innerCall.ModelMatrix = data.ModelMatrix * nodeTransforms[index];
+                innerCall.CameraIndex = data.CameraIndex;
+
+                if (isSkinned) {
+                    auto allocation = GetAnimatorAllocation(data.ModelAnimator, shader);
+                    innerCall.AdditionalResources.push_back(allocation);
+
+                    size_t armature = mesh->GetArmatureIndex();
+                    int32_t boneOffset = (int32_t)boneOffsets[armature];
+
+                    innerCall.PushConstants["BoneOffset"] =
+                        Buffer::CreateCopy(&boneOffset, sizeof(int32_t));
+                }
+
+                RenderWithMaterial(innerCall);
             }
-
-            RenderWithMaterial(innerCall);
         }
     }
 }; // namespace fuujin

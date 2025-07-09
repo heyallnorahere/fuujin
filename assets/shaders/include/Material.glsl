@@ -10,6 +10,7 @@ layout(set = 1, binding = 0, std140) uniform Material {
 layout(set = 1, binding = 1) uniform sampler2D u_Albedo;
 layout(set = 1, binding = 2) uniform sampler2D u_Specular;
 layout(set = 1, binding = 3) uniform sampler2D u_Ambient;
+layout(set = 1, binding = 4) uniform sampler2D u_Normal;
 
 // MaterialXXX(UV) just returns the corresponding material aspect color
 // no lighting shenanigans
@@ -29,9 +30,21 @@ vec4 MaterialAmbient(vec2 uv) {
     return u_Material.Ambient * tex;
 }
 
-vec4 MaterialOutputColor(vec3 unorm, vec3 utan, vec2 uv, vec3 position) {
-    vec3 normal = normalize(unorm);
-    vec3 tangent = normalize(utan);
+vec4 MaterialOutputColor(vec3 unorm, vec3 utan, vec3 ubitan, vec2 uv, vec3 position) {
+    vec3 nnorm = normalize(unorm);
+
+    vec3 normal;
+    if (u_Material.HasNormalMap) {
+        vec3 tangent = normalize(utan);
+        vec3 bitangent = normalize(ubitan);
+
+        mat3 tbn = mat3(tangent, bitangent, nnorm);
+        vec3 normalSample = texture(u_Normal, uv).rgb;
+
+        normal = normalize(tbn * normalSample);
+    } else {
+        normal = nnorm;
+    }
 
     // no fancy lighting
     return MaterialAlbedo(uv);

@@ -21,8 +21,10 @@
 #include <stddef.h>
 #include <cstdint>
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 #include <tracy/Tracy.hpp>
 
@@ -37,6 +39,46 @@
 #include <spdlog/spdlog.h>
 
 #include <yaml-cpp/yaml.h>
+
+namespace fuujin {
+    using Duration = std::chrono::duration<double>;
+
+    struct Version {
+        uint32_t Major, Minor, Patch;
+
+        inline operator std::string() {
+            return std::to_string(Major) + "." + std::to_string(Minor) + "." +
+                   std::to_string(Patch);
+        }
+    };
+
+    extern spdlog::logger s_Logger;
+
+#ifdef FUUJIN_HAS_FS
+    namespace fs = std::filesystem;
+#else
+    namespace fs = std::experimental::filesystem;
+#endif
+
+    inline void* allocate(size_t size) {
+        void* block = std::malloc(size);
+        TracyAlloc(block, size);
+        return block;
+    }
+
+    inline void* reallocate(void* block, size_t size) {
+        TracyFree(block);
+
+        void* newBlock = std::realloc(block, size);
+        TracyAlloc(newBlock, size);
+        return newBlock;
+    }
+
+    inline void freemem(void* block) {
+        TracyFree(block);
+        std::free(block);
+    }
+} // namespace fuujin
 
 namespace YAML {
     template <glm::length_t L, typename _Ty, glm::qualifier Q>
@@ -82,7 +124,7 @@ namespace YAML {
             }
 
             return node;
-        }  
+        }
 
         static bool decode(const Node& node, matrix& value) {
             if (!node.IsSequence() || node.size() != (size_t)C) {
@@ -96,47 +138,51 @@ namespace YAML {
             return true;
         }
     };
-} // namespace YAML
 
-namespace fuujin {
-    using Duration = std::chrono::duration<double>;
+    template <typename _Ty, glm::qualifier Q>
+    struct convert<glm::qua<_Ty, Q>> {
+        using quat = glm::qua<_Ty, Q>;
 
-    struct Version {
-        uint32_t Major, Minor, Patch;
+        static Node encode(const quat& value) {
+            Node node;
+            node.SetStyle(EmitterStyle::Flow);
 
-        inline operator std::string() {
-            return std::to_string(Major) + "." + std::to_string(Minor) + "." +
-                   std::to_string(Patch);
+            for (glm::length_t i = 0; i < value.length(); i++) {
+                node.push_back(value.length());
+            }
+
+            return node;
+        }
+
+        static bool decode(const Node& node, quat& value) {
+            if (!node.IsSequence() || node.size() != (size_t)value.length()) {
+                return false;
+            }
+
+            for (glm::length_t i = 0; i < value.length(); i++) {
+                value[i] = node[i].as<_Ty>();
+            }
+
+            return true;
         }
     };
 
-    extern spdlog::logger s_Logger;
+    template <typename _Rep, typename _Period>
+    struct convert<std::chrono::duration<_Rep, _Period>> {
+        using duration = std::chrono::duration<_Rep, _Period>;
 
-#ifdef FUUJIN_HAS_FS
-    namespace fs = std::filesystem;
-#else
-    namespace fs = std::experimental::filesystem;
-#endif
+        static Node encode(const duration& value) { return Node(value.count()); }
 
-    inline void* allocate(size_t size) {
-        void* block = std::malloc(size);
-        TracyAlloc(block, size);
-        return block;
-    }
+        static bool decode(const Node& node, duration& value) {
+            if (!node.IsScalar()) {
+                return false;
+            }
 
-    inline void* reallocate(void* block, size_t size) {
-        TracyFree(block);
-
-        void* newBlock = std::realloc(block, size);
-        TracyAlloc(newBlock, size);
-        return newBlock;
-    }
-
-    inline void freemem(void* block) {
-        TracyFree(block);
-        std::free(block);
-    }
-} // namespace fuujin
+            value = duration(node.as<_Rep>());
+            return true;
+        }
+    };
+} // namespace YAML
 
 inline void* operator new(size_t size) { return fuujin::allocate(size); }
 inline void operator delete(void* block) { return fuujin::freemem(block); }

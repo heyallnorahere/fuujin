@@ -28,9 +28,11 @@ namespace fuujin {
             aiBone* Pointer;
         };
 
-        void ProcessNode(aiNode* node, const glm::mat4& parentTransform);
-        void ProcessMesh(aiNode* node, aiMesh* mesh, const glm::mat4& transform);
-        void ProcessBone(aiNode* node, Armature* armature, std::vector<BoneReference>& bones);
+        void ProcessNode(aiNode* node);
+        void ProcessMesh(aiMesh* mesh);
+        
+        void ProcessBone(aiNode* node, const ImportedBone& imported, Armature* armature,
+                         std::vector<BoneReference>& bones);
 
         Ref<Material> GetMaterial(unsigned int index);
         size_t GetArmature(aiNode* node);
@@ -42,6 +44,7 @@ namespace fuujin {
         fs::path m_ModelDirectory, m_MaterialDirectory, m_MaterialPrefix;
         std::map<unsigned int, Ref<Material>> m_Materials;
 
+        std::unordered_map<aiNode*, size_t> m_NodeMap;
         std::unordered_map<aiNode*, size_t> m_ArmatureMap;
         std::unordered_map<aiNode*, ImportedBone> m_ImportedBones;
     };

@@ -2,7 +2,7 @@
 #include "fuujin/core/Ref.h"
 
 namespace fuujin {
-    enum class AssetType { Texture, Material, ModelSource, Model };
+    enum class AssetType { Texture, Material, ModelSource, Model, Animation };
 
     template <typename _Ty>
     inline std::optional<AssetType> GetAssetType() {
