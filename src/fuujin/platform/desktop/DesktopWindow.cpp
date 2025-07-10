@@ -128,8 +128,10 @@ namespace fuujin {
 
 #ifdef FUUJIN_PLATFORM_vulkan
         VkSurfaceKHR surface = VK_NULL_HANDLE;
-        if (glfwCreateWindowSurface((VkInstance)instance, m_Window,
-                                    &VulkanContext::GetAllocCallbacks(), &surface) == VK_SUCCESS) {
+        VkResult result = glfwCreateWindowSurface((VkInstance)instance, m_Window,
+                                                  &VulkanContext::GetAllocCallbacks(), &surface);
+
+        if (result == VK_SUCCESS) {
             return surface;
         } else {
             return VK_NULL_HANDLE;
