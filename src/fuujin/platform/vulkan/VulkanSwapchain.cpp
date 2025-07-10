@@ -197,10 +197,10 @@ namespace fuujin {
 
     void VulkanSwapchain::RT_Invalidate() {
         ZoneScoped;
-        
+
         ClearGraphicsQueue();
         m_Framebuffers.clear();
-        
+
         auto device = m_Device->GetDevice();
         auto old = RT_Create();
 
@@ -320,16 +320,20 @@ namespace fuujin {
             m_ImageFences.resize(m_Framebuffers.size());
         }
 
+        m_SyncFrame = 0;
         if (m_Sync.empty()) {
-            m_SyncFrame = 0;
+            m_Sync.resize(s_SyncFrameCount);
+        }
 
-            for (size_t i = 0; i < s_SyncFrameCount; i++) {
-                auto& frameSync = m_Sync.emplace_back();
+        for (size_t i = 0; i < s_SyncFrameCount; i++) {
+            auto& frameSync = m_Sync[i];
 
+            if (frameSync.Fence.IsEmpty()) {
                 frameSync.Fence = Ref<VulkanFence>::Create(m_Device, true);
-                frameSync.ImageAvailable = Ref<VulkanSemaphore>::Create(m_Device);
-                frameSync.RenderComplete = Ref<VulkanSemaphore>::Create(m_Device);
             }
+
+            frameSync.ImageAvailable = Ref<VulkanSemaphore>::Create(m_Device);
+            frameSync.RenderComplete = Ref<VulkanSemaphore>::Create(m_Device);
         }
     }
 
