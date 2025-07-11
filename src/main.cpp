@@ -130,7 +130,7 @@ private:
         ZoneScoped;
 
         static const std::string modelName = "Gunman.model";
-        static const std::string sourceName = "Gunman.fbx";
+        static const std::string sourceName = "Gunman.gltf";
 
         static const fs::path modelDirectory = "fuujin/models";
         static const fs::path modelPath = modelDirectory / modelName;
@@ -151,8 +151,7 @@ private:
         m_Call.RenderedModel = AssetManager::GetAsset<Model>(modelPath);
         m_Call.ModelAnimator = Ref<Animator>::Create(m_Call.RenderedModel);
 
-        m_Animation =
-            AssetManager::GetAsset<Animation>("fuujin/models/animations/Armature|Action.anim");
+        m_Animation = AssetManager::GetAsset<Animation>("fuujin/models/animations/Action.anim");
 
         Renderer::Wait();
     }
