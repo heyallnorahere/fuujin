@@ -1,6 +1,0 @@
-Textures:
-- Slot: Albedo
-  Asset: fuujin/textures/Chiito.png
-Properties:
-- Name: Albedo
-  Value: [ 1, 1, 1, 1 ]
