@@ -524,8 +524,8 @@ namespace fuujin {
     struct SizedBoneVertex {
         static constexpr glm::length_t MaxBones = L;
 
-        glm::vec<L, float, glm::defaultp> Weights;
         glm::vec<L, int32_t, glm::defaultp> Indices;
+        glm::vec<L, float, glm::defaultp> Weights;
     };
 
     using BoneVertex = SizedBoneVertex<4>;
@@ -603,7 +603,7 @@ namespace fuujin {
                                                      " bones per vertex!");
                         }
 
-                        vertex.Indices[vertexBoneCount] = (int32_t)index;
+                        vertex.Indices[vertexBoneCount] = (int32_t)bone.Index;
                         vertex.Weights[vertexBoneCount] = weight;
                         vertexBoneCount++;
                     }
@@ -663,8 +663,9 @@ namespace fuujin {
         }
 
         auto callback = [&](ShaderBuffer& buffer) {
-            auto src = Buffer::Wrapper(boneTransforms);
-            Buffer::Copy(src, buffer.GetBuffer(), src.GetSize());
+            for (size_t i  = 0; i < boneTransforms.size(); i++) {
+                buffer.Set("Transforms[" + std::to_string(i) + "]", boneTransforms[i]);
+            }
         };
 
         auto& allocation = shaderData.Animators[animatorID];

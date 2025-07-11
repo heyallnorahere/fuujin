@@ -66,6 +66,32 @@ namespace fuujin {
         const auto& fieldData = fields.at(expression.Field);
         size_t newOffset = fieldData.Offset + currentOffset;
 
+        if (expression.Indices.size() > fieldData.Dimensions.size()) {
+            FUUJIN_ERROR("Attempted to specify {} indices - array is {}-dimensional",
+                         expression.Indices.size(), fieldData.Dimensions.size());
+
+            return false;
+        }
+
+        if (!fieldData.Dimensions.empty()) {
+            std::stack<size_t> strides;
+            strides.push(fieldData.Stride);
+
+            for (size_t i = fieldData.Dimensions.size() - 1; i > 0; i--) {
+                size_t previous = strides.top();
+                size_t dimension = fieldData.Dimensions[i];
+
+                strides.push(previous * dimension);
+            }
+
+            for (size_t index : expression.Indices) {
+                size_t stride = strides.top();
+                newOffset += stride * index;
+
+                strides.pop();
+            }
+        }
+
         if (child.empty()) {
             field.Size = fieldData.Type->GetSize();
             field.TotalOffset = newOffset;

@@ -70,7 +70,7 @@ public:
         float cosPitch = glm::cos(pitch);
 
         glm::vec3 radial = glm::vec3(cosYaw * cosPitch, sinPitch, sinYaw * cosPitch);
-        glm::vec3 position = radial * 5.f;
+        glm::vec3 position = radial * 100.f;
         
         glm::vec3 up = glm::vec3(0.f, 1.f, 0.f);
         glm::vec3 direction = -radial;
@@ -78,7 +78,7 @@ public:
         Renderer::SceneData scene;
         Renderer::Camera& camera = scene.Cameras.emplace_back();
         camera.Position = position;
-        camera.Projection = Perspective(s_PI / 4.f, aspect, 0.1f, 10.f);
+        camera.Projection = Perspective(s_PI / 4.f, aspect, 0.1f, 1000.f);
         camera.View = LookAt(position, position + direction, up);
         Renderer::UpdateScene(0, scene);
 

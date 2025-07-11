@@ -103,8 +103,14 @@ namespace fuujin {
                 const auto& bones = armature->GetBones();
                 const auto& bone = bones[boneID];
 
+                size_t armatureNode = armature->GetNode();
+                const auto& armatureTransform = m_NodeTransforms[armatureNode];
+
+                glm::mat4 inverseArmatureTransform = glm::inverse(armatureTransform);
+                glm::mat4 boneTransform = nodeTransform * inverseArmatureTransform * bone.Offset;
+
                 size_t boneOffset = m_ArmatureOffsets[i];
-                m_BoneTransforms[boneOffset + boneID] = nodeTransform * bone.Offset;
+                m_BoneTransforms[boneOffset + boneID] = boneTransform;
             }
         }
 
