@@ -7,6 +7,8 @@
 #include "fuujin/renderer/ShaderLibrary.h"
 #include "fuujin/renderer/Model.h"
 
+#include "fuujin/animation/Animation.h"
+
 #include <numbers>
 
 using namespace std::chrono_literals;
@@ -39,6 +41,7 @@ public:
         ZoneScoped;
 
         m_Time = 0.f;
+        m_AnimationTime = Duration(0);
         m_ResourcesLoaded = false;
     }
 
@@ -61,7 +64,7 @@ public:
             aspect = 1.f;
         }
 
-        float yaw = m_Time * s_PI;
+        float yaw = s_PI / 4.f;
         float sinYaw = glm::sin(yaw);
         float cosYaw = glm::cos(yaw);
 
@@ -70,15 +73,15 @@ public:
         float cosPitch = glm::cos(pitch);
 
         glm::vec3 radial = glm::vec3(cosYaw * cosPitch, sinPitch, sinYaw * cosPitch);
-        glm::vec3 position = radial * 100.f;
-        
+        glm::vec3 position = radial * 1000.f;
+
         glm::vec3 up = glm::vec3(0.f, 1.f, 0.f);
         glm::vec3 direction = -radial;
 
         Renderer::SceneData scene;
         Renderer::Camera& camera = scene.Cameras.emplace_back();
         camera.Position = position;
-        camera.Projection = Perspective(s_PI / 4.f, aspect, 0.1f, 1000.f);
+        camera.Projection = Perspective(s_PI / 4.f, aspect, 0.1f, 10000.f);
         camera.View = LookAt(position, position + direction, up);
         Renderer::UpdateScene(0, scene);
 
@@ -93,6 +96,32 @@ public:
             hue -= hueMax;
         }
 
+        if (m_Animation.IsPresent()) {
+            m_AnimationTime += delta;
+
+            auto duration = m_Animation->GetDuration();
+            while (m_AnimationTime > duration) {
+                m_AnimationTime -= duration;
+            }
+
+            const auto& channels = m_Animation->GetChannels();
+            for (const auto& channel : channels) {
+                auto nodeIndex = m_Call.RenderedModel->FindNode(channel.Name);
+                if (!nodeIndex.has_value()) {
+                    continue;
+                }
+
+                size_t node = nodeIndex.value();
+
+                auto transform = Animation::InterpolateChannel(m_AnimationTime, channel);
+                if (transform.has_value()) {
+                    m_Call.ModelAnimator->SetLocalTransform(node, transform.value());
+                } else {
+                    m_Call.ModelAnimator->ResetLocalTransform(node);
+                }
+            }
+        }
+
         Renderer::RenderModel(m_Call);
     }
 
@@ -101,7 +130,7 @@ private:
         ZoneScoped;
 
         static const std::string modelName = "Gunman.model";
-        static const std::string sourceName = "Gunman.gltf";
+        static const std::string sourceName = "Gunman.fbx";
 
         static const fs::path modelDirectory = "fuujin/models";
         static const fs::path modelPath = modelDirectory / modelName;
@@ -122,13 +151,19 @@ private:
         m_Call.RenderedModel = AssetManager::GetAsset<Model>(modelPath);
         m_Call.ModelAnimator = Ref<Animator>::Create(m_Call.RenderedModel);
 
+        m_Animation =
+            AssetManager::GetAsset<Animation>("fuujin/models/animations/Armature|Action.anim");
+
         Renderer::Wait();
     }
 
     float m_Time;
+    Duration m_AnimationTime;
 
     bool m_ResourcesLoaded;
     ModelRenderCall m_Call;
+
+    Ref<Animation> m_Animation;
 };
 
 void InitializeApplication() { Application::PushLayer<TestLayer>(); }

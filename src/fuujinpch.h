@@ -148,7 +148,7 @@ namespace YAML {
             node.SetStyle(EmitterStyle::Flow);
 
             for (glm::length_t i = 0; i < value.length(); i++) {
-                node.push_back(value.length());
+                node.push_back(value[i]);
             }
 
             return node;

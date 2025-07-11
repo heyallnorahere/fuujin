@@ -55,12 +55,27 @@ namespace fuujin {
 
         for (size_t i = 0; i < keyframes.size(); i++) {
             const auto& keyframe = keyframes[i];
-            if (time >= keyframe.Time) {
-                return i;
+            if (time < keyframe.Time) {
+                if (i > 0) {
+                    return i - 1;
+                } else {
+                    return {};
+                }
             }
         }
 
         return {};
+    }
+
+    template <glm::length_t L, typename _Ty, glm::qualifier Q>
+    static glm::vec<L, _Ty, Q> Lerp(const glm::vec<L, _Ty, Q>& a, const glm::vec<L, _Ty, Q>& b,
+                                    _Ty t) {
+        return glm::mix(a, b, t);
+    }
+
+    template <typename _Ty, glm::qualifier Q>
+    static glm::qua<_Ty, Q> Lerp(const glm::qua<_Ty, Q>& a, const glm::qua<_Ty, Q>& b, _Ty t) {
+        return glm::slerp(a, b, t);
     }
 
     template <typename _Ty>
@@ -90,7 +105,7 @@ namespace fuujin {
                 return keyframes[0].Value;
             }
         } else {
-            size_t index0 = index.value();
+            index0 = index.value();
         }
 
         bool extrapolateForward = false;
@@ -123,7 +138,7 @@ namespace fuujin {
         }
 
         auto t = (interpolationTime - t0) / span;
-        return glm::mix(f0.Value, f1.Value, (float)t);
+        return Lerp(f0.Value, f1.Value, (float)t);
     }
 
     std::optional<glm::mat4> Animation::InterpolateChannel(Duration time, const Channel& channel) {
@@ -168,8 +183,8 @@ namespace fuujin {
 
         for (const auto& keyframeNode : node) {
             auto& keyframe = keyframes.emplace_back();
-            keyframe.Time = node["Time"].as<Duration>();
-            keyframe.Value = node["Value"].as<_Ty>();
+            keyframe.Time = keyframeNode["Time"].as<Duration>();
+            keyframe.Value = keyframeNode["Value"].as<_Ty>();
         }
     }
 

@@ -8,7 +8,7 @@
 namespace fuujin {
     // see CMakePresets.json
     // only enabled importer
-    static const std::vector<std::string> s_ModelExtensions = { "gltf", "glb" };
+    static const std::vector<std::string> s_ModelExtensions = { "gltf", "glb", "fbx" };
 
     ModelSource::ModelSource(const fs::path& path, Assimp::Importer* importer,
                              const aiScene* scene) {
