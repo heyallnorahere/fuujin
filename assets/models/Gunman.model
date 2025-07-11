@@ -22249,520 +22249,6 @@ Meshes:
             Weight: 0.80931288
       - Index: 4
         Weights:
-          - Vertex: 1002
-            Weight: 0.160573557
-          - Vertex: 1003
-            Weight: 0.160573557
-          - Vertex: 1010
-            Weight: 0.468680143
-          - Vertex: 1012
-            Weight: 0.160573557
-          - Vertex: 1013
-            Weight: 0.51755023
-          - Vertex: 1016
-            Weight: 0.468680143
-          - Vertex: 1019
-            Weight: 0.51755023
-          - Vertex: 1167
-            Weight: 0.146288589
-          - Vertex: 1173
-            Weight: 0.0694321021
-          - Vertex: 1174
-            Weight: 0.146288589
-          - Vertex: 1179
-            Weight: 0.146288589
-          - Vertex: 1180
-            Weight: 0.0694321021
-          - Vertex: 1191
-            Weight: 0.0694321021
-          - Vertex: 1196
-            Weight: 0.0694321021
-          - Vertex: 1691
-            Weight: 0.107097097
-          - Vertex: 1693
-            Weight: 0.146288589
-          - Vertex: 1694
-            Weight: 0.164938137
-          - Vertex: 1696
-            Weight: 0.107097097
-          - Vertex: 1697
-            Weight: 0.107097097
-          - Vertex: 1698
-            Weight: 0.146288589
-          - Vertex: 1699
-            Weight: 0.163767278
-          - Vertex: 1700
-            Weight: 0.107097097
-          - Vertex: 1701
-            Weight: 0.715242326
-          - Vertex: 1702
-            Weight: 0.164938137
-          - Vertex: 1703
-            Weight: 0.650836527
-          - Vertex: 1704
-            Weight: 0.163767278
-          - Vertex: 1705
-            Weight: 0.146288589
-          - Vertex: 1706
-            Weight: 0.957976043
-          - Vertex: 1707
-            Weight: 0.650836527
-          - Vertex: 1708
-            Weight: 0.51755023
-          - Vertex: 1709
-            Weight: 0.164938137
-          - Vertex: 1710
-            Weight: 0.715242326
-          - Vertex: 1711
-            Weight: 0.806962729
-          - Vertex: 1712
-            Weight: 0.650836527
-          - Vertex: 1713
-            Weight: 1
-          - Vertex: 1714
-            Weight: 0.642823577
-          - Vertex: 1715
-            Weight: 0.650836527
-          - Vertex: 1716
-            Weight: 0.642823577
-          - Vertex: 1717
-            Weight: 0.163767278
-          - Vertex: 1718
-            Weight: 0.107097097
-          - Vertex: 1719
-            Weight: 0.163767278
-          - Vertex: 1720
-            Weight: 0.642823577
-          - Vertex: 1721
-            Weight: 0.715242326
-          - Vertex: 1722
-            Weight: 0.810897052
-          - Vertex: 1723
-            Weight: 0.957976043
-          - Vertex: 1724
-            Weight: 0.51755023
-          - Vertex: 1725
-            Weight: 0.468680143
-          - Vertex: 1726
-            Weight: 0.544980764
-          - Vertex: 1727
-            Weight: 0.836249113
-          - Vertex: 1728
-            Weight: 0.476523101
-          - Vertex: 1729
-            Weight: 0.147141263
-          - Vertex: 1730
-            Weight: 1
-          - Vertex: 1731
-            Weight: 0.963138878
-          - Vertex: 1732
-            Weight: 0.894560218
-          - Vertex: 1733
-            Weight: 0.988264918
-          - Vertex: 1734
-            Weight: 0.0575931519
-          - Vertex: 1735
-            Weight: 0.329547495
-          - Vertex: 1736
-            Weight: 0.40122056
-          - Vertex: 1737
-            Weight: 0.40122056
-          - Vertex: 1738
-            Weight: 0.765735626
-          - Vertex: 1739
-            Weight: 1
-          - Vertex: 1740
-            Weight: 0.990149677
-          - Vertex: 1741
-            Weight: 0.40122056
-          - Vertex: 1742
-            Weight: 0.329547495
-          - Vertex: 1743
-            Weight: 0.759040952
-          - Vertex: 1744
-            Weight: 0.329547495
-          - Vertex: 1745
-            Weight: 0.55469805
-          - Vertex: 1746
-            Weight: 0.888896704
-          - Vertex: 1747
-            Weight: 0.759040952
-          - Vertex: 1748
-            Weight: 0.765735626
-          - Vertex: 1749
-            Weight: 0.96421802
-          - Vertex: 1750
-            Weight: 1
-          - Vertex: 1751
-            Weight: 1
-          - Vertex: 1752
-            Weight: 0.994347155
-          - Vertex: 1753
-            Weight: 0.40122056
-          - Vertex: 1754
-            Weight: 0.990149677
-          - Vertex: 1755
-            Weight: 0.385155648
-          - Vertex: 1756
-            Weight: 0.544980764
-          - Vertex: 1757
-            Weight: 0.147141263
-          - Vertex: 1758
-            Weight: 0.0403795727
-          - Vertex: 1759
-            Weight: 0.836249113
-          - Vertex: 1760
-            Weight: 0.888896704
-          - Vertex: 1761
-            Weight: 0.55469805
-          - Vertex: 1762
-            Weight: 0.476523101
-          - Vertex: 1763
-            Weight: 1
-          - Vertex: 1764
-            Weight: 0.963138878
-          - Vertex: 1765
-            Weight: 1
-          - Vertex: 1766
-            Weight: 0.759040952
-          - Vertex: 1767
-            Weight: 0.888896704
-          - Vertex: 1768
-            Weight: 0.96421802
-          - Vertex: 1769
-            Weight: 0.96421802
-          - Vertex: 1770
-            Weight: 0.888896704
-          - Vertex: 1771
-            Weight: 0.836249113
-          - Vertex: 1772
-            Weight: 0.719910502
-          - Vertex: 1773
-            Weight: 0.544980764
-          - Vertex: 1774
-            Weight: 0.994347155
-          - Vertex: 1775
-            Weight: 0.994347155
-          - Vertex: 1776
-            Weight: 0.385155648
-          - Vertex: 1777
-            Weight: 0.40122056
-          - Vertex: 1778
-            Weight: 0.759040952
-          - Vertex: 1779
-            Weight: 0.759040952
-          - Vertex: 1780
-            Weight: 0.96421802
-          - Vertex: 1781
-            Weight: 0.765735626
-          - Vertex: 1782
-            Weight: 0.544980764
-          - Vertex: 1783
-            Weight: 0.884669304
-          - Vertex: 1784
-            Weight: 0.836249113
-          - Vertex: 1785
-            Weight: 1
-          - Vertex: 1786
-            Weight: 0.957976043
-          - Vertex: 1787
-            Weight: 0.810897052
-          - Vertex: 1788
-            Weight: 0.990149677
-          - Vertex: 1789
-            Weight: 1
-          - Vertex: 1790
-            Weight: 1
-          - Vertex: 1791
-            Weight: 0.957976043
-          - Vertex: 1792
-            Weight: 1
-          - Vertex: 1793
-            Weight: 0.642823577
-          - Vertex: 1794
-            Weight: 1
-          - Vertex: 1795
-            Weight: 1
-          - Vertex: 1796
-            Weight: 1
-          - Vertex: 1797
-            Weight: 0.715242326
-          - Vertex: 1798
-            Weight: 0.642823577
-          - Vertex: 1799
-            Weight: 1
-          - Vertex: 1800
-            Weight: 0.988264918
-          - Vertex: 1801
-            Weight: 0.715242326
-          - Vertex: 1802
-            Weight: 0.988264918
-          - Vertex: 1803
-            Weight: 0.994347155
-          - Vertex: 1804
-            Weight: 0.806962729
-          - Vertex: 1805
-            Weight: 0.806962729
-          - Vertex: 1806
-            Weight: 0.994347155
-          - Vertex: 1807
-            Weight: 0.990149677
-          - Vertex: 1808
-            Weight: 0.810897052
-          - Vertex: 1809
-            Weight: 0.147141263
-          - Vertex: 1810
-            Weight: 0.476523101
-          - Vertex: 1811
-            Weight: 0.272111148
-          - Vertex: 1812
-            Weight: 0.0408792868
-          - Vertex: 1813
-            Weight: 0.329547495
-          - Vertex: 1814
-            Weight: 0.0575931519
-          - Vertex: 1815
-            Weight: 0.0086431969
-          - Vertex: 1816
-            Weight: 0.214301914
-          - Vertex: 1817
-            Weight: 0.0403795727
-          - Vertex: 1818
-            Weight: 0.147141263
-          - Vertex: 1819
-            Weight: 0.0408792868
-          - Vertex: 1821
-            Weight: 0.55469805
-          - Vertex: 1822
-            Weight: 0.329547495
-          - Vertex: 1823
-            Weight: 0.214301914
-          - Vertex: 1824
-            Weight: 0.314672709
-          - Vertex: 1825
-            Weight: 0.272111148
-          - Vertex: 1826
-            Weight: 0.0346223898
-          - Vertex: 1828
-            Weight: 0.0408792868
-          - Vertex: 1829
-            Weight: 0.0086431969
-          - Vertex: 1831
-            Weight: 0.0338666923
-          - Vertex: 1832
-            Weight: 0.214301914
-          - Vertex: 1833
-            Weight: 0.0408792868
-          - Vertex: 1837
-            Weight: 0.0338666923
-          - Vertex: 1838
-            Weight: 0.0605643801
-          - Vertex: 1839
-            Weight: 0.314672709
-          - Vertex: 1840
-            Weight: 0.214301914
-          - Vertex: 1841
-            Weight: 0.0284576844
-          - Vertex: 1849
-            Weight: 0.0300842579
-          - Vertex: 1853
-            Weight: 0.0300842579
-          - Vertex: 1854
-            Weight: 0.0586565323
-          - Vertex: 1858
-            Weight: 0.0284576844
-          - Vertex: 1868
-            Weight: 0.0086431969
-          - Vertex: 1869
-            Weight: 0.0575931519
-          - Vertex: 1870
-            Weight: 0.0403795727
-          - Vertex: 1872
-            Weight: 0.0086431969
-          - Vertex: 1873
-            Weight: 0.40122056
-          - Vertex: 1874
-            Weight: 0.385155648
-          - Vertex: 1875
-            Weight: 0.0403795727
-          - Vertex: 1876
-            Weight: 0.0575931519
-          - Vertex: 1877
-            Weight: 0.994347155
-          - Vertex: 1878
-            Weight: 0.544980764
-          - Vertex: 1879
-            Weight: 0.385155648
-          - Vertex: 1916
-            Weight: 0.0284576844
-          - Vertex: 1919
-            Weight: 0.0586565323
-          - Vertex: 1920
-            Weight: 0.314672709
-          - Vertex: 1921
-            Weight: 0.0605643801
-          - Vertex: 1922
-            Weight: 0.0346223898
-          - Vertex: 1923
-            Weight: 0.272111148
-          - Vertex: 1924
-            Weight: 0.476523101
-          - Vertex: 1925
-            Weight: 0.55469805
-          - Vertex: 1926
-            Weight: 0.314672709
-          - Vertex: 1927
-            Weight: 0.272111148
-          - Vertex: 1928
-            Weight: 0.884669304
-          - Vertex: 1929
-            Weight: 0.96421802
-          - Vertex: 1930
-            Weight: 0.836249113
-          - Vertex: 1931
-            Weight: 0.957976043
-          - Vertex: 1932
-            Weight: 1
-          - Vertex: 1933
-            Weight: 0.650836527
-          - Vertex: 1934
-            Weight: 0.164938137
-          - Vertex: 1935
-            Weight: 0.806962729
-          - Vertex: 1936
-            Weight: 0.810897052
-          - Vertex: 1937
-            Weight: 0.468680143
-          - Vertex: 1940
-            Weight: 0.0284576844
-          - Vertex: 1941
-            Weight: 0.0338666923
-          - Vertex: 1950
-            Weight: 0.0346223898
-          - Vertex: 1951
-            Weight: 0.0300842579
-          - Vertex: 1954
-            Weight: 0.0605643801
-          - Vertex: 1955
-            Weight: 0.0586565323
-          - Vertex: 1956
-            Weight: 0.0300842579
-          - Vertex: 1957
-            Weight: 0.0346223898
-          - Vertex: 1958
-            Weight: 0.0338666923
-          - Vertex: 1959
-            Weight: 0.0284576844
-          - Vertex: 1960
-            Weight: 0.0586565323
-          - Vertex: 1961
-            Weight: 0.0605643801
-          - Vertex: 1962
-            Weight: 0.963138878
-          - Vertex: 1963
-            Weight: 0.884669304
-          - Vertex: 1964
-            Weight: 0.719910502
-          - Vertex: 1965
-            Weight: 0.894560218
-          - Vertex: 1966
-            Weight: 0.884669304
-          - Vertex: 1967
-            Weight: 0.544980764
-          - Vertex: 1968
-            Weight: 0.719910502
-          - Vertex: 1969
-            Weight: 0.894560218
-          - Vertex: 1970
-            Weight: 0.719910502
-          - Vertex: 1971
-            Weight: 0.994347155
-          - Vertex: 1972
-            Weight: 0.988264918
-          - Vertex: 1973
-            Weight: 0.894560218
-          - Vertex: 1974
-            Weight: 0.994347155
-          - Vertex: 1975
-            Weight: 0.96421802
-          - Vertex: 1976
-            Weight: 0.884669304
-          - Vertex: 1977
-            Weight: 0.963138878
-          - Vertex: 1978
-            Weight: 1
-          - Vertex: 1979
-            Weight: 0.96421802
-          - Vertex: 1980
-            Weight: 0.963138878
-          - Vertex: 2205
-            Weight: 0.164938137
-          - Vertex: 2206
-            Weight: 0.160573557
-          - Vertex: 2207
-            Weight: 0.468680143
-          - Vertex: 2208
-            Weight: 0.160573557
-          - Vertex: 2209
-            Weight: 0.164938137
-          - Vertex: 2210
-            Weight: 0.650836527
-          - Vertex: 2213
-            Weight: 0.650836527
-          - Vertex: 2215
-            Weight: 0.51755023
-          - Vertex: 2218
-            Weight: 0.650836527
-          - Vertex: 2219
-            Weight: 0.146288589
-          - Vertex: 2221
-            Weight: 0.146288589
-          - Vertex: 3317
-            Weight: 0.00808396377
-          - Vertex: 3318
-            Weight: 0.00250055362
-          - Vertex: 3407
-            Weight: 0.00124786398
-          - Vertex: 3412
-            Weight: 0.00832681917
-          - Vertex: 3431
-            Weight: 0.00250055362
-          - Vertex: 3436
-            Weight: 0.00250055362
-          - Vertex: 3437
-            Weight: 0.00808396377
-          - Vertex: 3438
-            Weight: 0.00832681917
-          - Vertex: 3493
-            Weight: 0.028371729
-          - Vertex: 3504
-            Weight: 0.028371729
-          - Vertex: 3554
-            Weight: 0.00124786398
-          - Vertex: 3555
-            Weight: 0.00808396377
-          - Vertex: 3699
-            Weight: 0.00250055362
-          - Vertex: 3710
-            Weight: 0.00832681917
-          - Vertex: 3711
-            Weight: 0.00808396377
-          - Vertex: 3713
-            Weight: 0.00124786398
-          - Vertex: 3720
-            Weight: 0.00124786398
-          - Vertex: 3727
-            Weight: 0.00832681917
-          - Vertex: 3728
-            Weight: 0.00124786398
-          - Vertex: 3732
-            Weight: 0.00124786398
-          - Vertex: 3922
-            Weight: 0.028371729
-          - Vertex: 3941
-            Weight: 0.028371729
-      - Index: 5
-        Weights:
           - Vertex: 4170
             Weight: 0.0460723564
           - Vertex: 4171
@@ -22783,7 +22269,7 @@ Meshes:
             Weight: 0.00662567606
           - Vertex: 4243
             Weight: 0.00212978688
-      - Index: 6
+      - Index: 5
         Weights:
           - Vertex: 4067
             Weight: 0.951957583
@@ -22921,7 +22407,7 @@ Meshes:
             Weight: 0.940927625
           - Vertex: 4269
             Weight: 0.00896380935
-      - Index: 7
+      - Index: 6
         Weights:
           - Vertex: 4007
             Weight: 0.636073828
@@ -23109,7 +22595,7 @@ Meshes:
             Weight: 0.713666141
           - Vertex: 4272
             Weight: 0.00903203618
-      - Index: 8
+      - Index: 7
         Weights:
           - Vertex: 3944
             Weight: 0.00100836006
@@ -23377,7 +22863,7 @@ Meshes:
             Weight: 0.00267624552
           - Vertex: 4301
             Weight: 0.0150604844
-      - Index: 9
+      - Index: 8
         Weights:
           - Vertex: 4087
             Weight: 0.0201197099
@@ -23413,7 +22899,7 @@ Meshes:
             Weight: 0.083205767
           - Vertex: 4189
             Weight: 0.0689227432
-      - Index: 10
+      - Index: 9
         Weights:
           - Vertex: 4064
             Weight: 0.459862471
@@ -23491,7 +22977,7 @@ Meshes:
             Weight: 0.920217395
           - Vertex: 4190
             Weight: 0.534639001
-      - Index: 11
+      - Index: 10
         Weights:
           - Vertex: 4003
             Weight: 0.00118279562
@@ -23631,7 +23117,7 @@ Meshes:
             Weight: 0.00410531648
           - Vertex: 4271
             Weight: 0.00410531648
-      - Index: 12
+      - Index: 11
         Weights:
           - Vertex: 3973
             Weight: 0.00383629953
@@ -23791,7 +23277,7 @@ Meshes:
             Weight: 0.0727144927
           - Vertex: 4271
             Weight: 0.0727144927
-      - Index: 13
+      - Index: 12
         Weights:
           - Vertex: 3996
             Weight: 0.0679274872
@@ -23841,7 +23327,7 @@ Meshes:
             Weight: 0.296027124
           - Vertex: 4201
             Weight: 0.0679274872
-      - Index: 14
+      - Index: 13
         Weights:
           - Vertex: 2224
             Weight: 0.0609646104
@@ -24527,7 +24013,7 @@ Meshes:
             Weight: 0.223953336
           - Vertex: 4366
             Weight: 0.423064888
-      - Index: 15
+      - Index: 14
         Weights:
           - Vertex: 3974
             Weight: 0.00242549577
@@ -24661,7 +24147,7 @@ Meshes:
             Weight: 0.796124578
           - Vertex: 4203
             Weight: 0.430216581
-      - Index: 16
+      - Index: 15
         Weights:
           - Vertex: 611
             Weight: 1
@@ -24845,11 +24331,11 @@ Meshes:
             Weight: 1
           - Vertex: 827
             Weight: 1
-      - Index: 17
+      - Index: 16
         Weights:
           - Vertex: 0
             Weight: 0
-      - Index: 18
+      - Index: 17
         Weights:
           - Vertex: 2818
             Weight: 0.00113900984
@@ -25271,7 +24757,7 @@ Meshes:
             Weight: 0.107946701
           - Vertex: 3250
             Weight: 0.0986461863
-      - Index: 19
+      - Index: 18
         Weights:
           - Vertex: 2957
             Weight: 0.635973275
@@ -25459,7 +24945,7 @@ Meshes:
             Weight: 0.713521779
           - Vertex: 3223
             Weight: 0.00903029926
-      - Index: 20
+      - Index: 19
         Weights:
           - Vertex: 0
             Weight: 1
@@ -27163,7 +26649,7 @@ Meshes:
             Weight: 1
           - Vertex: 953
             Weight: 1
-      - Index: 21
+      - Index: 20
         Weights:
           - Vertex: 2524
             Weight: 0.0582616553
@@ -27711,7 +27197,7 @@ Meshes:
             Weight: 0.338769436
           - Vertex: 3274
             Weight: 0.31271565
-      - Index: 22
+      - Index: 21
         Weights:
           - Vertex: 970
             Weight: 0.163871303
@@ -28243,7 +27729,7 @@ Meshes:
             Weight: 0.0270881001
           - Vertex: 2892
             Weight: 0.0270881001
-      - Index: 23
+      - Index: 22
         Weights:
           - Vertex: 721
             Weight: 0.00277754758
@@ -29531,7 +29017,7 @@ Meshes:
             Weight: 0.382022172
           - Vertex: 4376
             Weight: 0.144980088
-      - Index: 24
+      - Index: 23
         Weights:
           - Vertex: 2896
             Weight: 0.00203422899
@@ -29799,7 +29285,7 @@ Meshes:
             Weight: 0.0150600458
           - Vertex: 3250
             Weight: 0.00267614587
-      - Index: 25
+      - Index: 24
         Weights:
           - Vertex: 707
             Weight: 0.165856123
@@ -30033,10 +29519,816 @@ Meshes:
             Weight: 0.0508202277
           - Vertex: 4334
             Weight: 0.0508202277
-      - Index: 26
+      - Index: 25
         Weights:
           - Vertex: 0
             Weight: 0
+      - Index: 26
+        Weights:
+          - Vertex: 1726
+            Weight: 0.455019206
+          - Vertex: 1727
+            Weight: 0.163750932
+          - Vertex: 1728
+            Weight: 0.521379232
+          - Vertex: 1729
+            Weight: 0.852858722
+          - Vertex: 1731
+            Weight: 0.0368610919
+          - Vertex: 1732
+            Weight: 0.105439834
+          - Vertex: 1733
+            Weight: 0.0117350994
+          - Vertex: 1734
+            Weight: 0.942406833
+          - Vertex: 1735
+            Weight: 0.669430852
+          - Vertex: 1736
+            Weight: 0.59877938
+          - Vertex: 1737
+            Weight: 0.59877938
+          - Vertex: 1738
+            Weight: 0.229254737
+          - Vertex: 1741
+            Weight: 0.59877938
+          - Vertex: 1742
+            Weight: 0.669430852
+          - Vertex: 1743
+            Weight: 0.239149854
+          - Vertex: 1744
+            Weight: 0.669430852
+          - Vertex: 1745
+            Weight: 0.44530195
+          - Vertex: 1746
+            Weight: 0.111103281
+          - Vertex: 1747
+            Weight: 0.239149854
+          - Vertex: 1748
+            Weight: 0.229254737
+          - Vertex: 1749
+            Weight: 0.0357819945
+          - Vertex: 1752
+            Weight: 0.00565281976
+          - Vertex: 1753
+            Weight: 0.59877938
+          - Vertex: 1755
+            Weight: 0.614844382
+          - Vertex: 1756
+            Weight: 0.455019206
+          - Vertex: 1757
+            Weight: 0.852858722
+          - Vertex: 1758
+            Weight: 0.958001077
+          - Vertex: 1759
+            Weight: 0.163750932
+          - Vertex: 1760
+            Weight: 0.111103281
+          - Vertex: 1761
+            Weight: 0.44530195
+          - Vertex: 1762
+            Weight: 0.521379232
+          - Vertex: 1764
+            Weight: 0.0368610919
+          - Vertex: 1766
+            Weight: 0.239149854
+          - Vertex: 1767
+            Weight: 0.111103281
+          - Vertex: 1768
+            Weight: 0.0357819945
+          - Vertex: 1769
+            Weight: 0.0357819945
+          - Vertex: 1770
+            Weight: 0.111103281
+          - Vertex: 1771
+            Weight: 0.163750932
+          - Vertex: 1772
+            Weight: 0.280089498
+          - Vertex: 1773
+            Weight: 0.455019206
+          - Vertex: 1774
+            Weight: 0.00565281976
+          - Vertex: 1775
+            Weight: 0.00565281976
+          - Vertex: 1776
+            Weight: 0.614844382
+          - Vertex: 1777
+            Weight: 0.59877938
+          - Vertex: 1778
+            Weight: 0.239149854
+          - Vertex: 1779
+            Weight: 0.239149854
+          - Vertex: 1780
+            Weight: 0.0357819945
+          - Vertex: 1781
+            Weight: 0.229254737
+          - Vertex: 1782
+            Weight: 0.455019206
+          - Vertex: 1783
+            Weight: 0.115330651
+          - Vertex: 1784
+            Weight: 0.163750932
+          - Vertex: 1800
+            Weight: 0.0117350994
+          - Vertex: 1802
+            Weight: 0.0117350994
+          - Vertex: 1803
+            Weight: 0.00565281976
+          - Vertex: 1806
+            Weight: 0.00565281976
+          - Vertex: 1809
+            Weight: 0.852858722
+          - Vertex: 1810
+            Weight: 0.521379232
+          - Vertex: 1811
+            Weight: 0.608245671
+          - Vertex: 1812
+            Weight: 0.76656723
+          - Vertex: 1813
+            Weight: 0.669430852
+          - Vertex: 1814
+            Weight: 0.942406833
+          - Vertex: 1815
+            Weight: 0.762734473
+          - Vertex: 1816
+            Weight: 0.628822565
+          - Vertex: 1817
+            Weight: 0.958001077
+          - Vertex: 1818
+            Weight: 0.852858722
+          - Vertex: 1819
+            Weight: 0.76656723
+          - Vertex: 1820
+            Weight: 0.833878696
+          - Vertex: 1821
+            Weight: 0.44530195
+          - Vertex: 1822
+            Weight: 0.669430852
+          - Vertex: 1823
+            Weight: 0.628822565
+          - Vertex: 1824
+            Weight: 0.603623927
+          - Vertex: 1825
+            Weight: 0.608245671
+          - Vertex: 1826
+            Weight: 0.466417223
+          - Vertex: 1827
+            Weight: 0.314281613
+          - Vertex: 1828
+            Weight: 0.76656723
+          - Vertex: 1829
+            Weight: 0.762734473
+          - Vertex: 1830
+            Weight: 0.347365379
+          - Vertex: 1831
+            Weight: 0.458103478
+          - Vertex: 1832
+            Weight: 0.628822565
+          - Vertex: 1833
+            Weight: 0.76656723
+          - Vertex: 1834
+            Weight: 0.314281613
+          - Vertex: 1835
+            Weight: 0.322620898
+          - Vertex: 1836
+            Weight: 0.833878696
+          - Vertex: 1837
+            Weight: 0.458103478
+          - Vertex: 1838
+            Weight: 0.539427698
+          - Vertex: 1839
+            Weight: 0.603623927
+          - Vertex: 1840
+            Weight: 0.628822565
+          - Vertex: 1841
+            Weight: 0.46052143
+          - Vertex: 1842
+            Weight: 0.33179453
+          - Vertex: 1843
+            Weight: 0.117006019
+          - Vertex: 1844
+            Weight: 0.291430175
+          - Vertex: 1845
+            Weight: 0.184773356
+          - Vertex: 1846
+            Weight: 0.324947178
+          - Vertex: 1847
+            Weight: 0.312942475
+          - Vertex: 1848
+            Weight: 0.275730908
+          - Vertex: 1849
+            Weight: 0.466118574
+          - Vertex: 1850
+            Weight: 0.331493527
+          - Vertex: 1851
+            Weight: 0.275730908
+          - Vertex: 1852
+            Weight: 0.312942475
+          - Vertex: 1853
+            Weight: 0.466118574
+          - Vertex: 1854
+            Weight: 0.541491508
+          - Vertex: 1855
+            Weight: 0.289405733
+          - Vertex: 1856
+            Weight: 0.240116686
+          - Vertex: 1857
+            Weight: 0.331493527
+          - Vertex: 1858
+            Weight: 0.46052143
+          - Vertex: 1859
+            Weight: 0.291430175
+          - Vertex: 1860
+            Weight: 0.270678073
+          - Vertex: 1861
+            Weight: 0.117006019
+          - Vertex: 1862
+            Weight: 0.33179453
+          - Vertex: 1863
+            Weight: 0.324947178
+          - Vertex: 1864
+            Weight: 0.184773356
+          - Vertex: 1865
+            Weight: 0.833878696
+          - Vertex: 1866
+            Weight: 0.322620898
+          - Vertex: 1867
+            Weight: 0.347365379
+          - Vertex: 1868
+            Weight: 0.762734473
+          - Vertex: 1869
+            Weight: 0.942406833
+          - Vertex: 1870
+            Weight: 0.958001077
+          - Vertex: 1871
+            Weight: 0.833878696
+          - Vertex: 1872
+            Weight: 0.762734473
+          - Vertex: 1873
+            Weight: 0.59877938
+          - Vertex: 1874
+            Weight: 0.614844382
+          - Vertex: 1875
+            Weight: 0.958001077
+          - Vertex: 1876
+            Weight: 0.942406833
+          - Vertex: 1877
+            Weight: 0.00565281976
+          - Vertex: 1878
+            Weight: 0.455019206
+          - Vertex: 1879
+            Weight: 0.614844382
+          - Vertex: 1880
+            Weight: 0.117006019
+          - Vertex: 1881
+            Weight: 0.184773356
+          - Vertex: 1882
+            Weight: 0.180667609
+          - Vertex: 1883
+            Weight: 0.158029735
+          - Vertex: 1884
+            Weight: 0.160555005
+          - Vertex: 1885
+            Weight: 0.180667609
+          - Vertex: 1886
+            Weight: 0.184773356
+          - Vertex: 1887
+            Weight: 0.275730908
+          - Vertex: 1888
+            Weight: 0.158029735
+          - Vertex: 1889
+            Weight: 0.249204457
+          - Vertex: 1890
+            Weight: 0.291430175
+          - Vertex: 1891
+            Weight: 0.117006019
+          - Vertex: 1892
+            Weight: 0.249204457
+          - Vertex: 1893
+            Weight: 0.2295582
+          - Vertex: 1894
+            Weight: 0.270678073
+          - Vertex: 1895
+            Weight: 0.291430175
+          - Vertex: 1896
+            Weight: 0.2295582
+          - Vertex: 1897
+            Weight: 0.237719059
+          - Vertex: 1898
+            Weight: 0.289405733
+          - Vertex: 1899
+            Weight: 0.267546713
+          - Vertex: 1900
+            Weight: 0.160555005
+          - Vertex: 1901
+            Weight: 0.275730908
+          - Vertex: 1902
+            Weight: 0.331493527
+          - Vertex: 1903
+            Weight: 0.331493527
+          - Vertex: 1904
+            Weight: 0.240116686
+          - Vertex: 1905
+            Weight: 0.227495536
+          - Vertex: 1906
+            Weight: 0.267546713
+          - Vertex: 1907
+            Weight: 0.289405733
+          - Vertex: 1908
+            Weight: 0.237719059
+          - Vertex: 1909
+            Weight: 0.227495536
+          - Vertex: 1910
+            Weight: 0.270678073
+          - Vertex: 1911
+            Weight: 0.2295582
+          - Vertex: 1912
+            Weight: 0.289405733
+          - Vertex: 1913
+            Weight: 0.289405733
+          - Vertex: 1914
+            Weight: 0.227495536
+          - Vertex: 1915
+            Weight: 0.240116686
+          - Vertex: 1916
+            Weight: 0.46052143
+          - Vertex: 1917
+            Weight: 0.270678073
+          - Vertex: 1918
+            Weight: 0.289405733
+          - Vertex: 1919
+            Weight: 0.541491508
+          - Vertex: 1920
+            Weight: 0.603623927
+          - Vertex: 1921
+            Weight: 0.539427698
+          - Vertex: 1922
+            Weight: 0.466417223
+          - Vertex: 1923
+            Weight: 0.608245671
+          - Vertex: 1924
+            Weight: 0.521379232
+          - Vertex: 1925
+            Weight: 0.44530195
+          - Vertex: 1926
+            Weight: 0.603623927
+          - Vertex: 1927
+            Weight: 0.608245671
+          - Vertex: 1928
+            Weight: 0.115330651
+          - Vertex: 1929
+            Weight: 0.0357819945
+          - Vertex: 1930
+            Weight: 0.163750932
+          - Vertex: 1938
+            Weight: 0.347365379
+          - Vertex: 1939
+            Weight: 0.33179453
+          - Vertex: 1940
+            Weight: 0.46052143
+          - Vertex: 1941
+            Weight: 0.458103478
+          - Vertex: 1942
+            Weight: 0.322620898
+          - Vertex: 1943
+            Weight: 0.324947178
+          - Vertex: 1944
+            Weight: 0.33179453
+          - Vertex: 1945
+            Weight: 0.347365379
+          - Vertex: 1946
+            Weight: 0.314281613
+          - Vertex: 1947
+            Weight: 0.312942475
+          - Vertex: 1948
+            Weight: 0.324947178
+          - Vertex: 1949
+            Weight: 0.322620898
+          - Vertex: 1950
+            Weight: 0.466417223
+          - Vertex: 1951
+            Weight: 0.466118574
+          - Vertex: 1952
+            Weight: 0.312942475
+          - Vertex: 1953
+            Weight: 0.314281613
+          - Vertex: 1954
+            Weight: 0.539427698
+          - Vertex: 1955
+            Weight: 0.541491508
+          - Vertex: 1956
+            Weight: 0.466118574
+          - Vertex: 1957
+            Weight: 0.466417223
+          - Vertex: 1958
+            Weight: 0.458103478
+          - Vertex: 1959
+            Weight: 0.46052143
+          - Vertex: 1960
+            Weight: 0.541491508
+          - Vertex: 1961
+            Weight: 0.539427698
+          - Vertex: 1962
+            Weight: 0.0368610919
+          - Vertex: 1963
+            Weight: 0.115330651
+          - Vertex: 1964
+            Weight: 0.280089498
+          - Vertex: 1965
+            Weight: 0.105439834
+          - Vertex: 1966
+            Weight: 0.115330651
+          - Vertex: 1967
+            Weight: 0.455019206
+          - Vertex: 1968
+            Weight: 0.280089498
+          - Vertex: 1969
+            Weight: 0.105439834
+          - Vertex: 1970
+            Weight: 0.280089498
+          - Vertex: 1971
+            Weight: 0.00565281976
+          - Vertex: 1972
+            Weight: 0.0117350994
+          - Vertex: 1973
+            Weight: 0.105439834
+          - Vertex: 1974
+            Weight: 0.00565281976
+          - Vertex: 1975
+            Weight: 0.0357819945
+          - Vertex: 1976
+            Weight: 0.115330651
+          - Vertex: 1977
+            Weight: 0.0368610919
+          - Vertex: 1979
+            Weight: 0.0357819945
+          - Vertex: 1980
+            Weight: 0.0368610919
+          - Vertex: 1981
+            Weight: 0.00307170651
+          - Vertex: 1982
+            Weight: 0.0543169491
+          - Vertex: 1985
+            Weight: 0.122820467
+          - Vertex: 1986
+            Weight: 0.122966669
+          - Vertex: 1987
+            Weight: 0.00307170651
+          - Vertex: 1988
+            Weight: 0.00338247768
+          - Vertex: 1989
+            Weight: 0.0468488038
+          - Vertex: 1990
+            Weight: 0.00338247768
+          - Vertex: 1993
+            Weight: 0.00338247768
+          - Vertex: 1994
+            Weight: 0.00307170651
+          - Vertex: 2001
+            Weight: 0.0871585011
+          - Vertex: 2004
+            Weight: 0.0543169491
+          - Vertex: 2005
+            Weight: 0.495860755
+          - Vertex: 2006
+            Weight: 0.640065134
+          - Vertex: 2007
+            Weight: 0.447784662
+          - Vertex: 2008
+            Weight: 0.341254652
+          - Vertex: 2009
+            Weight: 0.0468488038
+          - Vertex: 2010
+            Weight: 0.122820467
+          - Vertex: 2011
+            Weight: 0.00338247768
+          - Vertex: 2012
+            Weight: 0.122966669
+          - Vertex: 2013
+            Weight: 0.0543169491
+          - Vertex: 2014
+            Weight: 0.00307170651
+          - Vertex: 2015
+            Weight: 0.0769165829
+          - Vertex: 2016
+            Weight: 0.0676676631
+          - Vertex: 2017
+            Weight: 0.178490579
+          - Vertex: 2018
+            Weight: 0.251567811
+          - Vertex: 2019
+            Weight: 0.368159592
+          - Vertex: 2020
+            Weight: 0.447784662
+          - Vertex: 2021
+            Weight: 0.640065134
+          - Vertex: 2022
+            Weight: 0.512775719
+          - Vertex: 2025
+            Weight: 0.0871585011
+          - Vertex: 2026
+            Weight: 0.0468488038
+          - Vertex: 2027
+            Weight: 0.222616315
+          - Vertex: 2028
+            Weight: 0.19209227
+          - Vertex: 2029
+            Weight: 0.280755669
+          - Vertex: 2030
+            Weight: 0.182777315
+          - Vertex: 2031
+            Weight: 0.19209227
+          - Vertex: 2032
+            Weight: 0.222616315
+          - Vertex: 2037
+            Weight: 0.512775719
+          - Vertex: 2038
+            Weight: 0.410961181
+          - Vertex: 2039
+            Weight: 0.319323957
+          - Vertex: 2040
+            Weight: 0.368159592
+          - Vertex: 2041
+            Weight: 0.0194945652
+          - Vertex: 2042
+            Weight: 0.019445464
+          - Vertex: 2043
+            Weight: 0.122966669
+          - Vertex: 2044
+            Weight: 0.122820467
+          - Vertex: 2045
+            Weight: 0.341254652
+          - Vertex: 2046
+            Weight: 0.311335385
+          - Vertex: 2047
+            Weight: 0.393123865
+          - Vertex: 2048
+            Weight: 0.495860755
+          - Vertex: 2068
+            Weight: 0.0807560161
+          - Vertex: 2069
+            Weight: 0.319323957
+          - Vertex: 2070
+            Weight: 0.410961181
+          - Vertex: 2071
+            Weight: 0.250804752
+          - Vertex: 2072
+            Weight: 0.0194457993
+          - Vertex: 2073
+            Weight: 0.019445464
+          - Vertex: 2074
+            Weight: 0.0194945652
+          - Vertex: 2075
+            Weight: 0.0194946025
+          - Vertex: 2076
+            Weight: 0.311335385
+          - Vertex: 2077
+            Weight: 0.0769165829
+          - Vertex: 2078
+            Weight: 0.251567811
+          - Vertex: 2079
+            Weight: 0.393123865
+          - Vertex: 2084
+            Weight: 0.0194457993
+          - Vertex: 2085
+            Weight: 0.0194946025
+          - Vertex: 2086
+            Weight: 0.0606162325
+          - Vertex: 2087
+            Weight: 0.0617006123
+          - Vertex: 2088
+            Weight: 0.250804752
+          - Vertex: 2089
+            Weight: 0.18783614
+          - Vertex: 2090
+            Weight: 0.0666160807
+          - Vertex: 2091
+            Weight: 0.0807560161
+          - Vertex: 2092
+            Weight: 0.272517562
+          - Vertex: 2093
+            Weight: 0.182777315
+          - Vertex: 2094
+            Weight: 0.222616315
+          - Vertex: 2095
+            Weight: 0.18783614
+          - Vertex: 2096
+            Weight: 0.178490579
+          - Vertex: 2097
+            Weight: 0.0676676631
+          - Vertex: 2098
+            Weight: 0.0666160807
+          - Vertex: 2099
+            Weight: 0.24555175
+          - Vertex: 2100
+            Weight: 0.182777315
+          - Vertex: 2101
+            Weight: 0.272517562
+          - Vertex: 2102
+            Weight: 0.272517562
+          - Vertex: 2103
+            Weight: 0.463432372
+          - Vertex: 2104
+            Weight: 0.24555175
+          - Vertex: 2105
+            Weight: 0.393123865
+          - Vertex: 2106
+            Weight: 0.24555175
+          - Vertex: 2107
+            Weight: 0.463432372
+          - Vertex: 2108
+            Weight: 0.495860755
+          - Vertex: 2109
+            Weight: 0.393123865
+          - Vertex: 2110
+            Weight: 0.463432372
+          - Vertex: 2111
+            Weight: 0.643402696
+          - Vertex: 2112
+            Weight: 0.640065134
+          - Vertex: 2113
+            Weight: 0.495860755
+          - Vertex: 2114
+            Weight: 0.463432372
+          - Vertex: 2115
+            Weight: 0.512775719
+          - Vertex: 2116
+            Weight: 0.640065134
+          - Vertex: 2117
+            Weight: 0.643402696
+          - Vertex: 2118
+            Weight: 0.453342855
+          - Vertex: 2119
+            Weight: 0.453342855
+          - Vertex: 2120
+            Weight: 0.410961181
+          - Vertex: 2121
+            Weight: 0.512775719
+          - Vertex: 2122
+            Weight: 0.244657636
+          - Vertex: 2123
+            Weight: 0.410961181
+          - Vertex: 2124
+            Weight: 0.453342855
+          - Vertex: 2125
+            Weight: 0.244657636
+          - Vertex: 2126
+            Weight: 0.453342855
+          - Vertex: 2127
+            Weight: 0.280755669
+          - Vertex: 2128
+            Weight: 0.280755669
+          - Vertex: 2129
+            Weight: 0.19209227
+          - Vertex: 2130
+            Weight: 0.244657636
+          - Vertex: 2131
+            Weight: 0.0692194775
+          - Vertex: 2132
+            Weight: 0.0606162325
+          - Vertex: 2133
+            Weight: 0.0194946025
+          - Vertex: 2134
+            Weight: 0.0194946025
+          - Vertex: 2135
+            Weight: 0.0194945652
+          - Vertex: 2136
+            Weight: 0.319323957
+          - Vertex: 2137
+            Weight: 0.0692194775
+          - Vertex: 2138
+            Weight: 0.319323957
+          - Vertex: 2139
+            Weight: 0.0194945652
+          - Vertex: 2140
+            Weight: 0.122820467
+          - Vertex: 2141
+            Weight: 0.368159592
+          - Vertex: 2142
+            Weight: 0.319323957
+          - Vertex: 2143
+            Weight: 0.122820467
+          - Vertex: 2144
+            Weight: 0.0468488038
+          - Vertex: 2145
+            Weight: 0.0468488038
+          - Vertex: 2146
+            Weight: 0.0871585011
+          - Vertex: 2147
+            Weight: 0.447784662
+          - Vertex: 2148
+            Weight: 0.368159592
+          - Vertex: 2149
+            Weight: 0.341254652
+          - Vertex: 2150
+            Weight: 0.447784662
+          - Vertex: 2151
+            Weight: 0.0871585011
+          - Vertex: 2152
+            Weight: 0.0543169491
+          - Vertex: 2153
+            Weight: 0.311335385
+          - Vertex: 2154
+            Weight: 0.341254652
+          - Vertex: 2155
+            Weight: 0.019445464
+          - Vertex: 2156
+            Weight: 0.311335385
+          - Vertex: 2157
+            Weight: 0.122966669
+          - Vertex: 2158
+            Weight: 0.0194457993
+          - Vertex: 2159
+            Weight: 0.0650031641
+          - Vertex: 2160
+            Weight: 0.311335385
+          - Vertex: 2161
+            Weight: 0.019445464
+          - Vertex: 2162
+            Weight: 0.0194457993
+          - Vertex: 2163
+            Weight: 0.0617006123
+          - Vertex: 2164
+            Weight: 0.0650031641
+          - Vertex: 2165
+            Weight: 0.0650031641
+          - Vertex: 2166
+            Weight: 0.0617006123
+          - Vertex: 2167
+            Weight: 0.0676676631
+          - Vertex: 2168
+            Weight: 0.0769165829
+          - Vertex: 2169
+            Weight: 0.182777315
+          - Vertex: 2170
+            Weight: 0.24555175
+          - Vertex: 2171
+            Weight: 0.251567811
+          - Vertex: 2172
+            Weight: 0.178490579
+          - Vertex: 2173
+            Weight: 0.512775719
+          - Vertex: 2174
+            Weight: 0.410961181
+          - Vertex: 2175
+            Weight: 0.410961181
+          - Vertex: 2176
+            Weight: 0.0692194775
+          - Vertex: 2177
+            Weight: 0.319323957
+          - Vertex: 2178
+            Weight: 0.0807560161
+          - Vertex: 2179
+            Weight: 0.410961181
+          - Vertex: 2180
+            Weight: 0.244657636
+          - Vertex: 2181
+            Weight: 0.250804752
+          - Vertex: 2182
+            Weight: 0.410961181
+          - Vertex: 2183
+            Weight: 0.311335385
+          - Vertex: 2184
+            Weight: 0.0650031641
+          - Vertex: 2185
+            Weight: 0.0769165829
+          - Vertex: 2186
+            Weight: 0.24555175
+          - Vertex: 2187
+            Weight: 0.393123865
+          - Vertex: 2188
+            Weight: 0.251567811
+          - Vertex: 2189
+            Weight: 0.244657636
+          - Vertex: 2190
+            Weight: 0.19209227
+          - Vertex: 2191
+            Weight: 0.18783614
+          - Vertex: 2192
+            Weight: 0.250804752
+          - Vertex: 2193
+            Weight: 0.0606162325
+          - Vertex: 2194
+            Weight: 0.0692194775
+          - Vertex: 2195
+            Weight: 0.0807560161
+          - Vertex: 2196
+            Weight: 0.0666160807
+          - Vertex: 2197
+            Weight: 0.0617006123
+          - Vertex: 2198
+            Weight: 0.0606162325
+          - Vertex: 2199
+            Weight: 0.0666160807
+          - Vertex: 2200
+            Weight: 0.0676676631
+          - Vertex: 2201
+            Weight: 0.19209227
+          - Vertex: 2202
+            Weight: 0.182777315
+          - Vertex: 2203
+            Weight: 0.178490579
+          - Vertex: 2204
+            Weight: 0.18783614
       - Index: 27
         Weights:
           - Vertex: 2224
@@ -32583,810 +32875,518 @@ Meshes:
             Weight: 0.00285098259
       - Index: 31
         Weights:
+          - Vertex: 1002
+            Weight: 0.160573557
+          - Vertex: 1003
+            Weight: 0.160573557
+          - Vertex: 1010
+            Weight: 0.468680143
+          - Vertex: 1012
+            Weight: 0.160573557
+          - Vertex: 1013
+            Weight: 0.51755023
+          - Vertex: 1016
+            Weight: 0.468680143
+          - Vertex: 1019
+            Weight: 0.51755023
+          - Vertex: 1167
+            Weight: 0.146288589
+          - Vertex: 1173
+            Weight: 0.0694321021
+          - Vertex: 1174
+            Weight: 0.146288589
+          - Vertex: 1179
+            Weight: 0.146288589
+          - Vertex: 1180
+            Weight: 0.0694321021
+          - Vertex: 1191
+            Weight: 0.0694321021
+          - Vertex: 1196
+            Weight: 0.0694321021
+          - Vertex: 1691
+            Weight: 0.107097097
+          - Vertex: 1693
+            Weight: 0.146288589
+          - Vertex: 1694
+            Weight: 0.164938137
+          - Vertex: 1696
+            Weight: 0.107097097
+          - Vertex: 1697
+            Weight: 0.107097097
+          - Vertex: 1698
+            Weight: 0.146288589
+          - Vertex: 1699
+            Weight: 0.163767278
+          - Vertex: 1700
+            Weight: 0.107097097
+          - Vertex: 1701
+            Weight: 0.715242326
+          - Vertex: 1702
+            Weight: 0.164938137
+          - Vertex: 1703
+            Weight: 0.650836527
+          - Vertex: 1704
+            Weight: 0.163767278
+          - Vertex: 1705
+            Weight: 0.146288589
+          - Vertex: 1706
+            Weight: 0.957976043
+          - Vertex: 1707
+            Weight: 0.650836527
+          - Vertex: 1708
+            Weight: 0.51755023
+          - Vertex: 1709
+            Weight: 0.164938137
+          - Vertex: 1710
+            Weight: 0.715242326
+          - Vertex: 1711
+            Weight: 0.806962729
+          - Vertex: 1712
+            Weight: 0.650836527
+          - Vertex: 1713
+            Weight: 1
+          - Vertex: 1714
+            Weight: 0.642823577
+          - Vertex: 1715
+            Weight: 0.650836527
+          - Vertex: 1716
+            Weight: 0.642823577
+          - Vertex: 1717
+            Weight: 0.163767278
+          - Vertex: 1718
+            Weight: 0.107097097
+          - Vertex: 1719
+            Weight: 0.163767278
+          - Vertex: 1720
+            Weight: 0.642823577
+          - Vertex: 1721
+            Weight: 0.715242326
+          - Vertex: 1722
+            Weight: 0.810897052
+          - Vertex: 1723
+            Weight: 0.957976043
+          - Vertex: 1724
+            Weight: 0.51755023
+          - Vertex: 1725
+            Weight: 0.468680143
           - Vertex: 1726
-            Weight: 0.455019206
+            Weight: 0.544980764
           - Vertex: 1727
-            Weight: 0.163750932
+            Weight: 0.836249113
           - Vertex: 1728
-            Weight: 0.521379232
+            Weight: 0.476523101
           - Vertex: 1729
-            Weight: 0.852858722
+            Weight: 0.147141263
+          - Vertex: 1730
+            Weight: 1
           - Vertex: 1731
-            Weight: 0.0368610919
+            Weight: 0.963138878
           - Vertex: 1732
-            Weight: 0.105439834
+            Weight: 0.894560218
           - Vertex: 1733
-            Weight: 0.0117350994
+            Weight: 0.988264918
           - Vertex: 1734
-            Weight: 0.942406833
+            Weight: 0.0575931519
           - Vertex: 1735
-            Weight: 0.669430852
+            Weight: 0.329547495
           - Vertex: 1736
-            Weight: 0.59877938
+            Weight: 0.40122056
           - Vertex: 1737
-            Weight: 0.59877938
+            Weight: 0.40122056
           - Vertex: 1738
-            Weight: 0.229254737
+            Weight: 0.765735626
+          - Vertex: 1739
+            Weight: 1
+          - Vertex: 1740
+            Weight: 0.990149677
           - Vertex: 1741
-            Weight: 0.59877938
+            Weight: 0.40122056
           - Vertex: 1742
-            Weight: 0.669430852
+            Weight: 0.329547495
           - Vertex: 1743
-            Weight: 0.239149854
+            Weight: 0.759040952
           - Vertex: 1744
-            Weight: 0.669430852
+            Weight: 0.329547495
           - Vertex: 1745
-            Weight: 0.44530195
+            Weight: 0.55469805
           - Vertex: 1746
-            Weight: 0.111103281
+            Weight: 0.888896704
           - Vertex: 1747
-            Weight: 0.239149854
+            Weight: 0.759040952
           - Vertex: 1748
-            Weight: 0.229254737
+            Weight: 0.765735626
           - Vertex: 1749
-            Weight: 0.0357819945
+            Weight: 0.96421802
+          - Vertex: 1750
+            Weight: 1
+          - Vertex: 1751
+            Weight: 1
           - Vertex: 1752
-            Weight: 0.00565281976
+            Weight: 0.994347155
           - Vertex: 1753
-            Weight: 0.59877938
+            Weight: 0.40122056
+          - Vertex: 1754
+            Weight: 0.990149677
           - Vertex: 1755
-            Weight: 0.614844382
+            Weight: 0.385155648
           - Vertex: 1756
-            Weight: 0.455019206
+            Weight: 0.544980764
           - Vertex: 1757
-            Weight: 0.852858722
+            Weight: 0.147141263
           - Vertex: 1758
-            Weight: 0.958001077
+            Weight: 0.0403795727
           - Vertex: 1759
-            Weight: 0.163750932
+            Weight: 0.836249113
           - Vertex: 1760
-            Weight: 0.111103281
+            Weight: 0.888896704
           - Vertex: 1761
-            Weight: 0.44530195
+            Weight: 0.55469805
           - Vertex: 1762
-            Weight: 0.521379232
+            Weight: 0.476523101
+          - Vertex: 1763
+            Weight: 1
           - Vertex: 1764
-            Weight: 0.0368610919
+            Weight: 0.963138878
+          - Vertex: 1765
+            Weight: 1
           - Vertex: 1766
-            Weight: 0.239149854
+            Weight: 0.759040952
           - Vertex: 1767
-            Weight: 0.111103281
+            Weight: 0.888896704
           - Vertex: 1768
-            Weight: 0.0357819945
+            Weight: 0.96421802
           - Vertex: 1769
-            Weight: 0.0357819945
+            Weight: 0.96421802
           - Vertex: 1770
-            Weight: 0.111103281
+            Weight: 0.888896704
           - Vertex: 1771
-            Weight: 0.163750932
+            Weight: 0.836249113
           - Vertex: 1772
-            Weight: 0.280089498
+            Weight: 0.719910502
           - Vertex: 1773
-            Weight: 0.455019206
+            Weight: 0.544980764
           - Vertex: 1774
-            Weight: 0.00565281976
+            Weight: 0.994347155
           - Vertex: 1775
-            Weight: 0.00565281976
+            Weight: 0.994347155
           - Vertex: 1776
-            Weight: 0.614844382
+            Weight: 0.385155648
           - Vertex: 1777
-            Weight: 0.59877938
+            Weight: 0.40122056
           - Vertex: 1778
-            Weight: 0.239149854
+            Weight: 0.759040952
           - Vertex: 1779
-            Weight: 0.239149854
+            Weight: 0.759040952
           - Vertex: 1780
-            Weight: 0.0357819945
+            Weight: 0.96421802
           - Vertex: 1781
-            Weight: 0.229254737
+            Weight: 0.765735626
           - Vertex: 1782
-            Weight: 0.455019206
+            Weight: 0.544980764
           - Vertex: 1783
-            Weight: 0.115330651
+            Weight: 0.884669304
           - Vertex: 1784
-            Weight: 0.163750932
+            Weight: 0.836249113
+          - Vertex: 1785
+            Weight: 1
+          - Vertex: 1786
+            Weight: 0.957976043
+          - Vertex: 1787
+            Weight: 0.810897052
+          - Vertex: 1788
+            Weight: 0.990149677
+          - Vertex: 1789
+            Weight: 1
+          - Vertex: 1790
+            Weight: 1
+          - Vertex: 1791
+            Weight: 0.957976043
+          - Vertex: 1792
+            Weight: 1
+          - Vertex: 1793
+            Weight: 0.642823577
+          - Vertex: 1794
+            Weight: 1
+          - Vertex: 1795
+            Weight: 1
+          - Vertex: 1796
+            Weight: 1
+          - Vertex: 1797
+            Weight: 0.715242326
+          - Vertex: 1798
+            Weight: 0.642823577
+          - Vertex: 1799
+            Weight: 1
           - Vertex: 1800
-            Weight: 0.0117350994
+            Weight: 0.988264918
+          - Vertex: 1801
+            Weight: 0.715242326
           - Vertex: 1802
-            Weight: 0.0117350994
+            Weight: 0.988264918
           - Vertex: 1803
-            Weight: 0.00565281976
+            Weight: 0.994347155
+          - Vertex: 1804
+            Weight: 0.806962729
+          - Vertex: 1805
+            Weight: 0.806962729
           - Vertex: 1806
-            Weight: 0.00565281976
+            Weight: 0.994347155
+          - Vertex: 1807
+            Weight: 0.990149677
+          - Vertex: 1808
+            Weight: 0.810897052
           - Vertex: 1809
-            Weight: 0.852858722
+            Weight: 0.147141263
           - Vertex: 1810
-            Weight: 0.521379232
+            Weight: 0.476523101
           - Vertex: 1811
-            Weight: 0.608245671
+            Weight: 0.272111148
           - Vertex: 1812
-            Weight: 0.76656723
+            Weight: 0.0408792868
           - Vertex: 1813
-            Weight: 0.669430852
+            Weight: 0.329547495
           - Vertex: 1814
-            Weight: 0.942406833
+            Weight: 0.0575931519
           - Vertex: 1815
-            Weight: 0.762734473
+            Weight: 0.0086431969
           - Vertex: 1816
-            Weight: 0.628822565
+            Weight: 0.214301914
           - Vertex: 1817
-            Weight: 0.958001077
+            Weight: 0.0403795727
           - Vertex: 1818
-            Weight: 0.852858722
+            Weight: 0.147141263
           - Vertex: 1819
-            Weight: 0.76656723
-          - Vertex: 1820
-            Weight: 0.833878696
+            Weight: 0.0408792868
           - Vertex: 1821
-            Weight: 0.44530195
+            Weight: 0.55469805
           - Vertex: 1822
-            Weight: 0.669430852
+            Weight: 0.329547495
           - Vertex: 1823
-            Weight: 0.628822565
+            Weight: 0.214301914
           - Vertex: 1824
-            Weight: 0.603623927
+            Weight: 0.314672709
           - Vertex: 1825
-            Weight: 0.608245671
+            Weight: 0.272111148
           - Vertex: 1826
-            Weight: 0.466417223
-          - Vertex: 1827
-            Weight: 0.314281613
+            Weight: 0.0346223898
           - Vertex: 1828
-            Weight: 0.76656723
+            Weight: 0.0408792868
           - Vertex: 1829
-            Weight: 0.762734473
-          - Vertex: 1830
-            Weight: 0.347365379
+            Weight: 0.0086431969
           - Vertex: 1831
-            Weight: 0.458103478
+            Weight: 0.0338666923
           - Vertex: 1832
-            Weight: 0.628822565
+            Weight: 0.214301914
           - Vertex: 1833
-            Weight: 0.76656723
-          - Vertex: 1834
-            Weight: 0.314281613
-          - Vertex: 1835
-            Weight: 0.322620898
-          - Vertex: 1836
-            Weight: 0.833878696
+            Weight: 0.0408792868
           - Vertex: 1837
-            Weight: 0.458103478
+            Weight: 0.0338666923
           - Vertex: 1838
-            Weight: 0.539427698
+            Weight: 0.0605643801
           - Vertex: 1839
-            Weight: 0.603623927
+            Weight: 0.314672709
           - Vertex: 1840
-            Weight: 0.628822565
+            Weight: 0.214301914
           - Vertex: 1841
-            Weight: 0.46052143
-          - Vertex: 1842
-            Weight: 0.33179453
-          - Vertex: 1843
-            Weight: 0.117006019
-          - Vertex: 1844
-            Weight: 0.291430175
-          - Vertex: 1845
-            Weight: 0.184773356
-          - Vertex: 1846
-            Weight: 0.324947178
-          - Vertex: 1847
-            Weight: 0.312942475
-          - Vertex: 1848
-            Weight: 0.275730908
+            Weight: 0.0284576844
           - Vertex: 1849
-            Weight: 0.466118574
-          - Vertex: 1850
-            Weight: 0.331493527
-          - Vertex: 1851
-            Weight: 0.275730908
-          - Vertex: 1852
-            Weight: 0.312942475
+            Weight: 0.0300842579
           - Vertex: 1853
-            Weight: 0.466118574
+            Weight: 0.0300842579
           - Vertex: 1854
-            Weight: 0.541491508
-          - Vertex: 1855
-            Weight: 0.289405733
-          - Vertex: 1856
-            Weight: 0.240116686
-          - Vertex: 1857
-            Weight: 0.331493527
+            Weight: 0.0586565323
           - Vertex: 1858
-            Weight: 0.46052143
-          - Vertex: 1859
-            Weight: 0.291430175
-          - Vertex: 1860
-            Weight: 0.270678073
-          - Vertex: 1861
-            Weight: 0.117006019
-          - Vertex: 1862
-            Weight: 0.33179453
-          - Vertex: 1863
-            Weight: 0.324947178
-          - Vertex: 1864
-            Weight: 0.184773356
-          - Vertex: 1865
-            Weight: 0.833878696
-          - Vertex: 1866
-            Weight: 0.322620898
-          - Vertex: 1867
-            Weight: 0.347365379
+            Weight: 0.0284576844
           - Vertex: 1868
-            Weight: 0.762734473
+            Weight: 0.0086431969
           - Vertex: 1869
-            Weight: 0.942406833
+            Weight: 0.0575931519
           - Vertex: 1870
-            Weight: 0.958001077
-          - Vertex: 1871
-            Weight: 0.833878696
+            Weight: 0.0403795727
           - Vertex: 1872
-            Weight: 0.762734473
+            Weight: 0.0086431969
           - Vertex: 1873
-            Weight: 0.59877938
+            Weight: 0.40122056
           - Vertex: 1874
-            Weight: 0.614844382
+            Weight: 0.385155648
           - Vertex: 1875
-            Weight: 0.958001077
+            Weight: 0.0403795727
           - Vertex: 1876
-            Weight: 0.942406833
+            Weight: 0.0575931519
           - Vertex: 1877
-            Weight: 0.00565281976
+            Weight: 0.994347155
           - Vertex: 1878
-            Weight: 0.455019206
+            Weight: 0.544980764
           - Vertex: 1879
-            Weight: 0.614844382
-          - Vertex: 1880
-            Weight: 0.117006019
-          - Vertex: 1881
-            Weight: 0.184773356
-          - Vertex: 1882
-            Weight: 0.180667609
-          - Vertex: 1883
-            Weight: 0.158029735
-          - Vertex: 1884
-            Weight: 0.160555005
-          - Vertex: 1885
-            Weight: 0.180667609
-          - Vertex: 1886
-            Weight: 0.184773356
-          - Vertex: 1887
-            Weight: 0.275730908
-          - Vertex: 1888
-            Weight: 0.158029735
-          - Vertex: 1889
-            Weight: 0.249204457
-          - Vertex: 1890
-            Weight: 0.291430175
-          - Vertex: 1891
-            Weight: 0.117006019
-          - Vertex: 1892
-            Weight: 0.249204457
-          - Vertex: 1893
-            Weight: 0.2295582
-          - Vertex: 1894
-            Weight: 0.270678073
-          - Vertex: 1895
-            Weight: 0.291430175
-          - Vertex: 1896
-            Weight: 0.2295582
-          - Vertex: 1897
-            Weight: 0.237719059
-          - Vertex: 1898
-            Weight: 0.289405733
-          - Vertex: 1899
-            Weight: 0.267546713
-          - Vertex: 1900
-            Weight: 0.160555005
-          - Vertex: 1901
-            Weight: 0.275730908
-          - Vertex: 1902
-            Weight: 0.331493527
-          - Vertex: 1903
-            Weight: 0.331493527
-          - Vertex: 1904
-            Weight: 0.240116686
-          - Vertex: 1905
-            Weight: 0.227495536
-          - Vertex: 1906
-            Weight: 0.267546713
-          - Vertex: 1907
-            Weight: 0.289405733
-          - Vertex: 1908
-            Weight: 0.237719059
-          - Vertex: 1909
-            Weight: 0.227495536
-          - Vertex: 1910
-            Weight: 0.270678073
-          - Vertex: 1911
-            Weight: 0.2295582
-          - Vertex: 1912
-            Weight: 0.289405733
-          - Vertex: 1913
-            Weight: 0.289405733
-          - Vertex: 1914
-            Weight: 0.227495536
-          - Vertex: 1915
-            Weight: 0.240116686
+            Weight: 0.385155648
           - Vertex: 1916
-            Weight: 0.46052143
-          - Vertex: 1917
-            Weight: 0.270678073
-          - Vertex: 1918
-            Weight: 0.289405733
+            Weight: 0.0284576844
           - Vertex: 1919
-            Weight: 0.541491508
+            Weight: 0.0586565323
           - Vertex: 1920
-            Weight: 0.603623927
+            Weight: 0.314672709
           - Vertex: 1921
-            Weight: 0.539427698
+            Weight: 0.0605643801
           - Vertex: 1922
-            Weight: 0.466417223
+            Weight: 0.0346223898
           - Vertex: 1923
-            Weight: 0.608245671
+            Weight: 0.272111148
           - Vertex: 1924
-            Weight: 0.521379232
+            Weight: 0.476523101
           - Vertex: 1925
-            Weight: 0.44530195
+            Weight: 0.55469805
           - Vertex: 1926
-            Weight: 0.603623927
+            Weight: 0.314672709
           - Vertex: 1927
-            Weight: 0.608245671
+            Weight: 0.272111148
           - Vertex: 1928
-            Weight: 0.115330651
+            Weight: 0.884669304
           - Vertex: 1929
-            Weight: 0.0357819945
+            Weight: 0.96421802
           - Vertex: 1930
-            Weight: 0.163750932
-          - Vertex: 1938
-            Weight: 0.347365379
-          - Vertex: 1939
-            Weight: 0.33179453
+            Weight: 0.836249113
+          - Vertex: 1931
+            Weight: 0.957976043
+          - Vertex: 1932
+            Weight: 1
+          - Vertex: 1933
+            Weight: 0.650836527
+          - Vertex: 1934
+            Weight: 0.164938137
+          - Vertex: 1935
+            Weight: 0.806962729
+          - Vertex: 1936
+            Weight: 0.810897052
+          - Vertex: 1937
+            Weight: 0.468680143
           - Vertex: 1940
-            Weight: 0.46052143
+            Weight: 0.0284576844
           - Vertex: 1941
-            Weight: 0.458103478
-          - Vertex: 1942
-            Weight: 0.322620898
-          - Vertex: 1943
-            Weight: 0.324947178
-          - Vertex: 1944
-            Weight: 0.33179453
-          - Vertex: 1945
-            Weight: 0.347365379
-          - Vertex: 1946
-            Weight: 0.314281613
-          - Vertex: 1947
-            Weight: 0.312942475
-          - Vertex: 1948
-            Weight: 0.324947178
-          - Vertex: 1949
-            Weight: 0.322620898
+            Weight: 0.0338666923
           - Vertex: 1950
-            Weight: 0.466417223
+            Weight: 0.0346223898
           - Vertex: 1951
-            Weight: 0.466118574
-          - Vertex: 1952
-            Weight: 0.312942475
-          - Vertex: 1953
-            Weight: 0.314281613
+            Weight: 0.0300842579
           - Vertex: 1954
-            Weight: 0.539427698
+            Weight: 0.0605643801
           - Vertex: 1955
-            Weight: 0.541491508
+            Weight: 0.0586565323
           - Vertex: 1956
-            Weight: 0.466118574
+            Weight: 0.0300842579
           - Vertex: 1957
-            Weight: 0.466417223
+            Weight: 0.0346223898
           - Vertex: 1958
-            Weight: 0.458103478
+            Weight: 0.0338666923
           - Vertex: 1959
-            Weight: 0.46052143
+            Weight: 0.0284576844
           - Vertex: 1960
-            Weight: 0.541491508
+            Weight: 0.0586565323
           - Vertex: 1961
-            Weight: 0.539427698
+            Weight: 0.0605643801
           - Vertex: 1962
-            Weight: 0.0368610919
+            Weight: 0.963138878
           - Vertex: 1963
-            Weight: 0.115330651
+            Weight: 0.884669304
           - Vertex: 1964
-            Weight: 0.280089498
+            Weight: 0.719910502
           - Vertex: 1965
-            Weight: 0.105439834
+            Weight: 0.894560218
           - Vertex: 1966
-            Weight: 0.115330651
+            Weight: 0.884669304
           - Vertex: 1967
-            Weight: 0.455019206
+            Weight: 0.544980764
           - Vertex: 1968
-            Weight: 0.280089498
+            Weight: 0.719910502
           - Vertex: 1969
-            Weight: 0.105439834
+            Weight: 0.894560218
           - Vertex: 1970
-            Weight: 0.280089498
+            Weight: 0.719910502
           - Vertex: 1971
-            Weight: 0.00565281976
+            Weight: 0.994347155
           - Vertex: 1972
-            Weight: 0.0117350994
+            Weight: 0.988264918
           - Vertex: 1973
-            Weight: 0.105439834
+            Weight: 0.894560218
           - Vertex: 1974
-            Weight: 0.00565281976
+            Weight: 0.994347155
           - Vertex: 1975
-            Weight: 0.0357819945
+            Weight: 0.96421802
           - Vertex: 1976
-            Weight: 0.115330651
+            Weight: 0.884669304
           - Vertex: 1977
-            Weight: 0.0368610919
+            Weight: 0.963138878
+          - Vertex: 1978
+            Weight: 1
           - Vertex: 1979
-            Weight: 0.0357819945
+            Weight: 0.96421802
           - Vertex: 1980
-            Weight: 0.0368610919
-          - Vertex: 1981
-            Weight: 0.00307170651
-          - Vertex: 1982
-            Weight: 0.0543169491
-          - Vertex: 1985
-            Weight: 0.122820467
-          - Vertex: 1986
-            Weight: 0.122966669
-          - Vertex: 1987
-            Weight: 0.00307170651
-          - Vertex: 1988
-            Weight: 0.00338247768
-          - Vertex: 1989
-            Weight: 0.0468488038
-          - Vertex: 1990
-            Weight: 0.00338247768
-          - Vertex: 1993
-            Weight: 0.00338247768
-          - Vertex: 1994
-            Weight: 0.00307170651
-          - Vertex: 2001
-            Weight: 0.0871585011
-          - Vertex: 2004
-            Weight: 0.0543169491
-          - Vertex: 2005
-            Weight: 0.495860755
-          - Vertex: 2006
-            Weight: 0.640065134
-          - Vertex: 2007
-            Weight: 0.447784662
-          - Vertex: 2008
-            Weight: 0.341254652
-          - Vertex: 2009
-            Weight: 0.0468488038
-          - Vertex: 2010
-            Weight: 0.122820467
-          - Vertex: 2011
-            Weight: 0.00338247768
-          - Vertex: 2012
-            Weight: 0.122966669
-          - Vertex: 2013
-            Weight: 0.0543169491
-          - Vertex: 2014
-            Weight: 0.00307170651
-          - Vertex: 2015
-            Weight: 0.0769165829
-          - Vertex: 2016
-            Weight: 0.0676676631
-          - Vertex: 2017
-            Weight: 0.178490579
-          - Vertex: 2018
-            Weight: 0.251567811
-          - Vertex: 2019
-            Weight: 0.368159592
-          - Vertex: 2020
-            Weight: 0.447784662
-          - Vertex: 2021
-            Weight: 0.640065134
-          - Vertex: 2022
-            Weight: 0.512775719
-          - Vertex: 2025
-            Weight: 0.0871585011
-          - Vertex: 2026
-            Weight: 0.0468488038
-          - Vertex: 2027
-            Weight: 0.222616315
-          - Vertex: 2028
-            Weight: 0.19209227
-          - Vertex: 2029
-            Weight: 0.280755669
-          - Vertex: 2030
-            Weight: 0.182777315
-          - Vertex: 2031
-            Weight: 0.19209227
-          - Vertex: 2032
-            Weight: 0.222616315
-          - Vertex: 2037
-            Weight: 0.512775719
-          - Vertex: 2038
-            Weight: 0.410961181
-          - Vertex: 2039
-            Weight: 0.319323957
-          - Vertex: 2040
-            Weight: 0.368159592
-          - Vertex: 2041
-            Weight: 0.0194945652
-          - Vertex: 2042
-            Weight: 0.019445464
-          - Vertex: 2043
-            Weight: 0.122966669
-          - Vertex: 2044
-            Weight: 0.122820467
-          - Vertex: 2045
-            Weight: 0.341254652
-          - Vertex: 2046
-            Weight: 0.311335385
-          - Vertex: 2047
-            Weight: 0.393123865
-          - Vertex: 2048
-            Weight: 0.495860755
-          - Vertex: 2068
-            Weight: 0.0807560161
-          - Vertex: 2069
-            Weight: 0.319323957
-          - Vertex: 2070
-            Weight: 0.410961181
-          - Vertex: 2071
-            Weight: 0.250804752
-          - Vertex: 2072
-            Weight: 0.0194457993
-          - Vertex: 2073
-            Weight: 0.019445464
-          - Vertex: 2074
-            Weight: 0.0194945652
-          - Vertex: 2075
-            Weight: 0.0194946025
-          - Vertex: 2076
-            Weight: 0.311335385
-          - Vertex: 2077
-            Weight: 0.0769165829
-          - Vertex: 2078
-            Weight: 0.251567811
-          - Vertex: 2079
-            Weight: 0.393123865
-          - Vertex: 2084
-            Weight: 0.0194457993
-          - Vertex: 2085
-            Weight: 0.0194946025
-          - Vertex: 2086
-            Weight: 0.0606162325
-          - Vertex: 2087
-            Weight: 0.0617006123
-          - Vertex: 2088
-            Weight: 0.250804752
-          - Vertex: 2089
-            Weight: 0.18783614
-          - Vertex: 2090
-            Weight: 0.0666160807
-          - Vertex: 2091
-            Weight: 0.0807560161
-          - Vertex: 2092
-            Weight: 0.272517562
-          - Vertex: 2093
-            Weight: 0.182777315
-          - Vertex: 2094
-            Weight: 0.222616315
-          - Vertex: 2095
-            Weight: 0.18783614
-          - Vertex: 2096
-            Weight: 0.178490579
-          - Vertex: 2097
-            Weight: 0.0676676631
-          - Vertex: 2098
-            Weight: 0.0666160807
-          - Vertex: 2099
-            Weight: 0.24555175
-          - Vertex: 2100
-            Weight: 0.182777315
-          - Vertex: 2101
-            Weight: 0.272517562
-          - Vertex: 2102
-            Weight: 0.272517562
-          - Vertex: 2103
-            Weight: 0.463432372
-          - Vertex: 2104
-            Weight: 0.24555175
-          - Vertex: 2105
-            Weight: 0.393123865
-          - Vertex: 2106
-            Weight: 0.24555175
-          - Vertex: 2107
-            Weight: 0.463432372
-          - Vertex: 2108
-            Weight: 0.495860755
-          - Vertex: 2109
-            Weight: 0.393123865
-          - Vertex: 2110
-            Weight: 0.463432372
-          - Vertex: 2111
-            Weight: 0.643402696
-          - Vertex: 2112
-            Weight: 0.640065134
-          - Vertex: 2113
-            Weight: 0.495860755
-          - Vertex: 2114
-            Weight: 0.463432372
-          - Vertex: 2115
-            Weight: 0.512775719
-          - Vertex: 2116
-            Weight: 0.640065134
-          - Vertex: 2117
-            Weight: 0.643402696
-          - Vertex: 2118
-            Weight: 0.453342855
-          - Vertex: 2119
-            Weight: 0.453342855
-          - Vertex: 2120
-            Weight: 0.410961181
-          - Vertex: 2121
-            Weight: 0.512775719
-          - Vertex: 2122
-            Weight: 0.244657636
-          - Vertex: 2123
-            Weight: 0.410961181
-          - Vertex: 2124
-            Weight: 0.453342855
-          - Vertex: 2125
-            Weight: 0.244657636
-          - Vertex: 2126
-            Weight: 0.453342855
-          - Vertex: 2127
-            Weight: 0.280755669
-          - Vertex: 2128
-            Weight: 0.280755669
-          - Vertex: 2129
-            Weight: 0.19209227
-          - Vertex: 2130
-            Weight: 0.244657636
-          - Vertex: 2131
-            Weight: 0.0692194775
-          - Vertex: 2132
-            Weight: 0.0606162325
-          - Vertex: 2133
-            Weight: 0.0194946025
-          - Vertex: 2134
-            Weight: 0.0194946025
-          - Vertex: 2135
-            Weight: 0.0194945652
-          - Vertex: 2136
-            Weight: 0.319323957
-          - Vertex: 2137
-            Weight: 0.0692194775
-          - Vertex: 2138
-            Weight: 0.319323957
-          - Vertex: 2139
-            Weight: 0.0194945652
-          - Vertex: 2140
-            Weight: 0.122820467
-          - Vertex: 2141
-            Weight: 0.368159592
-          - Vertex: 2142
-            Weight: 0.319323957
-          - Vertex: 2143
-            Weight: 0.122820467
-          - Vertex: 2144
-            Weight: 0.0468488038
-          - Vertex: 2145
-            Weight: 0.0468488038
-          - Vertex: 2146
-            Weight: 0.0871585011
-          - Vertex: 2147
-            Weight: 0.447784662
-          - Vertex: 2148
-            Weight: 0.368159592
-          - Vertex: 2149
-            Weight: 0.341254652
-          - Vertex: 2150
-            Weight: 0.447784662
-          - Vertex: 2151
-            Weight: 0.0871585011
-          - Vertex: 2152
-            Weight: 0.0543169491
-          - Vertex: 2153
-            Weight: 0.311335385
-          - Vertex: 2154
-            Weight: 0.341254652
-          - Vertex: 2155
-            Weight: 0.019445464
-          - Vertex: 2156
-            Weight: 0.311335385
-          - Vertex: 2157
-            Weight: 0.122966669
-          - Vertex: 2158
-            Weight: 0.0194457993
-          - Vertex: 2159
-            Weight: 0.0650031641
-          - Vertex: 2160
-            Weight: 0.311335385
-          - Vertex: 2161
-            Weight: 0.019445464
-          - Vertex: 2162
-            Weight: 0.0194457993
-          - Vertex: 2163
-            Weight: 0.0617006123
-          - Vertex: 2164
-            Weight: 0.0650031641
-          - Vertex: 2165
-            Weight: 0.0650031641
-          - Vertex: 2166
-            Weight: 0.0617006123
-          - Vertex: 2167
-            Weight: 0.0676676631
-          - Vertex: 2168
-            Weight: 0.0769165829
-          - Vertex: 2169
-            Weight: 0.182777315
-          - Vertex: 2170
-            Weight: 0.24555175
-          - Vertex: 2171
-            Weight: 0.251567811
-          - Vertex: 2172
-            Weight: 0.178490579
-          - Vertex: 2173
-            Weight: 0.512775719
-          - Vertex: 2174
-            Weight: 0.410961181
-          - Vertex: 2175
-            Weight: 0.410961181
-          - Vertex: 2176
-            Weight: 0.0692194775
-          - Vertex: 2177
-            Weight: 0.319323957
-          - Vertex: 2178
-            Weight: 0.0807560161
-          - Vertex: 2179
-            Weight: 0.410961181
-          - Vertex: 2180
-            Weight: 0.244657636
-          - Vertex: 2181
-            Weight: 0.250804752
-          - Vertex: 2182
-            Weight: 0.410961181
-          - Vertex: 2183
-            Weight: 0.311335385
-          - Vertex: 2184
-            Weight: 0.0650031641
-          - Vertex: 2185
-            Weight: 0.0769165829
-          - Vertex: 2186
-            Weight: 0.24555175
-          - Vertex: 2187
-            Weight: 0.393123865
-          - Vertex: 2188
-            Weight: 0.251567811
-          - Vertex: 2189
-            Weight: 0.244657636
-          - Vertex: 2190
-            Weight: 0.19209227
-          - Vertex: 2191
-            Weight: 0.18783614
-          - Vertex: 2192
-            Weight: 0.250804752
-          - Vertex: 2193
-            Weight: 0.0606162325
-          - Vertex: 2194
-            Weight: 0.0692194775
-          - Vertex: 2195
-            Weight: 0.0807560161
-          - Vertex: 2196
-            Weight: 0.0666160807
-          - Vertex: 2197
-            Weight: 0.0617006123
-          - Vertex: 2198
-            Weight: 0.0606162325
-          - Vertex: 2199
-            Weight: 0.0666160807
-          - Vertex: 2200
-            Weight: 0.0676676631
-          - Vertex: 2201
-            Weight: 0.19209227
-          - Vertex: 2202
-            Weight: 0.182777315
-          - Vertex: 2203
-            Weight: 0.178490579
-          - Vertex: 2204
-            Weight: 0.18783614
+            Weight: 0.963138878
+          - Vertex: 2205
+            Weight: 0.164938137
+          - Vertex: 2206
+            Weight: 0.160573557
+          - Vertex: 2207
+            Weight: 0.468680143
+          - Vertex: 2208
+            Weight: 0.160573557
+          - Vertex: 2209
+            Weight: 0.164938137
+          - Vertex: 2210
+            Weight: 0.650836527
+          - Vertex: 2213
+            Weight: 0.650836527
+          - Vertex: 2215
+            Weight: 0.51755023
+          - Vertex: 2218
+            Weight: 0.650836527
+          - Vertex: 2219
+            Weight: 0.146288589
+          - Vertex: 2221
+            Weight: 0.146288589
+          - Vertex: 3317
+            Weight: 0.00808396377
+          - Vertex: 3318
+            Weight: 0.00250055362
+          - Vertex: 3407
+            Weight: 0.00124786398
+          - Vertex: 3412
+            Weight: 0.00832681917
+          - Vertex: 3431
+            Weight: 0.00250055362
+          - Vertex: 3436
+            Weight: 0.00250055362
+          - Vertex: 3437
+            Weight: 0.00808396377
+          - Vertex: 3438
+            Weight: 0.00832681917
+          - Vertex: 3493
+            Weight: 0.028371729
+          - Vertex: 3504
+            Weight: 0.028371729
+          - Vertex: 3554
+            Weight: 0.00124786398
+          - Vertex: 3555
+            Weight: 0.00808396377
+          - Vertex: 3699
+            Weight: 0.00250055362
+          - Vertex: 3710
+            Weight: 0.00832681917
+          - Vertex: 3711
+            Weight: 0.00808396377
+          - Vertex: 3713
+            Weight: 0.00124786398
+          - Vertex: 3720
+            Weight: 0.00124786398
+          - Vertex: 3727
+            Weight: 0.00832681917
+          - Vertex: 3728
+            Weight: 0.00124786398
+          - Vertex: 3732
+            Weight: 0.00124786398
+          - Vertex: 3922
+            Weight: 0.028371729
+          - Vertex: 3941
+            Weight: 0.028371729
       - Index: 32
         Weights:
           - Vertex: 959
@@ -39385,13 +39385,6 @@ Armatures:
           - [-51.9972382, 85.4182739, 1.37255447e-05, 0]
           - [85.4182892, 51.9972229, -2.82791116e-05, -0]
           - [6.04561996, -2.83994269, -11.4443321, 1]
-      - Name: UpperLeg_R
-        Node: 41
-        Offset:
-          - [-3.17410159, -99.9496384, 2.09973086e-06, -0]
-          - [-99.9496002, 3.17410254, 1.00373254e-05, 0]
-          - [-6.73179557e-06, -2.73195092e-05, -99.9999924, 0]
-          - [82.7997665, -12.5311718, -2.04691815, 1]
       - Name: Finger_04.001
         Node: 40
         Offset:
@@ -39546,6 +39539,13 @@ Armatures:
           - [1.67859032e-12, 100, 6.97443647e-06, 0]
           - [2.08285255e-05, -2.78360585e-05, 99.9999771, -0]
           - [11.4443312, 0.297992289, -13.2470169, 1]
+      - Name: LowerLeg_R
+        Node: 42
+        Offset:
+          - [-0.742945254, -16.8194256, 98.5725937, -0]
+          - [-99.9025726, 4.41295862, 1.13118404e-05, 0]
+          - [-4.34996605, -98.4765396, -16.8358002, 0]
+          - [43.0308876, -5.80185223, 10.6601629, 1]
       - Name: Spine_02
         Node: 5
         Offset:
@@ -39574,13 +39574,13 @@ Armatures:
           - [1.35102491e-05, 99.9999771, -5.62367102e-13, -0]
           - [99.9999771, -3.43718639e-05, -2.51996626e-05, -0]
           - [-5.95125961, 0.297991693, -11.4443302, 1]
-      - Name: LowerLeg_R
-        Node: 42
+      - Name: UpperLeg_R
+        Node: 41
         Offset:
-          - [-0.742945254, -16.8194256, 98.5725937, -0]
-          - [-99.9025726, 4.41295862, 1.13118404e-05, 0]
-          - [-4.34996605, -98.4765396, -16.8358002, 0]
-          - [43.0308876, -5.80185223, 10.6601629, 1]
+          - [-3.17410159, -99.9496384, 2.09973086e-06, -0]
+          - [-99.9496002, 3.17410254, 1.00373254e-05, 0]
+          - [-6.73179557e-06, -2.73195092e-05, -99.9999924, 0]
+          - [82.7997665, -12.5311718, -2.04691815, 1]
       - Name: Spine_01
         Node: 4
         Offset:

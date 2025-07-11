@@ -224,6 +224,8 @@ namespace fuujin {
 
             keyframeNode["Time"] = keyframe.Time;
             keyframeNode["Value"] = keyframe.Value;
+
+            keyframesNode.push_back(keyframeNode);
         }
 
         return keyframesNode;

@@ -7,6 +7,7 @@ struct aiScene;
 struct aiNode;
 struct aiMesh;
 struct aiBone;
+struct aiAnimation;
 
 namespace fuujin {
     class ModelImporter {
@@ -34,6 +35,8 @@ namespace fuujin {
         void ProcessBone(aiNode* node, const ImportedBone& imported, Armature* armature,
                          std::vector<BoneReference>& bones);
 
+        void ProcessAnimation(aiAnimation* animation);
+
         Ref<Material> GetMaterial(unsigned int index);
         size_t GetArmature(aiNode* node);
 
@@ -41,7 +44,9 @@ namespace fuujin {
         const aiScene* m_Scene;
         fs::path m_SourcePath;
 
-        fs::path m_ModelDirectory, m_MaterialDirectory, m_MaterialPrefix;
+        fs::path m_ModelDirectory;
+        fs::path m_MaterialDirectory, m_MaterialPrefix;
+        fs::path m_AnimationDirectory, m_AnimationPrefix;
         std::map<unsigned int, Ref<Material>> m_Materials;
 
         std::unordered_map<aiNode*, size_t> m_NodeMap;

@@ -3,6 +3,8 @@
 
 #include "fuujin/asset/AssetManager.h"
 
+#include "fuujin/animation/Animation.h"
+
 #include <assimp/scene.h>
 
 namespace fuujin {
@@ -81,6 +83,11 @@ namespace fuujin {
         m_MaterialPrefix = AssetManager::NormalizePath(modelPrefix / materialDirectorySuffix);
         fs::create_directories(m_MaterialDirectory);
 
+        static const std::string animationDirectorySuffix = "animations";
+        m_AnimationDirectory = m_ModelDirectory / animationDirectorySuffix;
+        m_AnimationPrefix = AssetManager::NormalizePath(modelPrefix / animationDirectorySuffix);
+        fs::create_directories(m_AnimationDirectory);
+
         auto sourceFilename = m_SourcePath.filename();
         auto modelFilename = sourceFilename.replace_extension(".model");
         auto modelPath = m_ModelDirectory / modelFilename;
@@ -98,6 +105,11 @@ namespace fuujin {
             for (unsigned int i = 0; i < m_Scene->mNumMeshes; i++) {
                 auto mesh = m_Scene->mMeshes[i];
                 ProcessMesh(mesh);
+            }
+
+            for (unsigned int i = 0; i < m_Scene->mNumAnimations; i++) {
+                auto animation = m_Scene->mAnimations[i];
+                ProcessAnimation(animation);
             }
         } catch (const std::runtime_error& exc) {
             FUUJIN_ERROR("Model import error: {}", exc.what());
@@ -288,6 +300,99 @@ namespace fuujin {
         }
 
         bones.push_back(reference);
+    }
+
+    static Animation::Behavior ConvertBehavior(aiAnimBehaviour behavior) {
+        switch (behavior) {
+        case aiAnimBehaviour_DEFAULT:
+            return Animation::Behavior::Default;
+        case aiAnimBehaviour_CONSTANT:
+            return Animation::Behavior::Constant;
+        case aiAnimBehaviour_LINEAR:
+            return Animation::Behavior::Linear;
+        default:
+            throw std::runtime_error("Unsupported animation behavior!");
+        }
+    }
+
+    static Animation::VectorKeyframe ConvertKeyframe(aiAnimation* animation,
+                                                     const aiVectorKey& key) {
+        ZoneScoped;
+
+        auto time = key.mTime / animation->mTicksPerSecond;
+        auto value = glm::vec3(key.mValue.x, key.mValue.y, key.mValue.z);
+
+        Animation::VectorKeyframe keyframe;
+        keyframe.Time = Duration((Duration::rep)time);
+        keyframe.Value = value;
+
+        return keyframe;
+    }
+
+    static Animation::QuaternionKeyframe ConvertKeyframe(aiAnimation* animation,
+                                                         const aiQuatKey& key) {
+        ZoneScoped;
+
+        auto time = key.mTime / animation->mTicksPerSecond;
+        auto value = glm::quat(key.mValue.w, key.mValue.x, key.mValue.y, key.mValue.z);
+
+        Animation::QuaternionKeyframe keyframe;
+        keyframe.Time = Duration((Duration::rep)time);
+        keyframe.Value = value;
+
+        return keyframe;
+    }
+
+    template <typename _Src, typename _Dst>
+    static void ConvertKeyframes(aiAnimation* animation, unsigned int count, const _Src* data,
+                                 std::vector<Animation::Keyframe<_Dst>>& result) {
+        ZoneScoped;
+
+        for (unsigned int i = 0; i < count; i++) {
+            const auto& key = data[i];
+            result.push_back(ConvertKeyframe(animation, key));
+        }
+    }
+
+    void ModelImporter::ProcessAnimation(aiAnimation* animation) {
+        ZoneScoped;
+
+        fs::path filename;
+        if (animation->mName.Empty()) {
+            filename = m_Model->GetPath().filename().replace_extension(".anim");
+        } else {
+            filename = std::string(animation->mName.C_Str()) + ".anim";
+        }
+
+        fs::path realPath = m_AnimationDirectory / filename;
+        fs::path virtualPath = AssetManager::NormalizePath(m_AnimationPrefix / filename);
+
+        double length = animation->mDuration / animation->mTicksPerSecond;
+        auto duration = Duration((Duration::rep)length);
+
+        std::vector<Animation::Channel> channels;
+        for (unsigned int i = 0; i < animation->mNumChannels; i++) {
+            auto channelData = animation->mChannels[i];
+            auto& channel = channels.emplace_back();
+
+            channel.Name = channelData->mNodeName.C_Str();
+            channel.PreBehavior = ConvertBehavior(channelData->mPreState);
+            channel.PostBehavior = ConvertBehavior(channelData->mPostState);
+
+            ConvertKeyframes(animation, channelData->mNumPositionKeys, channelData->mPositionKeys,
+                             channel.TranslationKeys);
+
+            ConvertKeyframes(animation, channelData->mNumRotationKeys, channelData->mRotationKeys,
+                             channel.RotationKeys);
+
+            ConvertKeyframes(animation, channelData->mNumScalingKeys, channelData->mScalingKeys,
+                             channel.ScaleKeys);
+        }
+
+        auto result = Ref<Animation>::Create(realPath, duration, channels);
+        if (!AssetManager::AddAsset(result, virtualPath)) {
+            FUUJIN_WARN("Failed to add animation {} to assets - links may be broken");
+        }
     }
 
     Ref<Material> ModelImporter::GetMaterial(unsigned int index) {
