@@ -1,7 +1,15 @@
 cmake_minimum_required(VERSION 3.21)
 
+set(VENDOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../vendor")
+set(IMGUI_DIR "${VENDOR_DIR}/imgui")
+
+file(GLOB CORE_IMGUI_SOURCE CONFIGURE_DEPENDS "${IMGUI_DIR}/*.cpp")
+set(IMGUI_SOURCE ${CORE_IMGUI_SOURCE} "${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp")
+add_library(fuujin_imgui STATIC ${IMGUI_SOURCE})
+target_include_directories(fuujin_imgui PUBLIC ${IMGUI_DIR})
+
 list(APPEND FUUJIN_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR})
-list(APPEND FUUJIN_LIBRARIES TracyClient spdlog::spdlog glm::glm spirv-cross-core stb assimp::assimp yaml-cpp::yaml-cpp)
+list(APPEND FUUJIN_LIBRARIES TracyClient spdlog::spdlog glm::glm spirv-cross-core stb assimp::assimp yaml-cpp::yaml-cpp fuujin_imgui)
 
 set(ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
 set(SHADER_DIR "${ASSET_DIR}/shaders")
@@ -52,7 +60,6 @@ if(${FUUJIN_PLATFORM_desktop})
 endif()
 
 if(${FUUJIN_PLATFORM_vulkan})
-    set(VENDOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../vendor")
     set(VOLK_DIR "${VENDOR_DIR}/volk")
     set(VMA_DIR "${VENDOR_DIR}/VulkanMemoryAllocator")
 
@@ -92,6 +99,6 @@ target_precompile_headers(fuujin PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/fuujinpch.
 add_executable(fuujin_exe ${FUUJIN_MAIN_SOURCE})
 target_link_libraries(fuujin_exe PRIVATE fuujin)
 
-set_target_properties(fuujin fuujin_exe fuujin_vulkan PROPERTIES
+set_target_properties(fuujin fuujin_exe fuujin_vulkan fuujin_imgui PROPERTIES
     CXX_STANDARD 20
     FOLDER "fuujin")
