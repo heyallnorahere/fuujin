@@ -151,7 +151,7 @@ private:
         m_Call.RenderedModel = AssetManager::GetAsset<Model>(modelPath);
         m_Call.ModelAnimator = Ref<Animator>::Create(m_Call.RenderedModel);
 
-        m_Animation = AssetManager::GetAsset<Animation>("fuujin/models/animations/Action.anim");
+        m_Animation = AssetManager::GetAsset<Animation>("fuujin/models/animations/Wave.anim");
 
         Renderer::Wait();
     }
