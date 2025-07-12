@@ -64,7 +64,7 @@ public:
             aspect = 1.f;
         }
 
-        float yaw = s_PI / 4.f;
+        float yaw = m_Time * s_PI;
         float sinYaw = glm::sin(yaw);
         float cosYaw = glm::cos(yaw);
 
@@ -73,7 +73,7 @@ public:
         float cosPitch = glm::cos(pitch);
 
         glm::vec3 radial = glm::vec3(cosYaw * cosPitch, sinPitch, sinYaw * cosPitch);
-        glm::vec3 position = radial * 1000.f;
+        glm::vec3 position = radial * 5.f;
 
         glm::vec3 up = glm::vec3(0.f, 1.f, 0.f);
         glm::vec3 direction = -radial;
@@ -81,7 +81,7 @@ public:
         Renderer::SceneData scene;
         Renderer::Camera& camera = scene.Cameras.emplace_back();
         camera.Position = position;
-        camera.Projection = Perspective(s_PI / 4.f, aspect, 0.1f, 10000.f);
+        camera.Projection = Perspective(s_PI / 4.f, aspect, 0.1f, 10.f);
         camera.View = LookAt(position, position + direction, up);
         Renderer::UpdateScene(0, scene);
 
@@ -129,8 +129,8 @@ private:
     void LoadResources() {
         ZoneScoped;
 
-        static const std::string modelName = "Gunman.model";
-        static const std::string sourceName = "Gunman.gltf";
+        static const std::string modelName = "Cube.model";
+        static const std::string sourceName = "Cube.gltf";
 
         static const fs::path modelDirectory = "fuujin/models";
         static const fs::path modelPath = modelDirectory / modelName;

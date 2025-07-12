@@ -1,6 +1,7 @@
 #include "fuujinpch.h"
 #include "fuujin/core/Application.h"
 
+#include "fuujin/core/Platform.h"
 #include "fuujin/core/Event.h"
 #include "fuujin/core/Layer.h"
 
@@ -78,9 +79,11 @@ namespace fuujin {
 
         s_App = this;
 
+        Platform::Init();
+
         m_Data = new ApplicationData;
         m_Data->LastTimestamp = std::chrono::high_resolution_clock::now();
-        m_Data->AppView = View::Create("風神", { 1600, 900 });
+        m_Data->AppView = Platform::CreateView("風神", { 1600, 900 });
 
         Renderer::Init();
 
@@ -99,6 +102,9 @@ namespace fuujin {
         m_Data->LayerStack.clear();
         AssetManager::Clear();
         Renderer::Shutdown();
+
+        m_Data->AppView.Reset();
+        Platform::Shutdown();
 
         delete m_Data;
         s_App = nullptr;

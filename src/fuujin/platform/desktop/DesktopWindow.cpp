@@ -8,11 +8,12 @@
 #include "fuujin/platform/vulkan/VulkanContext.h"
 #endif
 
+#include "fuujin/platform/desktop/DesktopPlatform.h"
+
 #include <GLFW/glfw3.h>
 
 namespace fuujin {
-    static uint32_t s_WindowCount = 0;
-    static std::mutex s_WindowMutex;
+    static uint64_t s_WindowID = 0;
 
     static void FramebufferResizedGLFW(GLFWwindow* window, int width, int height) {
         ZoneScoped;
@@ -24,7 +25,10 @@ namespace fuujin {
         size.Width = (uint32_t)std::max(0, width);
         size.Height = (uint32_t)std::max(0, height);
 
-        FramebufferResizedEvent event(size);
+        auto view = (DesktopWindow*)glfwGetWindowUserPointer(window);
+        uint64_t id = view->GetID();
+
+        FramebufferResizedEvent event(size, id);
         Application* app = nullptr;
 
         try {
@@ -36,14 +40,13 @@ namespace fuujin {
         app->ProcessEvent(event);
     }
 
-    DesktopWindow::DesktopWindow(const std::string& title, const ViewSize& size) {
+    DesktopWindow::DesktopWindow(const std::string& title, const ViewSize& size,
+                                 const DesktopPlatform* platform) {
         ZoneScoped;
         FUUJIN_DEBUG("Creating GLFW window: {} ({}, {})", title.c_str(), size.Width, size.Height);
 
-        std::lock_guard lock(s_WindowMutex);
-        if (s_WindowCount++ == 0 && glfwInit() != GLFW_TRUE) {
-            throw std::runtime_error("Failed to initialize GLFW!");
-        }
+        m_ID = s_WindowID++;
+        m_Platform = platform;
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -60,12 +63,7 @@ namespace fuujin {
     DesktopWindow::~DesktopWindow() {
         ZoneScoped;
 
-        std::lock_guard lock(s_WindowMutex);
         glfwDestroyWindow(m_Window);
-
-        if (--s_WindowCount == 0) {
-            glfwTerminate();
-        }
     }
 
     void DesktopWindow::Update() {
@@ -104,9 +102,51 @@ namespace fuujin {
         return std::move(size);
     }
 
-    void DesktopWindow::RequestSize(const ViewSize& size) {
+    void DesktopWindow::SetSize(const ViewSize& size) {
         ZoneScoped;
-        glfwSetWindowSize(m_Window, size.Width, size.Height);
+        glfwSetWindowSize(m_Window, (int)size.Width, (int)size.Height);
+    }
+
+    void DesktopWindow::GetPosition(uint32_t& x, uint32_t& y) const {
+        ZoneScoped;
+
+        int _x, _y;
+        glfwGetWindowPos(m_Window, &_x, &_y);
+
+        x = (uint32_t)_x;
+        y = (uint32_t)_y;
+    }
+
+    void DesktopWindow::SetPosition(uint32_t x, uint32_t y) {
+        ZoneScoped;
+        glfwSetWindowPos(m_Window, (int)x, (int)y);
+    }
+
+    void DesktopWindow::SetCursor(Cursor cursor) {
+        ZoneScoped;
+
+        if (cursor != Cursor::Disabled) {
+            auto glfwCursor = m_Platform->GetCursor(cursor);
+            if (glfwCursor == nullptr) {
+                FUUJIN_ERROR("Failed to retrieve GLFW cursor - skipping cursor set");
+                return;
+            }
+
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            glfwSetCursor(m_Window, glfwCursor);
+        } else {
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        }
+    }
+
+    void DesktopWindow::GetCursorPosition(double& x, double& y) const {
+        ZoneScoped;
+        glfwGetCursorPos(m_Window, &x, &y);
+    }
+
+    void DesktopWindow::SetCursorPosition(double x, double y) {
+        ZoneScoped;
+        glfwSetCursorPos(m_Window, x, y);
     }
 
     void DesktopWindow::GetRequiredVulkanExtensions(std::vector<std::string>& extensions) const {
