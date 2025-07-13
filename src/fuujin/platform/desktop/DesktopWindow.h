@@ -8,7 +8,7 @@ namespace fuujin {
     class DesktopWindow : public View {
     public:
         DesktopWindow(const std::string& title, const ViewSize& size,
-                      const DesktopPlatform* platform);
+                      const ViewCreationOptions& options, const DesktopPlatform* platform);
 
         virtual ~DesktopWindow() override;
 
@@ -28,6 +28,17 @@ namespace fuujin {
 
         virtual void GetCursorPosition(double& x, double& y) const override;
         virtual void SetCursorPosition(double x, double y) override;
+
+        virtual bool IsFocused() const override;
+        virtual bool IsMinimized() const override;
+        virtual bool IsHovered() const override;
+
+        virtual void SetTitle(const std::string& title) override;
+        virtual void SetAlpha(float alpha) override;
+        virtual void SetPassthrough(bool noInput) override;
+
+        virtual void Focus() override;
+        virtual void Show() override;
 
         virtual void GetRequiredVulkanExtensions(
             std::vector<std::string>& extensions) const override;

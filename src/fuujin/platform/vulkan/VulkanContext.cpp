@@ -174,12 +174,7 @@ namespace fuujin {
 
     VulkanContext::VulkanContext(const std::optional<std::string>& deviceName) {
         ZoneScoped;
-        Renderer::Submit(
-            []() {
-                volkInitialize();
-                FUUJIN_DEBUG("Global functions loaded");
-            },
-            "Load global functions");
+        Renderer::Submit([this]() { RT_LoadGlobal(); }, "Load global functions");
 
         Ref<View> view;
         try {
@@ -251,11 +246,8 @@ namespace fuujin {
         Renderer::Submit([this]() { RT_CreateTracyContext(); }, "Create Tracy context");
 
         if (m_Data->Swapchain.IsPresent()) {
-            // passes by reference to the allocator pointer
-            // so the value only matters when the render thread catches up
-            // incidentally, this can only happen after the allocator has been created
-            // so it's not a race condition, but it is kind of hacky
-            m_Data->Swapchain->Initialize(m_Data->Allocator);
+            Renderer::Submit([this]() { m_Data->Swapchain->RT_Initialize(m_Data->Allocator); },
+                             "Create swapchain");
         }
     }
 
@@ -348,8 +340,37 @@ namespace fuujin {
                                           spec);
     }
 
+    struct SwapchainCreateInfo {
+        Ref<VulkanSwapchain> _Swapchain;
+        // what else?
+    };
+
+    Ref<Swapchain> VulkanContext::CreateSwapchain(const Ref<View>& view) const {
+        ZoneScoped;
+
+        auto swapchain = Ref<VulkanSwapchain>::Create(view, m_Data->Devices[m_Data->UsedDevice]);
+
+        // ref capturing in lambdas is weird. best to avoid that
+        auto createInfo = new SwapchainCreateInfo;
+        createInfo->_Swapchain = swapchain;
+
+        Renderer::Submit([this, createInfo]() {
+            createInfo->_Swapchain->RT_Initialize(m_Data->Allocator);
+            delete createInfo;
+        });
+
+        return swapchain;
+    }
+
     RendererAPI* VulkanContext::CreateRendererAPI(uint32_t frames) const {
         return new VulkanRenderer(m_Data->Devices[m_Data->UsedDevice], frames);
+    }
+
+    void VulkanContext::RT_LoadGlobal() const {
+        ZoneScoped;
+
+        volkInitialize();
+        FUUJIN_DEBUG("Global functions loaded");
     }
 
     void VulkanContext::RT_LoadInstance() const {

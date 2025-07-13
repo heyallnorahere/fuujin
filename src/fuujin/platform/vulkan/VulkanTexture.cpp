@@ -6,6 +6,8 @@
 #include "fuujin/platform/vulkan/VulkanContext.h"
 
 namespace fuujin {
+    static uint64_t s_TextureID = 0;
+
     VkFilter VulkanSampler::ConvertFilter(SamplerFilter filter) {
         switch (filter) {
         case SamplerFilter::Linear:
@@ -104,6 +106,8 @@ namespace fuujin {
     VulkanTexture::VulkanTexture(const Ref<VulkanDevice>& device,
                                  const VmaAllocator& allocator, const Spec& spec) {
         ZoneScoped;
+
+        m_ID = s_TextureID++;
 
         m_Device = device;
         m_Spec = spec;

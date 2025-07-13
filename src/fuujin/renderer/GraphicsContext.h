@@ -29,6 +29,8 @@ namespace fuujin {
         virtual Ref<Sampler> CreateSampler(const Sampler::Spec& spec) const = 0;
         virtual Ref<Texture> CreateTexture(const Texture::Spec& spec) const = 0;
 
+        virtual Ref<Swapchain> CreateSwapchain(const Ref<View>& view) const = 0;
+
         virtual RendererAPI* CreateRendererAPI(uint32_t frames) const = 0;
     };
 } // namespace fuujin

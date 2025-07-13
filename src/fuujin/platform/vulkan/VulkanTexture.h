@@ -36,6 +36,8 @@ namespace fuujin {
 
         virtual ~VulkanTexture() override = default;
 
+        virtual uint64_t GetID() const override { return m_ID; }
+
         virtual const Spec& GetSpec() const override { return m_Spec; }
         virtual Ref<DeviceImage> GetImage() const override { return m_Image; }
 
@@ -45,6 +47,8 @@ namespace fuujin {
 
     private:
         void CreateImage(VmaAllocator allocator);
+
+        uint64_t m_ID;
 
         Ref<VulkanDevice> m_Device;
         Spec m_Spec;

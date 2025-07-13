@@ -1,0 +1,524 @@
+#include "fuujinpch.h"
+#include "fuujin/imgui/ImGuiHost.h"
+
+#include "fuujin/core/Application.h"
+#include "fuujin/core/Platform.h"
+
+#include "fuujin/renderer/Renderer.h"
+#include "fuujin/renderer/ShaderLibrary.h"
+
+// combination of imgui_impl_glfw and imgui_impl_vulkan using the abstracted interfaces
+
+namespace fuujin {
+    struct ViewportPlatformData {
+        Ref<View> ViewportView;
+    };
+
+    struct ViewportRendererData {
+        Ref<Swapchain> ViewSwapchain;
+        Ref<Pipeline> ViewPipeline;
+    };
+
+    struct ImGuiHostData {
+        ImGuiContext* Context;
+        std::string PlatformName, RendererName;
+
+        Ref<View> MainView;
+        std::optional<std::chrono::high_resolution_clock::time_point> Time;
+
+        std::optional<uint64_t> MouseView;
+        ImVec2 LastValidMousePos;
+
+        Ref<GraphicsContext> RendererContext;
+        Ref<Shader> ImGuiShader;
+
+        uint32_t MainRenderTarget;
+        std::map<uint32_t, Ref<Pipeline>> MainViewportPipelines;
+
+        ImTextureID TextureID;
+        std::map<ImTextureID, Ref<RendererAllocation>> TextureAllocations;
+        std::map<uint64_t, ImTextureID> TextureMap;
+    };
+
+    static std::unique_ptr<ImGuiHostData> s_Data;
+
+    static void* ImGui_Alloc(size_t size, void* userData) { return allocate(size); }
+    static void ImGui_Free(void* block, void* userData) { freemem(block); }
+
+    void ImGuiHost::Init() {
+        ZoneScoped;
+
+        if (s_Data) {
+            return;
+        }
+
+        s_Data = std::make_unique<ImGuiHostData>();
+        ImGui::SetAllocatorFunctions(ImGui_Alloc, ImGui_Free);
+
+        IMGUI_CHECKVERSION();
+        s_Data->Context = ImGui::CreateContext();
+        ImGui::SetCurrentContext(s_Data->Context);
+
+        auto& io = ImGui::GetIO();
+        (void)io; // verify that io is not null
+
+        ImGui::StyleColorsDark();
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+        s_Data->TextureID = 0;
+
+        Platform_Init();
+        Renderer_Init();
+    }
+
+    void ImGuiHost::Shutdown() {
+        ZoneScoped;
+        if (!s_Data) {
+            return;
+        }
+
+        ImGui::SetCurrentContext(s_Data->Context);
+
+        // todo: platform/renderer shutdown
+
+        ImGui::SetCurrentContext(nullptr);
+        ImGui::DestroyContext(s_Data->Context);
+
+        s_Data.reset();
+    }
+
+    void ImGuiHost::NewFrame() {
+        ZoneScoped;
+        ImGui::SetCurrentContext(s_Data->Context);
+
+        Platform_NewFrame();
+        ImGui::NewFrame();
+    }
+
+    void ImGuiHost::Render(CommandList& cmdlist, const Ref<RenderTarget>& mainRenderTarget) {
+        ZoneScoped;
+        ImGui::SetCurrentContext(s_Data->Context);
+
+        ImGui::Render();
+        Renderer_RenderDrawData(ImGui::GetDrawData(), cmdlist, mainRenderTarget);
+
+        auto& io = ImGui::GetIO();
+        if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0) {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+        }
+    }
+
+    ImGuiContext* ImGuiHost::GetContext() {
+        if (!s_Data) {
+            return nullptr;
+        }
+
+        return s_Data->Context;
+    }
+
+    ImTextureID ImGuiHost::GetTextureID(const Ref<Texture>& texture) {
+        ZoneScoped;
+
+        uint64_t textureID = texture->GetID();
+        if (s_Data->TextureMap.contains(textureID)) {
+            return s_Data->TextureMap.at(textureID);
+        }
+
+        // see assets/shaders/ImGui.glsl
+        auto allocation = Renderer::CreateAllocation(s_Data->ImGuiShader);
+        if (!allocation->Bind("u_Texture", texture)) {
+            throw std::runtime_error("Failed to bind texture to ImGui allocation!");
+        }
+
+        ImTextureID newID = s_Data->TextureID++;
+        s_Data->TextureMap[textureID] = newID;
+        s_Data->TextureAllocations[newID] = allocation;
+
+        return newID;
+    }
+
+    void ImGuiHost::FreeTexture(uint64_t id) {
+        ZoneScoped;
+        if (!s_Data || !s_Data->TextureMap.contains(id)) {
+            return;
+        }
+
+        ImTextureID imguiID = s_Data->TextureMap.at(id);
+        s_Data->TextureAllocations.erase(imguiID);
+        s_Data->TextureMap.erase(id);
+    }
+
+    void ImGuiHost::FreeRenderTarget(uint32_t id) {
+        ZoneScoped;
+        if (!s_Data || !s_Data->MainViewportPipelines.contains(id)) {
+            return;
+        }
+
+        s_Data->MainViewportPipelines.erase(id);
+    }
+
+    static void Platform_CreateWindow(ImGuiViewport* viewport) {
+        ZoneScoped;
+
+        ViewSize size;
+        size.Width = (uint32_t)viewport->Size.x;
+        size.Height = (uint32_t)viewport->Size.y;
+
+        ViewCreationOptions options;
+        options.Visible = false;
+        options.Focused = false;
+        options.FocusOnShow = false;
+
+        if ((viewport->Flags & ImGuiViewportFlags_NoDecoration) != 0) {
+            options.Decorated = false;
+        }
+
+        if ((viewport->Flags & ImGuiViewportFlags_TopMost) != 0) {
+            options.Floating = true;
+        }
+
+        auto platformData = new ViewportPlatformData;
+        platformData->ViewportView = Platform::CreateView("ImGui Viewport", size, options);
+
+        viewport->PlatformUserData = platformData;
+        viewport->PlatformHandle = platformData->ViewportView.Raw();
+    }
+
+    static void Platform_DestroyWindow(ImGuiViewport* viewport) {
+        ZoneScoped;
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+
+        // view is ref-counted
+        delete platformData;
+
+        viewport->PlatformUserData = nullptr;
+        viewport->PlatformHandle = nullptr;
+    }
+
+    static void Platform_ShowWindow(ImGuiViewport* viewport) {
+        ZoneScoped;
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+        platformData->ViewportView->Show();
+    }
+
+    static ImVec2 Platform_GetWindowPos(ImGuiViewport* viewport) {
+        ZoneScoped;
+
+        uint32_t x, y;
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+        platformData->ViewportView->GetPosition(x, y);
+
+        return ImVec2((float)x, (float)y);
+    }
+
+    static void Platform_SetWindowPos(ImGuiViewport* viewport, ImVec2 pos) {
+        ZoneScoped;
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+        platformData->ViewportView->SetPosition((uint32_t)pos.x, (uint32_t)pos.y);
+    }
+
+    static ImVec2 Platform_GetWindowSize(ImGuiViewport* viewport) {
+        ZoneScoped;
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+        auto size = platformData->ViewportView->GetSize();
+
+        return ImVec2((float)size.Width, (float)size.Height);
+    }
+
+    static void Platform_SetWindowSize(ImGuiViewport* viewport, ImVec2 size) {
+        ZoneScoped;
+
+        ViewSize newSize;
+        newSize.Width = (uint32_t)size.x;
+        newSize.Height = (uint32_t)size.y;
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+        platformData->ViewportView->SetSize(newSize);
+    }
+
+    static void Platform_GetViewFramebufferScale(const Ref<View>& view, ImVec2* windowSize,
+                                                 ImVec2* framebufferScale) {
+        ZoneScoped;
+
+        auto size = view->GetSize();
+        auto framebufferSize = view->GetFramebufferSize();
+
+        if (windowSize != nullptr) {
+            windowSize->x = (float)size.Width;
+            windowSize->y = (float)size.Height;
+        }
+
+        if (framebufferScale != nullptr) {
+            if (size.Width > 0 && size.Height > 0) {
+                framebufferScale->x = (float)framebufferSize.Width / size.Width;
+                framebufferScale->y = (float)framebufferSize.Height / size.Height;
+            } else {
+                framebufferScale->x = framebufferScale->y = 1.f;
+            }
+        }
+    }
+
+    static ImVec2 Platform_GetWindowFramebufferScale(ImGuiViewport* viewport) {
+        ZoneScoped;
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+
+        ImVec2 scale;
+        Platform_GetViewFramebufferScale(platformData->ViewportView, nullptr, &scale);
+
+        return scale;
+    }
+
+    static void Platform_SetWindowTitle(ImGuiViewport* viewport, const char* title) {
+        ZoneScoped;
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+        platformData->ViewportView->SetTitle(title);
+    }
+
+    static void Platform_SetWindowFocus(ImGuiViewport* viewport) {
+        ZoneScoped;
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+        platformData->ViewportView->Focus();
+    }
+
+    static bool Platform_GetWindowFocus(ImGuiViewport* viewport) {
+        ZoneScoped;
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+        return platformData->ViewportView->IsFocused();
+    }
+
+    static bool Platform_GetWindowMinimized(ImGuiViewport* viewport) {
+        ZoneScoped;
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+        return platformData->ViewportView->IsMinimized();
+    }
+
+    static void Platform_SetWindowAlpha(ImGuiViewport* viewport, float alpha) {
+        ZoneScoped;
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+        platformData->ViewportView->SetAlpha(alpha);
+    }
+
+    void ImGuiHost::Platform_Init() {
+        ZoneScoped;
+
+        ImGuiIO& io = ImGui::GetIO();
+        ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
+
+        s_Data->PlatformName = Platform::GetName();
+        io.BackendPlatformName = s_Data->PlatformName.c_str();
+
+        s_Data->RendererContext = Renderer::GetContext();
+        if (s_Data->RendererContext.IsEmpty()) {
+            FUUJIN_ERROR("Renderer not initialized!");
+        }
+
+        if (Platform::HasCursors()) {
+            io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
+        }
+
+        if (Platform::CanSetCursorPos()) {
+            io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
+        }
+
+        if (Platform::HasViewports()) {
+            io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports;
+        }
+
+        if (Platform::HasViewHovered()) {
+            io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport;
+        }
+
+        platformIO.Platform_CreateWindow = Platform_CreateWindow;
+        platformIO.Platform_DestroyWindow = Platform_DestroyWindow;
+        platformIO.Platform_ShowWindow = Platform_ShowWindow;
+        platformIO.Platform_SetWindowPos = Platform_SetWindowPos;
+        platformIO.Platform_GetWindowPos = Platform_GetWindowPos;
+        platformIO.Platform_SetWindowSize = Platform_SetWindowSize;
+        platformIO.Platform_GetWindowSize = Platform_GetWindowSize;
+        platformIO.Platform_GetWindowFramebufferScale = Platform_GetWindowFramebufferScale;
+        platformIO.Platform_SetWindowTitle = Platform_SetWindowTitle;
+        platformIO.Platform_SetWindowFocus = Platform_SetWindowFocus;
+        platformIO.Platform_GetWindowFocus = Platform_GetWindowFocus;
+        platformIO.Platform_GetWindowMinimized = Platform_GetWindowMinimized;
+        platformIO.Platform_SetWindowAlpha = Platform_SetWindowAlpha;
+
+        auto& app = Application::Get();
+        s_Data->MainView = app.GetView();
+
+        auto mainViewportData = new ViewportPlatformData;
+        mainViewportData->ViewportView = s_Data->MainView;
+
+        auto viewport = ImGui::GetMainViewport();
+        viewport->PlatformUserData = mainViewportData;
+        viewport->PlatformHandle = (void*)s_Data->MainView->GetID();
+    }
+
+    static Ref<Pipeline> Renderer_CreatePipeline(Ref<RenderTarget> target) {
+        ZoneScoped;
+
+        Pipeline::Spec spec;
+        spec.Target = target;
+        spec.PipelineShader = s_Data->ImGuiShader;
+        spec.DisableCulling = true;
+        spec.Depth.Test = false;
+        spec.Depth.Write = false;
+        spec.Blending = ColorBlending::Default;
+
+        return s_Data->RendererContext->CreatePipeline(spec);
+    }
+
+    static void Renderer_CreateWindow(ImGuiViewport* viewport) {
+        ZoneScoped;
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+        auto rendererData = new ViewportRendererData;
+
+        rendererData->ViewSwapchain =
+            s_Data->RendererContext->CreateSwapchain(platformData->ViewportView);
+
+        rendererData->ViewPipeline = Renderer_CreatePipeline(rendererData->ViewSwapchain);
+
+        viewport->RendererUserData = rendererData;
+    }
+
+    static void Renderer_DestroyWindow(ImGuiViewport* viewport) {
+        ZoneScoped;
+
+        s_Data->RendererContext->GetDevice()->Wait();
+        Renderer::GetGraphicsQueue()->Clear();
+
+        auto rendererData = (ViewportRendererData*)viewport->RendererUserData;
+
+        // all ref-counted
+        delete rendererData;
+
+        viewport->RendererUserData = nullptr;
+    }
+
+    void ImGuiHost::Renderer_Init() {
+        ZoneScoped;
+
+        const auto& api = Renderer::GetAPI();
+        s_Data->RendererName = api.Name;
+
+        auto& io = ImGui::GetIO();
+        auto& platformIO = ImGui::GetPlatformIO();
+
+        io.BackendRendererName = s_Data->RendererName.c_str();
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
+
+        platformIO.Renderer_CreateWindow = Renderer_CreateWindow;
+        platformIO.Renderer_DestroyWindow = Renderer_DestroyWindow;
+        platformIO.Renderer_RenderWindow = Renderer_RenderWindow;
+
+        // we dont need to set Renderer_SwapBuffers
+        // present is already handled in Renderer_RenderWindow
+    }
+
+    void ImGuiHost::Platform_NewFrame() {
+        ZoneScoped;
+
+        auto& io = ImGui::GetIO();
+        Platform_GetViewFramebufferScale(s_Data->MainView, &io.DisplaySize,
+                                         &io.DisplayFramebufferScale);
+
+        Platform_UpdateMonitors();
+
+        auto now = std::chrono::high_resolution_clock::now();
+        if (s_Data->Time.has_value()) {
+            auto delta = now - s_Data->Time.value();
+            io.DeltaTime = std::chrono::duration_cast<std::chrono::duration<float>>(delta).count();
+        } else {
+            io.DeltaTime = 1.f / 60.f;
+        }
+
+        s_Data->Time = now;
+
+        Platform_UpdateMouse();
+        Platform_UpdateCursor();
+
+        // todo: gamepads
+    }
+
+    void ImGuiHost::Platform_UpdateMouse() {
+        ZoneScoped;
+
+        auto& io = ImGui::GetIO();
+        auto& platformIO = ImGui::GetPlatformIO();
+
+        ImGuiID mouseViewport = ImGui::GetMainViewport()->ID;
+        ImVec2 previousPosition = io.MousePos;
+
+        for (int i = 0; i < platformIO.Viewports.Size; i++) {
+            auto viewport = platformIO.Viewports[i];
+            auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+            auto view = platformData->ViewportView;
+
+            if (view->IsFocused()) {
+                if (io.WantSetMousePos) {
+                    double x = (double)(previousPosition.x - viewport->Pos.x);
+                    double y = (double)(previousPosition.y - viewport->Pos.y);
+                    view->SetCursorPosition(x, y);
+                }
+
+                if (!s_Data->MouseView.has_value()) {
+                    double x, y;
+                    view->GetCursorPosition(x, y);
+
+                    if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0) {
+                        uint32_t windowX, windowY;
+                        view->GetPosition(windowX, windowY);
+
+                        x += (double)windowX;
+                        y += (double)windowY;
+                    }
+
+                    ImVec2 mousePos((float)x, (float)y);
+                    s_Data->LastValidMousePos = mousePos;
+                    io.AddMousePosEvent(mousePos.x, mousePos.y);
+                }
+            }
+
+            bool noInput = (viewport->Flags & ImGuiViewportFlags_NoInputs) != 0;
+            view->SetPassthrough(noInput);
+
+            if (view->IsHovered()) {
+                mouseViewport = viewport->ID;
+            }
+        }
+
+        if (Platform::HasViewHovered()) {
+            io.AddMouseViewportEvent(mouseViewport);
+        }
+    }
+
+    void ImGuiHost::Platform_UpdateCursor() {
+        ZoneScoped;
+
+        // todo: update cursor icon
+    }
+
+    void ImGuiHost::Platform_UpdateMonitors() {
+        ZoneScoped;
+
+        std::vector<MonitorInfo> monitors;
+        if (!Platform::QueryMonitors(monitors)) {
+            return;
+        }
+
+        // todo: update monitor data
+    }
+} // namespace fuujin

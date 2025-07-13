@@ -10,8 +10,6 @@
 
 #include "fuujin/platform/desktop/DesktopPlatform.h"
 
-#include <GLFW/glfw3.h>
-
 namespace fuujin {
     static uint64_t s_WindowID = 0;
 
@@ -41,12 +39,23 @@ namespace fuujin {
     }
 
     DesktopWindow::DesktopWindow(const std::string& title, const ViewSize& size,
+                                 const ViewCreationOptions& options,
                                  const DesktopPlatform* platform) {
         ZoneScoped;
         FUUJIN_DEBUG("Creating GLFW window: {} ({}, {})", title.c_str(), size.Width, size.Height);
 
         m_ID = s_WindowID++;
         m_Platform = platform;
+
+        glfwWindowHint(GLFW_VISIBLE, options.Visible);
+        glfwWindowHint(GLFW_FOCUSED, options.Focused);
+#if GLFW_HAS_FOCUS_ON_SHOW
+        glfwWindowHint(GLFW_FOCUS_ON_SHOW, options.FocusOnShow);
+#endif
+        glfwWindowHint(GLFW_DECORATED, options.Decorated);
+#if GLFW_HAS_WINDOW_TOPMOST
+        glfwWindowHint(GLFW_FLOATING, options.Floating);
+#endif
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -104,6 +113,14 @@ namespace fuujin {
 
     void DesktopWindow::SetSize(const ViewSize& size) {
         ZoneScoped;
+
+#if defined(__APPLE__) && !GLFW_HAS_OSX_WINDOW_POS_FIX
+        int x, y, width, height;
+        glfwGetWindowPos(m_Window, &x, &y);
+        glfwGetWindowSize(m_Window, &width, &height);
+        glfwSetWindowPos(m_Window, x, y - height + (int)size.Height);
+#endif
+
         glfwSetWindowSize(m_Window, (int)size.Width, (int)size.Height);
     }
 
@@ -147,6 +164,61 @@ namespace fuujin {
     void DesktopWindow::SetCursorPosition(double x, double y) {
         ZoneScoped;
         glfwSetCursorPos(m_Window, x, y);
+    }
+
+    bool DesktopWindow::IsFocused() const {
+        ZoneScoped;
+#ifdef EMSCRIPTEN_USE_EMBEDDED_GLFW3
+        return true;
+#else
+        return glfwGetWindowAttrib(m_Window, GLFW_FOCUSED) != GLFW_FALSE;
+#endif
+    }
+
+    bool DesktopWindow::IsMinimized() const {
+        ZoneScoped;
+        return glfwGetWindowAttrib(m_Window, GLFW_ICONIFIED) != GLFW_FALSE;
+    }
+
+    bool DesktopWindow::IsHovered() const {
+        ZoneScoped;
+
+#if GLFW_HAS_MOUSE_PASSTHROUGH || GLFW_HAS_WINDOW_HOVERED
+        return glfwGetWindowAttrib(m_Window, GLFW_HOVERED) != GLFW_FALSE;
+#else
+        return false;
+#endif
+    }
+
+    void DesktopWindow::SetTitle(const std::string& title) {
+        ZoneScoped;
+        glfwSetWindowTitle(m_Window, title.c_str());
+    }
+
+    void DesktopWindow::SetAlpha(float alpha) {
+        ZoneScoped;
+        glfwSetWindowOpacity(m_Window, alpha);
+    }
+
+    void DesktopWindow::SetPassthrough(bool noInput) {
+        ZoneScoped;
+#if GLFW_HAS_PASSTHROUGH
+        glfwSetWindowAttrib(m_Window, GLFW_MOUSE_PASSTHROUGH, noInput);
+#endif
+    }
+
+    void DesktopWindow::Focus() {
+        ZoneScoped;
+        glfwFocusWindow(m_Window);
+    }
+
+    void DesktopWindow::Show() {
+        ZoneScoped;
+
+        // imgui glfw backend does some win32 shenanigans here to differentiate between
+        // mouse/touchscreen/pen. we dont need that (for now)
+
+        glfwShowWindow(m_Window);
     }
 
     void DesktopWindow::GetRequiredVulkanExtensions(std::vector<std::string>& extensions) const {

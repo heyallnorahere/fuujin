@@ -53,10 +53,102 @@ namespace fuujin {
         s_GLFWInitialized = true;
     }
 
-    Ref<View> DesktopPlatform::CreateView(const std::string& title, const ViewSize& size) const {
+    bool DesktopPlatform::HasViewports() const {
         ZoneScoped;
 
-        return Ref<DesktopWindow>::Create(title, size, this);
+#if GLFW_HAS_GETPLATFORM
+        if (glfwGetPlatform() == GLFW_PLATFORM_WAYLAND) {
+            return false;
+        }
+#endif
+
+        return true;
+    }
+
+    bool DesktopPlatform::HasViewHovered() const {
+        ZoneScoped;
+
+#if GLFW_HAS_MOUSE_PASSTHROUGH || GLFW_HAS_WINDOW_HOVERED
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    std::string DesktopPlatform::GetName() const {
+        ZoneScoped;
+
+        std::string platformName;
+#ifdef FUUJIN_PLATFORM_windows
+        platformName = "Windows";
+#elif defined(FUUJIN_PLATFORM_linux)
+        platformName = "Linux";
+#elif defined(FUUJIN_PLATFORM_osx)
+        platformName = "MacOS";
+#else
+        platformName = "Unknown platform";
+#endif
+
+        return platformName + " via GLFW";
+    }
+
+    Ref<View> DesktopPlatform::CreateView(const std::string& title, const ViewSize& size,
+                                          const ViewCreationOptions& options) const {
+        ZoneScoped;
+
+        return Ref<DesktopWindow>::Create(title, size, options, this);
+    }
+
+    static float GetMonitorContentScale(GLFWmonitor* monitor) {
+        ZoneScoped;
+
+#if GLFW_HAS_PER_MONITOR_DPI &&                                                                    \
+    !(defined(__APPLE__) || defined(__EMSCRIPTEN__) || defined(__ANDROID__))
+        float x, y;
+        glfwGetMonitorContentScale(monitor, &x, &y);
+        return x;
+#else
+        return 1.f;
+#endif
+    }
+
+    bool DesktopPlatform::QueryMonitors(std::vector<MonitorInfo>& monitors) const {
+        ZoneScoped;
+
+        int count = 0;
+        auto glfwMonitors = glfwGetMonitors(&count);
+
+        if (count <= 0) {
+            return false;
+        }
+
+        monitors.clear();
+        for (int i = 0; i < count; i++) {
+            auto monitor = glfwMonitors[i];
+
+            int x, y;
+            glfwGetMonitorPos(monitor, &x, &y);
+
+            auto videoMode = glfwGetVideoMode(monitor);
+            if (videoMode == nullptr) {
+                continue;
+            }
+
+            auto& info = monitors.emplace_back();
+            info.MainPos = glm::ivec2(x, y);
+            info.MainSize = glm::ivec2(videoMode->width, videoMode->height);
+
+            int width, height;
+            glfwGetMonitorWorkarea(monitor, &x, &y, &width, &height);
+
+            info.WorkPos = glm::ivec2(x, y);
+            info.WorkSize = glm::ivec2(width, height);
+
+            info.Scale = GetMonitorContentScale(monitor);
+            info.Handle = monitor;
+        }
+
+        return true;
     }
 
     GLFWcursor* DesktopPlatform::GetCursor(Cursor name) const {

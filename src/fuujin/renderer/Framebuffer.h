@@ -1,6 +1,5 @@
 #pragma once
 #include "fuujin/core/Ref.h"
-#include "fuujin/renderer/CommandQueue.h"
 
 namespace fuujin {
     enum class RenderTargetType {
@@ -8,6 +7,7 @@ namespace fuujin {
         Framebuffer
     };
 
+    class CommandList;
     class RenderTarget : public RefCounted {
     public:
         virtual void RT_BeginRender(CommandList& cmdList) = 0;

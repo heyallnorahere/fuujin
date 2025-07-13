@@ -16,11 +16,9 @@ namespace fuujin {
         VulkanSwapchain(Ref<View> view, Ref<VulkanDevice> device);
         virtual ~VulkanSwapchain() override;
 
-        // this method is BOUND TO THE CURRENT THREAD
-        // only call inside the render thread
         std::optional<uint32_t> RT_FindDeviceQueue();
+        void RT_Initialize(VmaAllocator allocator);
 
-        void Initialize(const VmaAllocator& allocator);
         void ProcessEvent(Event& event);
 
         virtual Ref<View> GetView() const override { return m_View; }

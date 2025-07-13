@@ -35,11 +35,14 @@ namespace fuujin {
         virtual Ref<Sampler> CreateSampler(const Sampler::Spec& spec) const override;
         virtual Ref<Texture> CreateTexture(const Texture::Spec& spec) const override;
 
+        virtual Ref<Swapchain> CreateSwapchain(const Ref<View>& view) const override;
+
         virtual RendererAPI* CreateRendererAPI(uint32_t frames) const override;
 
     private:
         VulkanContext(const std::optional<std::string>& deviceName);
 
+        void RT_LoadGlobal() const;
         void RT_LoadInstance() const;
         void RT_LoadDevice() const;
 

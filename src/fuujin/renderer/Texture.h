@@ -34,6 +34,8 @@ namespace fuujin {
             std::set<Feature> AdditionalFeatures;
         };
 
+        virtual uint64_t GetID() const = 0;
+
         virtual const Spec& GetSpec() const = 0;
         virtual Ref<DeviceImage> GetImage() const = 0;
 

@@ -75,25 +75,26 @@ namespace fuujin {
         return m_PresentFamily;
     }
 
-    void VulkanSwapchain::Initialize(const VmaAllocator& allocator) {
+    void VulkanSwapchain::RT_Initialize(VmaAllocator allocator) {
         ZoneScoped;
-        Renderer::Submit(
-            [&]() {
-                m_Allocator = allocator; // :thumbsup:
+        m_Allocator = allocator;
 
-                auto queue = RT_FindDeviceQueue();
-                if (queue.has_value()) {
-                    vkGetDeviceQueue(m_Device->GetDevice(), queue.value(), 0, &m_PresentQueue);
+        auto queue = RT_FindDeviceQueue();
+        if (queue.has_value()) {
+            vkGetDeviceQueue(m_Device->GetDevice(), queue.value(), 0, &m_PresentQueue);
 
-                    RT_Invalidate();
-                }
-            },
-            "Create swapchain");
+            RT_Invalidate();
+        }
     }
 
     void VulkanSwapchain::ProcessEvent(Event& event) {
         if (event.GetType() == EventType::FramebufferResized) {
-            m_NewViewSize = ((FramebufferResizedEvent&)event).GetSize();
+            auto& resizeEvent = (FramebufferResizedEvent&)event;
+            if (resizeEvent.GetView() != m_View->GetID()) {
+                return;
+            }
+
+            m_NewViewSize = resizeEvent.GetSize();
         }
     }
 
@@ -138,31 +139,34 @@ namespace fuujin {
     void VulkanSwapchain::RT_AcquireImage() {
         ZoneScoped;
 
-        const auto& sync = m_Sync[m_SyncFrame];
-        auto fence = sync.Fence;
-        fence->Wait(std::numeric_limits<uint64_t>::max());
-
         while (true) {
+            const auto& sync = m_Sync[m_SyncFrame];
+            auto fence = sync.Fence;
+            fence->Wait(std::numeric_limits<uint64_t>::max());
+
             auto result = vkAcquireNextImageKHR(
                 m_Device->GetDevice(), m_Swapchain, std::numeric_limits<uint64_t>::max(),
                 sync.ImageAvailable->Get(), VK_NULL_HANDLE, &m_CurrentImage);
 
             if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
                 RT_Invalidate();
+
+                m_SyncFrame++;
+                m_SyncFrame %= s_SyncFrameCount;
+
                 continue;
             } else if (result != VK_SUCCESS) {
                 throw std::runtime_error("Failed to acquire swapchain image!");
             }
 
+            auto previousFence = m_ImageFences[m_CurrentImage];
+            if (previousFence.IsPresent()) {
+                previousFence->Wait(std::numeric_limits<uint64_t>::max());
+            }
+
+            m_ImageFences[m_CurrentImage] = fence;
             break;
         }
-
-        auto previousFence = m_ImageFences[m_CurrentImage];
-        if (previousFence.IsPresent()) {
-            previousFence->Wait(std::numeric_limits<uint64_t>::max());
-        }
-
-        m_ImageFences[m_CurrentImage] = fence;
     }
 
     void VulkanSwapchain::RT_Present() {
@@ -323,14 +327,17 @@ namespace fuujin {
         m_SyncFrame = 0;
         if (m_Sync.empty()) {
             m_Sync.resize(s_SyncFrameCount);
+        }
 
-            for (size_t i = 0; i < s_SyncFrameCount; i++) {
-                auto& frameSync = m_Sync[i];
+        for (size_t i = 0; i < s_SyncFrameCount; i++) {
+            auto& frameSync = m_Sync[i];
 
+            if (frameSync.Fence.IsEmpty()) {
                 frameSync.Fence = Ref<VulkanFence>::Create(m_Device, true);
-                frameSync.ImageAvailable = Ref<VulkanSemaphore>::Create(m_Device);
-                frameSync.RenderComplete = Ref<VulkanSemaphore>::Create(m_Device);
             }
+
+            frameSync.ImageAvailable = Ref<VulkanSemaphore>::Create(m_Device);
+            frameSync.RenderComplete = Ref<VulkanSemaphore>::Create(m_Device);
         }
     }
 
