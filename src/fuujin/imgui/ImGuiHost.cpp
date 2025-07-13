@@ -568,6 +568,20 @@ namespace fuujin {
             return;
         }
 
-        // todo: update monitor data
+        auto& platformIO = ImGui::GetPlatformIO();
+        platformIO.Monitors.clear();
+
+        for (const auto& monitor : monitors) {
+            ImGuiPlatformMonitor result;
+
+            result.MainPos = ImVec2((float)monitor.MainPos.x, (float)monitor.MainPos.y);
+            result.MainSize = ImVec2((float)monitor.MainSize.x, (float)monitor.MainSize.y);
+            result.WorkPos = ImVec2((float)monitor.WorkPos.x, (float)monitor.WorkPos.y);
+            result.WorkSize = ImVec2((float)monitor.WorkSize.x, (float)monitor.WorkSize.y);
+            result.DpiScale = monitor.Scale;
+            result.PlatformHandle = monitor.Handle;
+
+            platformIO.Monitors.push_back(result);
+        }
     }
 } // namespace fuujin

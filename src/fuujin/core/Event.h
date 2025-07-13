@@ -2,7 +2,15 @@
 
 namespace fuujin {
     enum class EventType {
-        FramebufferResized
+        ViewResized,
+        ViewFocused,
+        CursorEntered,
+        CursorPosition,
+        MouseButton,
+        Scroll,
+        Key,
+        Char,
+        MonitorUpdate
     };
 
     class Event {

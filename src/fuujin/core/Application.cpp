@@ -110,21 +110,43 @@ namespace fuujin {
         s_App = nullptr;
     }
 
+    static std::string GetEventName(EventType type) {
+        switch (type) {
+        case EventType::ViewResized:
+            return "ViewResized";
+        case EventType::ViewFocused:
+            return "ViewFocused";
+        case EventType::CursorEntered:
+            return "CursorEntered";
+        case EventType::CursorPosition:
+            return "CursorPosition";
+        case EventType::MouseButton:
+            return "MouseButton";
+        case EventType::Scroll:
+            return "Scroll";
+        case EventType::Key:
+            return "Key";
+        case EventType::Char:
+            return "Char";
+        case EventType::MonitorUpdate:
+            return "MonitorUpdate";
+        default:
+            return "Unknown";
+        }
+    }
+
     void Application::ProcessEvent(Event& event) {
         ZoneScoped;
 
-        Renderer::ProcessEvent(event);
-        if (event.IsProcessed()) {
+        if (s_App == nullptr) {
+            FUUJIN_WARN("Attempted to process event with no application present!");
             return;
         }
 
-        for (const auto& layer : m_Data->LayerStack) {
-            if (event.IsProcessed()) {
-                return;
-            }
+        auto name = GetEventName(event.GetType());
+        FUUJIN_DEBUG("Processing event of type {}", name.c_str());
 
-            layer->ProcessEvent(event);
-        }
+        s_App->OnEvent(event);
     }
 
     Ref<View> Application::GetView() const { return m_Data->AppView; }
@@ -158,5 +180,22 @@ namespace fuujin {
         Renderer::Wait();
 
         m_Data->AppView->Update();
+    }
+
+    void Application::OnEvent(Event& event) {
+        ZoneScoped;
+
+        Renderer::ProcessEvent(event);
+        if (event.IsProcessed()) {
+            return;
+        }
+
+        for (const auto& layer : m_Data->LayerStack) {
+            if (event.IsProcessed()) {
+                return;
+            }
+
+            layer->ProcessEvent(event);
+        }
     }
 } // namespace fuujin

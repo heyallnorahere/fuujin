@@ -3,10 +3,51 @@
 
 #include "fuujin/platform/desktop/DesktopWindow.h"
 
+#include "fuujin/core/Application.h"
+#include "fuujin/core/Events.h"
+
 #include <GLFW/glfw3.h>
 
 namespace fuujin {
     bool s_GLFWInitialized = false;
+
+    static bool ProcessMonitor(GLFWmonitor* monitor, MonitorInfo& info) {
+        ZoneScoped;
+
+        int x, y;
+        glfwGetMonitorPos(monitor, &x, &y);
+
+        auto videoMode = glfwGetVideoMode(monitor);
+        if (videoMode == nullptr) {
+            return false;
+        }
+
+        info.MainPos = glm::ivec2(x, y);
+        info.MainSize = glm::ivec2(videoMode->width, videoMode->height);
+
+        int width, height;
+        glfwGetMonitorWorkarea(monitor, &x, &y, &width, &height);
+
+        info.WorkPos = glm::ivec2(x, y);
+        info.WorkSize = glm::ivec2(width, height);
+
+        info.Scale = GetMonitorContentScale(monitor);
+        info.Handle = monitor;
+
+        return true;
+    }
+
+    static void GLFW_Monitor(GLFWmonitor* monitor, int index) {
+        ZoneScoped;
+
+        MonitorInfo info;
+        if (!ProcessMonitor(monitor, info)) {
+            return;
+        }
+
+        MonitorUpdateEvent event(info, (uint32_t)index);
+        Application::ProcessEvent(event);
+    }
 
     DesktopPlatform::DesktopPlatform() {
         ZoneScoped;
@@ -40,6 +81,8 @@ namespace fuujin {
         for (const auto& [name, shape] : standardCursors) {
             m_Cursors[name] = glfwCreateStandardCursor(shape);
         }
+
+        glfwSetMonitorCallback(GLFW_Monitor);
 
         s_GLFWInitialized = true;
     }
@@ -128,26 +171,10 @@ namespace fuujin {
         for (int i = 0; i < count; i++) {
             auto monitor = glfwMonitors[i];
 
-            int x, y;
-            glfwGetMonitorPos(monitor, &x, &y);
-
-            auto videoMode = glfwGetVideoMode(monitor);
-            if (videoMode == nullptr) {
-                continue;
+            MonitorInfo info;
+            if (ProcessMonitor(monitor, info)) {
+                monitors.push_back(info);
             }
-
-            auto& info = monitors.emplace_back();
-            info.MainPos = glm::ivec2(x, y);
-            info.MainSize = glm::ivec2(videoMode->width, videoMode->height);
-
-            int width, height;
-            glfwGetMonitorWorkarea(monitor, &x, &y, &width, &height);
-
-            info.WorkPos = glm::ivec2(x, y);
-            info.WorkSize = glm::ivec2(width, height);
-
-            info.Scale = GetMonitorContentScale(monitor);
-            info.Handle = monitor;
         }
 
         return true;

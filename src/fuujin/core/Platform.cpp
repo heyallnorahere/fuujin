@@ -52,8 +52,6 @@ namespace fuujin {
 
     bool Platform::QueryMonitors(std::vector<MonitorInfo>& monitors) {
         ZoneScoped;
-
-        bool success = s_API->QueryMonitors(monitors);
-        return success && !monitors.empty();
+        return s_API->QueryMonitors(monitors);
     }
 } // namespace fuujin

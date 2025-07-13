@@ -24,7 +24,7 @@ namespace fuujin {
         Application(const Application&) = delete;
         Application& operator=(const Application&) = delete;
 
-        void ProcessEvent(Event& event);
+        static void ProcessEvent(Event& event);
 
         Ref<View> GetView() const;
 
@@ -35,6 +35,8 @@ namespace fuujin {
 
         void Loop();
         void Update(Duration delta);
+
+        void OnEvent(Event& event);
 
         ApplicationData* m_Data;
     };

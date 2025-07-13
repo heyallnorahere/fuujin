@@ -9,14 +9,54 @@
 #include "fuujin/core/Application.h"
 #include "fuujin/core/Events.h"
 
+// from imgui_impl_glfw
+static int ImGui_ImplGlfw_TranslateUntranslatedKey(int key, int scancode) {
+#if GLFW_HAS_GETKEYNAME && !defined(EMSCRIPTEN_USE_EMBEDDED_GLFW3)
+    // GLFW 3.1+ attempts to "untranslate" keys, which goes the opposite of what every other
+    // framework does, making using lettered shortcuts difficult. (It had reasons to do so: namely
+    // GLFW is/was more likely to be used for WASD-type game controls rather than lettered
+    // shortcuts, but IHMO the 3.1 change could have been done differently) See
+    // https://github.com/glfw/glfw/issues/1502 for details. Adding a workaround to undo this (so
+    // our keys are translated->untranslated->translated, likely a lossy process). This won't cover
+    // edge cases but this is at least going to cover common cases.
+    if (key >= GLFW_KEY_KP_0 && key <= GLFW_KEY_KP_EQUAL)
+        return key;
+    GLFWerrorfun prev_error_callback = glfwSetErrorCallback(nullptr);
+    const char* key_name = glfwGetKeyName(key, scancode);
+    glfwSetErrorCallback(prev_error_callback);
+#if GLFW_HAS_GETERROR && !defined(EMSCRIPTEN_USE_EMBEDDED_GLFW3) // Eat errors (see #5908)
+    (void)glfwGetError(nullptr);
+#endif
+    if (key_name && key_name[0] != 0 && key_name[1] == 0) {
+        const char char_names[] = "`-=[]\\,;\'./";
+        const int char_keys[] = {
+            GLFW_KEY_GRAVE_ACCENT,  GLFW_KEY_MINUS,     GLFW_KEY_EQUAL, GLFW_KEY_LEFT_BRACKET,
+            GLFW_KEY_RIGHT_BRACKET, GLFW_KEY_BACKSLASH, GLFW_KEY_COMMA, GLFW_KEY_SEMICOLON,
+            GLFW_KEY_APOSTROPHE,    GLFW_KEY_PERIOD,    GLFW_KEY_SLASH, 0
+        };
+        // IM_ASSERT(IM_ARRAYSIZE(char_names) == IM_ARRAYSIZE(char_keys));
+        if (key_name[0] >= '0' && key_name[0] <= '9') {
+            key = GLFW_KEY_0 + (key_name[0] - '0');
+        } else if (key_name[0] >= 'A' && key_name[0] <= 'Z') {
+            key = GLFW_KEY_A + (key_name[0] - 'A');
+        } else if (key_name[0] >= 'a' && key_name[0] <= 'z') {
+            key = GLFW_KEY_A + (key_name[0] - 'a');
+        } else if (const char* p = strchr(char_names, key_name[0])) {
+            key = char_keys[p - char_names];
+        }
+    }
+    // if (action == GLFW_PRESS) printf("key %d scancode %d name '%s'\n", key, scancode, key_name);
+#else
+    // IM_UNUSED(scancode);
+#endif
+    return key;
+}
+
 namespace fuujin {
     static uint64_t s_WindowID = 0;
 
-    static void FramebufferResizedGLFW(GLFWwindow* window, int width, int height) {
+    static void GLFW_FramebufferSize(GLFWwindow* window, int width, int height) {
         ZoneScoped;
-
-        const char* windowTitle = glfwGetWindowTitle(window);
-        FUUJIN_DEBUG("GLFW window {} resized to ({}, {})", windowTitle, width, height);
 
         ViewSize size;
         size.Width = (uint32_t)std::max(0, width);
@@ -25,16 +65,215 @@ namespace fuujin {
         auto view = (DesktopWindow*)glfwGetWindowUserPointer(window);
         uint64_t id = view->GetID();
 
-        FramebufferResizedEvent event(size, id);
-        Application* app = nullptr;
+        ViewResizedEvent event(size, id);
+        Application::ProcessEvent(event);
+    }
 
-        try {
-            app = &Application::Get();
-        } catch (const std::runtime_error&) {
+    static void GLFW_WindowFocus(GLFWwindow* window, int focused) {
+        ZoneScoped;
+
+        auto view = (DesktopWindow*)glfwGetWindowUserPointer(window);
+        uint64_t id = view->GetID();
+
+        ViewFocusedEvent event(focused != GLFW_FALSE, id);
+        Application::ProcessEvent(event);
+    }
+
+    static void GLFW_CursorEnter(GLFWwindow* window, int entered) {
+        ZoneScoped;
+
+        auto view = (DesktopWindow*)glfwGetWindowUserPointer(window);
+        uint64_t id = view->GetID();
+
+        CursorEnteredEvent event(entered != GLFW_FALSE, id);
+        Application::ProcessEvent(event);
+    }
+
+    static void GLFW_CursorPos(GLFWwindow* window, double x, double y) {
+        ZoneScoped;
+
+        auto view = (DesktopWindow*)glfwGetWindowUserPointer(window);
+        uint64_t id = view->GetID();
+
+        CursorPositionEvent event(x, y, id);
+        Application::ProcessEvent(event);
+    }
+
+    static void GLFW_MouseButton(GLFWwindow* window, int button, int action, int mods) {
+        ZoneScoped;
+
+        auto view = (DesktopWindow*)glfwGetWindowUserPointer(window);
+        uint64_t id = view->GetID();
+
+        MouseButtonEvent event(button, action == GLFW_PRESS, id);
+        Application::ProcessEvent(event);
+    }
+
+    static void GLFW_Scroll(GLFWwindow* window, double xOffset, double yOffset) {
+        ZoneScoped;
+
+        auto view = (DesktopWindow*)glfwGetWindowUserPointer(window);
+        uint64_t id = view->GetID();
+
+        ScrollEvent event(xOffset, yOffset, id);
+        Application::ProcessEvent(event);
+    }
+
+    static Key TranslateGLFWKey(int glfwKey) {
+#define TRANSLATE(GLFW, FUUJIN)                                                                    \
+    case GLFW_KEY_##GLFW:                                                                          \
+        return Key::FUUJIN
+
+        switch (glfwKey) {
+            TRANSLATE(TAB, Tab);
+            TRANSLATE(LEFT, Left);
+            TRANSLATE(RIGHT, Right);
+            TRANSLATE(UP, Up);
+            TRANSLATE(DOWN, Down);
+            TRANSLATE(PAGE_UP, PageUp);
+            TRANSLATE(PAGE_DOWN, PageDown);
+            TRANSLATE(HOME, Home);
+            TRANSLATE(END, End);
+            TRANSLATE(INSERT, Insert);
+            TRANSLATE(DELETE, Delete);
+            TRANSLATE(BACKSPACE, Backspace);
+            TRANSLATE(SPACE, Space);
+            TRANSLATE(ENTER, Enter);
+            TRANSLATE(ESCAPE, Escape);
+            TRANSLATE(APOSTROPHE, Apostrophe);
+            TRANSLATE(COMMA, Comma);
+            TRANSLATE(MINUS, Minus);
+            TRANSLATE(PERIOD, Period);
+            TRANSLATE(SLASH, Slash);
+            TRANSLATE(SEMICOLON, Semicolon);
+            TRANSLATE(EQUAL, Equal);
+            TRANSLATE(LEFT_BRACKET, LeftBracket);
+            TRANSLATE(BACKSLASH, Backslash);
+            TRANSLATE(WORLD_1, Oem102);
+            TRANSLATE(WORLD_2, Oem102);
+            TRANSLATE(RIGHT_BRACKET, RightBracket);
+            TRANSLATE(GRAVE_ACCENT, GraveAccent);
+            TRANSLATE(CAPS_LOCK, CapsLock);
+            TRANSLATE(SCROLL_LOCK, ScrollLock);
+            TRANSLATE(NUM_LOCK, NumLock);
+            TRANSLATE(PRINT_SCREEN, PrintScreen);
+            TRANSLATE(PAUSE, Pause);
+            TRANSLATE(KP_0, Keypad0);
+            TRANSLATE(KP_1, Keypad1);
+            TRANSLATE(KP_2, Keypad2);
+            TRANSLATE(KP_3, Keypad3);
+            TRANSLATE(KP_4, Keypad4);
+            TRANSLATE(KP_5, Keypad5);
+            TRANSLATE(KP_6, Keypad6);
+            TRANSLATE(KP_7, Keypad7);
+            TRANSLATE(KP_8, Keypad8);
+            TRANSLATE(KP_9, Keypad9);
+            TRANSLATE(KP_DECIMAL, KeypadDecimal);
+            TRANSLATE(KP_DIVIDE, KeypadDivide);
+            TRANSLATE(KP_MULTIPLY, KeypadMultiply);
+            TRANSLATE(KP_SUBTRACT, KeypadSubtract);
+            TRANSLATE(KP_ADD, KeypadAdd);
+            TRANSLATE(KP_ENTER, KeypadEnter);
+            TRANSLATE(KP_EQUAL, KeypadEqual);
+            TRANSLATE(LEFT_SHIFT, LeftShift);
+            TRANSLATE(LEFT_CONTROL, LeftControl);
+            TRANSLATE(LEFT_ALT, LeftAlt);
+            TRANSLATE(LEFT_SUPER, LeftSuper);
+            TRANSLATE(RIGHT_SHIFT, RightShift);
+            TRANSLATE(RIGHT_CONTROL, RightControl);
+            TRANSLATE(RIGHT_ALT, RightAlt);
+            TRANSLATE(RIGHT_SUPER, RightSuper);
+            TRANSLATE(MENU, Menu);
+            TRANSLATE(0, _0);
+            TRANSLATE(1, _1);
+            TRANSLATE(2, _2);
+            TRANSLATE(3, _3);
+            TRANSLATE(4, _4);
+            TRANSLATE(5, _5);
+            TRANSLATE(6, _6);
+            TRANSLATE(7, _7);
+            TRANSLATE(8, _8);
+            TRANSLATE(9, _9);
+            TRANSLATE(A, A);
+            TRANSLATE(B, B);
+            TRANSLATE(C, C);
+            TRANSLATE(D, D);
+            TRANSLATE(E, E);
+            TRANSLATE(F, F);
+            TRANSLATE(G, G);
+            TRANSLATE(H, H);
+            TRANSLATE(I, I);
+            TRANSLATE(J, J);
+            TRANSLATE(K, K);
+            TRANSLATE(L, L);
+            TRANSLATE(M, M);
+            TRANSLATE(N, N);
+            TRANSLATE(O, O);
+            TRANSLATE(P, P);
+            TRANSLATE(Q, Q);
+            TRANSLATE(R, R);
+            TRANSLATE(S, S);
+            TRANSLATE(T, T);
+            TRANSLATE(U, U);
+            TRANSLATE(V, V);
+            TRANSLATE(W, W);
+            TRANSLATE(X, X);
+            TRANSLATE(Y, Y);
+            TRANSLATE(Z, Z);
+            TRANSLATE(F1, F1);
+            TRANSLATE(F2, F2);
+            TRANSLATE(F3, F3);
+            TRANSLATE(F4, F4);
+            TRANSLATE(F5, F5);
+            TRANSLATE(F6, F6);
+            TRANSLATE(F7, F7);
+            TRANSLATE(F8, F8);
+            TRANSLATE(F9, F9);
+            TRANSLATE(F10, F10);
+            TRANSLATE(F11, F11);
+            TRANSLATE(F12, F12);
+            TRANSLATE(F13, F13);
+            TRANSLATE(F14, F14);
+            TRANSLATE(F15, F15);
+            TRANSLATE(F16, F16);
+            TRANSLATE(F17, F17);
+            TRANSLATE(F18, F18);
+            TRANSLATE(F19, F19);
+            TRANSLATE(F20, F20);
+            TRANSLATE(F21, F21);
+            TRANSLATE(F22, F22);
+            TRANSLATE(F23, F23);
+            TRANSLATE(F24, F24);
+        default:
+            return Key::None;
+        }
+    }
+
+    static void GLFW_Key(GLFWwindow* window, int keycode, int scancode, int action, int mods) {
+        ZoneScoped;
+
+        if (action != GLFW_PRESS && action != GLFW_RELEASE) {
             return;
         }
 
-        app->ProcessEvent(event);
+        int glfwKey = ImGui_ImplGlfw_TranslateUntranslatedKey(keycode, scancode);
+        auto key = TranslateGLFWKey(glfwKey);
+
+        auto view = (DesktopWindow*)glfwGetWindowUserPointer(window);
+        uint64_t id = view->GetID();
+
+        KeyEvent event(key, action == GLFW_PRESS, id);
+        Application::ProcessEvent(event);
+    }
+
+    static void GLFW_Char(GLFWwindow* window, unsigned int character) {
+        ZoneScoped;
+
+        auto view = (DesktopWindow*)glfwGetWindowUserPointer(window);
+        uint64_t id = view->GetID();
+
+        CharEvent event(character, id);
+        Application::ProcessEvent(event);
     }
 
     DesktopWindow::DesktopWindow(const std::string& title, const ViewSize& size,
@@ -65,7 +304,14 @@ namespace fuujin {
         }
 
         glfwSetWindowUserPointer(m_Window, this);
-        glfwSetFramebufferSizeCallback(m_Window, FramebufferResizedGLFW);
+        glfwSetFramebufferSizeCallback(m_Window, GLFW_FramebufferSize);
+        glfwSetWindowFocusCallback(m_Window, GLFW_WindowFocus);
+        glfwSetCursorEnterCallback(m_Window, GLFW_CursorEnter);
+        glfwSetCursorPosCallback(m_Window, GLFW_CursorPos);
+        glfwSetMouseButtonCallback(m_Window, GLFW_MouseButton);
+        glfwSetScrollCallback(m_Window, GLFW_Scroll);
+        glfwSetKeyCallback(m_Window, GLFW_Key);
+        glfwSetCharCallback(m_Window, GLFW_Char);
     }
 
     DesktopWindow::~DesktopWindow() {

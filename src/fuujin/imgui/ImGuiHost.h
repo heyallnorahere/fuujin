@@ -7,12 +7,16 @@
 
 namespace fuujin {
     class CommandList;
+    class Event;
+
     class ImGuiHost {
     public:
         ImGuiHost() = delete;
 
         static void Init();
         static void Shutdown();
+
+        static void ProcessEvent(Event& event);
 
         static void NewFrame();
         static void Render(CommandList& cmdlist, const Ref<RenderTarget>& mainRenderTarget);
