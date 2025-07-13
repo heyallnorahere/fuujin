@@ -9,10 +9,8 @@ namespace fuujin {
         void* Handle;
     };
 
-    class PlatformAPI {
+    class PlatformAPI : public RefCounted {
     public:
-        virtual ~PlatformAPI() = default;
-
         virtual bool HasCursors() const = 0;
         virtual bool CanSetCursorPos() const = 0;
         virtual bool HasViewports() const = 0;

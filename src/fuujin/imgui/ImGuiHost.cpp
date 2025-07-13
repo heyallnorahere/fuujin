@@ -508,7 +508,56 @@ namespace fuujin {
     void ImGuiHost::Platform_UpdateCursor() {
         ZoneScoped;
 
-        // todo: update cursor icon
+        auto& io = ImGui::GetIO();
+        if ((io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange) != 0 ||
+            s_Data->MainView->IsCursorDisabled()) {
+            return;
+        }
+
+        auto imguiCursor = ImGui::GetMouseCursor();
+        auto& platformIO = ImGui::GetPlatformIO();
+
+        Cursor cursor;
+        if (imguiCursor == ImGuiMouseCursor_None || io.MouseDrawCursor) {
+            cursor = Cursor::None;
+        } else {
+            switch (imguiCursor) {
+            case ImGuiMouseCursor_TextInput:
+                cursor = Cursor::TextInput;
+                break;
+            case ImGuiMouseCursor_ResizeAll:
+                cursor = Cursor::ResizeAll;
+                break;
+            case ImGuiMouseCursor_ResizeNS:
+                cursor = Cursor::ResizeNS;
+                break;
+            case ImGuiMouseCursor_ResizeEW:
+                cursor = Cursor::ResizeEW;
+                break;
+            case ImGuiMouseCursor_ResizeNESW:
+                cursor = Cursor::ResizeNESW;
+                break;
+            case ImGuiMouseCursor_ResizeNWSE:
+                cursor = Cursor::ResizeNWSE;
+                break;
+            case ImGuiMouseCursor_Hand:
+                cursor = Cursor::Hand;
+                break;
+            case ImGuiMouseCursor_NotAllowed:
+                cursor = Cursor::NotAllowed;
+                break;
+            default:
+                cursor = Cursor::Arrow;
+                break;
+            }
+        }
+
+        for (int i = 0; i < platformIO.Viewports.Size; i++) {
+            auto viewport = platformIO.Viewports[i];
+            auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+
+            platformData->ViewportView->SetCursor(cursor);
+        }
     }
 
     void ImGuiHost::Platform_UpdateMonitors() {

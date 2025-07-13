@@ -12,6 +12,7 @@ namespace fuujin {
 
     enum class Cursor {
         Disabled,
+        None,
         Arrow,
         TextInput,
         Hand,
@@ -42,6 +43,7 @@ namespace fuujin {
         virtual void SetPosition(uint32_t x, uint32_t y) = 0;
 
         virtual void SetCursor(Cursor cursor) = 0;
+        virtual bool IsCursorDisabled() const = 0;
 
         virtual void GetCursorPosition(double& x, double& y) const = 0;
         virtual void SetCursorPosition(double x, double y) = 0;

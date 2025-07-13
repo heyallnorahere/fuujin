@@ -27,12 +27,14 @@ namespace fuujin {
             { Cursor::Arrow, GLFW_ARROW_CURSOR },
             { Cursor::TextInput, GLFW_IBEAM_CURSOR },
             { Cursor::Hand, GLFW_HAND_CURSOR },
-            { Cursor::NotAllowed, GLFW_NOT_ALLOWED_CURSOR },
             { Cursor::ResizeNS, GLFW_VRESIZE_CURSOR },
             { Cursor::ResizeEW, GLFW_HRESIZE_CURSOR },
+#if GLFW_HAS_NEW_CURSORS
+            { Cursor::NotAllowed, GLFW_NOT_ALLOWED_CURSOR },
             { Cursor::ResizeNESW, GLFW_RESIZE_NESW_CURSOR },
             { Cursor::ResizeNWSE, GLFW_RESIZE_NWSE_CURSOR },
             { Cursor::ResizeAll, GLFW_RESIZE_ALL_CURSOR },
+#endif
         };
 
         for (const auto& [name, shape] : standardCursors) {
@@ -158,6 +160,6 @@ namespace fuujin {
             return m_Cursors.at(name);
         }
 
-        return nullptr;
+        return m_Cursors.at(Cursor::Arrow);
     }
 } // namespace fuujin

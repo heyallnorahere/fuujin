@@ -1,14 +1,15 @@
 #pragma once
 #include "fuujin/core/View.h"
 
+#include "fuujin/platform/desktop/DesktopPlatform.h"
+
 struct GLFWwindow;
 
 namespace fuujin {
-    class DesktopPlatform;
     class DesktopWindow : public View {
     public:
         DesktopWindow(const std::string& title, const ViewSize& size,
-                      const ViewCreationOptions& options, const DesktopPlatform* platform);
+                      const ViewCreationOptions& options, const Ref<DesktopPlatform>& platform);
 
         virtual ~DesktopWindow() override;
 
@@ -25,6 +26,7 @@ namespace fuujin {
         virtual void SetPosition(uint32_t x, uint32_t y) override;
 
         virtual void SetCursor(Cursor cursor) override;
+        virtual bool IsCursorDisabled() const override;
 
         virtual void GetCursorPosition(double& x, double& y) const override;
         virtual void SetCursorPosition(double x, double y) override;
@@ -49,6 +51,6 @@ namespace fuujin {
         GLFWwindow* m_Window;
         uint64_t m_ID;
 
-        const DesktopPlatform* m_Platform;
+        Ref<DesktopPlatform> m_Platform;
     };
 } // namespace fuujin

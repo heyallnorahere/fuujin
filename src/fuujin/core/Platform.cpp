@@ -6,13 +6,13 @@
 #endif
 
 namespace fuujin {
-    static std::unique_ptr<PlatformAPI> s_API;
+    static Ref<PlatformAPI> s_API;
 
-    static PlatformAPI* CreatePlatformAPI() {
+    static Ref<PlatformAPI> CreatePlatformAPI() {
         ZoneScoped;
 
 #ifdef FUUJIN_PLATFORM_desktop
-        return new DesktopPlatform;
+        return Ref<DesktopPlatform>::Create();
 #else
         return nullptr;
 #endif
@@ -21,7 +21,12 @@ namespace fuujin {
     void Platform::Init() {
         ZoneScoped;
 
-        s_API = std::unique_ptr<PlatformAPI>(CreatePlatformAPI());
+        if (s_API) {
+            FUUJIN_ERROR("Platform API already created!");
+            return;
+        }
+
+        s_API = CreatePlatformAPI();
         if (!s_API) {
             FUUJIN_ERROR("Failed to create platform API!");
         }
@@ -29,7 +34,7 @@ namespace fuujin {
 
     void Platform::Shutdown() {
         ZoneScoped;
-        s_API.reset();
+        s_API.Reset();
     }
 
     bool Platform::HasCursors() { return s_API->HasCursors(); }

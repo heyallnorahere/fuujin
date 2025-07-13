@@ -1,14 +1,13 @@
 #include "fuujinpch.h"
-#include "fuujin/platform/desktop/DesktopWindow.h"
-
-#include "fuujin/core/Application.h"
-#include "fuujin/core/Events.h"
 
 #ifdef FUUJIN_PLATFORM_vulkan
 #include "fuujin/platform/vulkan/VulkanContext.h"
 #endif
 
-#include "fuujin/platform/desktop/DesktopPlatform.h"
+#include "fuujin/platform/desktop/DesktopWindow.h"
+
+#include "fuujin/core/Application.h"
+#include "fuujin/core/Events.h"
 
 namespace fuujin {
     static uint64_t s_WindowID = 0;
@@ -40,7 +39,7 @@ namespace fuujin {
 
     DesktopWindow::DesktopWindow(const std::string& title, const ViewSize& size,
                                  const ViewCreationOptions& options,
-                                 const DesktopPlatform* platform) {
+                                 const Ref<DesktopPlatform>& platform) {
         ZoneScoped;
         FUUJIN_DEBUG("Creating GLFW window: {} ({}, {})", title.c_str(), size.Width, size.Height);
 
@@ -142,7 +141,14 @@ namespace fuujin {
     void DesktopWindow::SetCursor(Cursor cursor) {
         ZoneScoped;
 
-        if (cursor != Cursor::Disabled) {
+        switch (cursor) {
+        case Cursor::Disabled:
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            break;
+        case Cursor::None:
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+            break;
+        default: {
             auto glfwCursor = m_Platform->GetCursor(cursor);
             if (glfwCursor == nullptr) {
                 FUUJIN_ERROR("Failed to retrieve GLFW cursor - skipping cursor set");
@@ -151,9 +157,15 @@ namespace fuujin {
 
             glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             glfwSetCursor(m_Window, glfwCursor);
-        } else {
-            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        } break;
         }
+    }
+
+    bool DesktopWindow::IsCursorDisabled() const {
+        ZoneScoped;
+
+        int cursorMode = glfwGetInputMode(m_Window, GLFW_CURSOR);
+        return cursorMode == GLFW_CURSOR_DISABLED;
     }
 
     void DesktopWindow::GetCursorPosition(double& x, double& y) const {
