@@ -1,22 +1,41 @@
 #include "fuujinpch.h"
-#include "fuujin/imgui/ImGuiHost.h"
 
-#include "fuujin/core/Application.h"
-#include "fuujin/core/Platform.h"
-
+#include "fuujin/renderer/DeviceBuffer.h"
+#include "fuujin/renderer/GraphicsDevice.h"
 #include "fuujin/renderer/Renderer.h"
 #include "fuujin/renderer/ShaderLibrary.h"
+#include "fuujin/renderer/ShaderBuffer.h"
+
+#include "fuujin/core/Application.h"
+#include "fuujin/core/Events.h"
+#include "fuujin/core/Platform.h"
+#include "imgui.h"
+
+#include "fuujin/imgui/ImGuiHost.h"
 
 // combination of imgui_impl_glfw and imgui_impl_vulkan using the abstracted interfaces
 
 namespace fuujin {
+    struct ImGuiVertex {
+        glm::vec2 Position;
+        glm::vec2 UV;
+        glm::vec4 Color;
+    };
+
     struct ViewportPlatformData {
         Ref<View> ViewportView;
+        int IgnoreResizeFrame, IgnoreMoveFrame;
+    };
+
+    struct ImGuiRenderBuffers {
+        Ref<DeviceBuffer> VertexBuffer, IndexBuffer;
     };
 
     struct ViewportRendererData {
         Ref<Swapchain> ViewSwapchain;
         Ref<Pipeline> ViewPipeline;
+
+        std::vector<ImGuiRenderBuffers> RenderBuffers;
     };
 
     struct ImGuiHostData {
@@ -25,6 +44,9 @@ namespace fuujin {
 
         Ref<View> MainView;
         std::optional<std::chrono::high_resolution_clock::time_point> Time;
+
+        bool IgnoreMouseUp;
+        bool IgnoreMouseUpOnFocusLoss;
 
         std::optional<uint64_t> MouseView;
         ImVec2 LastValidMousePos;
@@ -67,6 +89,9 @@ namespace fuujin {
 
         s_Data->TextureID = 0;
 
+        s_Data->IgnoreMouseUp = false;
+        s_Data->IgnoreMouseUpOnFocusLoss = false;
+
         Platform_Init();
         Renderer_Init();
     }
@@ -87,6 +112,120 @@ namespace fuujin {
         s_Data.reset();
     }
 
+    static bool ImGui_OnResize(const ViewResizedEvent& event) {
+        ZoneScoped;
+
+        auto viewport = ImGui::FindViewportByPlatformHandle((void*)event.GetView());
+        auto mainViewport = ImGui::GetMainViewport();
+
+        // window is not ours or is main viewport (dont want to fuck with application)
+        if (viewport == nullptr || viewport->ID == mainViewport->ID) {
+            return false;
+        }
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+        auto rendererData = (ViewportRendererData*)viewport->RendererUserData;
+
+        int currentFrame = ImGui::GetFrameCount();
+        bool ignorePlatformEvent = currentFrame <= platformData->IgnoreResizeFrame + 1;
+        if (!ignorePlatformEvent) {
+            viewport->PlatformRequestResize = true;
+        }
+
+        if (rendererData != nullptr) {
+            rendererData->ViewSwapchain->RequestResize(event.GetFramebufferSize());
+        }
+
+        return true;
+    }
+
+    static bool ImGui_OnMove(const ViewMovedEvent& event) {
+        ZoneScoped;
+
+        auto viewport = ImGui::FindViewportByPlatformHandle((void*)event.GetView());
+        auto mainViewport = ImGui::GetMainViewport();
+
+        // window is not ours or is main viewport (dont want to fuck with application)
+        if (viewport == nullptr || viewport->ID == mainViewport->ID) {
+            return false;
+        }
+
+        auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
+        int currentFrame = ImGui::GetFrameCount();
+        bool ignore = currentFrame <= platformData->IgnoreMoveFrame + 1;
+
+        if (!ignore) {
+            viewport->PlatformRequestMove = true;
+        }
+
+        return true;
+    }
+
+    static bool ImGui_OnClose(const ViewClosedEvent& event) {
+        ZoneScoped;
+
+        auto viewport = ImGui::FindViewportByPlatformHandle((void*)event.GetView());
+        auto mainViewport = ImGui::GetMainViewport();
+
+        // window is not ours or is main viewport (dont want to fuck with application)
+        if (viewport == nullptr || viewport->ID == mainViewport->ID) {
+            return false;
+        }
+
+        viewport->PlatformRequestClose = true;
+        return true;
+    }
+
+    static bool ImGui_OnFocus(const ViewFocusedEvent& event) {
+        ZoneScoped;
+
+        auto viewport = ImGui::FindViewportByPlatformHandle((void*)event.GetView());
+        if (viewport == nullptr) {
+            return false;
+        }
+
+        auto mainViewport = ImGui::GetMainViewport();
+        bool isMainViewport = viewport->ID == mainViewport->ID;
+
+        bool focused = event.IsFocused();
+        s_Data->IgnoreMouseUp = s_Data->IgnoreMouseUpOnFocusLoss && !focused;
+        s_Data->IgnoreMouseUpOnFocusLoss = false;
+
+        auto& io = ImGui::GetIO();
+        io.AddFocusEvent(focused);
+
+        return isMainViewport;
+    }
+
+    static bool ImGui_OnCursorEnter(const CursorEnteredEvent& event) {
+        ZoneScoped;
+
+        auto& io = ImGui::GetIO();
+        if (event.DidEnter()) {
+            s_Data->MouseView = event.GetView();
+            io.AddMousePosEvent(s_Data->LastValidMousePos.x, s_Data->LastValidMousePos.y);
+        } else {
+        }
+
+        return false;
+    }
+
+    void ImGuiHost::ProcessEvent(Event& event) {
+        ZoneScoped;
+        ImGui::SetCurrentContext(s_Data->Context);
+
+        if (event.IsProcessed()) {
+            return;
+        }
+
+        EventDispatcher dispatcher(event);
+        dispatcher.Dispatch<ViewResizedEvent>(EventType::ViewResized, ImGui_OnResize);
+        dispatcher.Dispatch<ViewMovedEvent>(EventType::ViewMoved, ImGui_OnMove);
+        dispatcher.Dispatch<ViewClosedEvent>(EventType::ViewClosed, ImGui_OnClose);
+        dispatcher.Dispatch<ViewFocusedEvent>(EventType::ViewFocused, ImGui_OnFocus);
+        dispatcher.Dispatch<CursorEnteredEvent>(EventType::CursorEntered, ImGui_OnCursorEnter);
+    }
+
     void ImGuiHost::NewFrame() {
         ZoneScoped;
         ImGui::SetCurrentContext(s_Data->Context);
@@ -100,7 +239,7 @@ namespace fuujin {
         ImGui::SetCurrentContext(s_Data->Context);
 
         ImGui::Render();
-        Renderer_RenderDrawData(ImGui::GetDrawData(), cmdlist, mainRenderTarget);
+        Renderer_RenderMainViewport(mainRenderTarget);
 
         auto& io = ImGui::GetIO();
         if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0) {
@@ -180,9 +319,16 @@ namespace fuujin {
 
         auto platformData = new ViewportPlatformData;
         platformData->ViewportView = Platform::CreateView("ImGui Viewport", size, options);
+        platformData->IgnoreResizeFrame = -1;
+        platformData->IgnoreMoveFrame = -1;
 
         viewport->PlatformUserData = platformData;
-        viewport->PlatformHandle = platformData->ViewportView.Raw();
+        viewport->PlatformHandle = (void*)platformData->ViewportView->GetID();
+
+#ifdef FUUJIN_PLATFORM_linux
+        // see imgui_impl_glfw.cpp @ line 1199
+        s_Data->IgnoreMouseUpOnFocusLoss = true;
+#endif
     }
 
     static void Platform_DestroyWindow(ImGuiViewport* viewport) {
@@ -219,6 +365,7 @@ namespace fuujin {
 
         auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
         platformData->ViewportView->SetPosition((uint32_t)pos.x, (uint32_t)pos.y);
+        platformData->IgnoreMoveFrame = ImGui::GetFrameCount();
     }
 
     static ImVec2 Platform_GetWindowSize(ImGuiViewport* viewport) {
@@ -239,6 +386,7 @@ namespace fuujin {
 
         auto platformData = (ViewportPlatformData*)viewport->PlatformUserData;
         platformData->ViewportView->SetSize(newSize);
+        platformData->IgnoreResizeFrame = ImGui::GetFrameCount();
     }
 
     static void Platform_GetViewFramebufferScale(const Ref<View>& view, ImVec2* windowSize,
@@ -409,6 +557,15 @@ namespace fuujin {
     void ImGuiHost::Renderer_Init() {
         ZoneScoped;
 
+        auto& library = Renderer::GetShaderLibrary();
+        s_Data->ImGuiShader = library.Get("ImGui");
+
+        // we do not own a swapchain for the main viewport
+        // also, we manage pipelines on a per-render target basis
+        // we do not need to store one in the renderer data for the viewport
+        auto mainViewport = ImGui::GetMainViewport();
+        mainViewport->RendererUserData = new ViewportRendererData;
+
         const auto& api = Renderer::GetAPI();
         s_Data->RendererName = api.Name;
 
@@ -422,10 +579,26 @@ namespace fuujin {
 
         platformIO.Renderer_CreateWindow = Renderer_CreateWindow;
         platformIO.Renderer_DestroyWindow = Renderer_DestroyWindow;
-        platformIO.Renderer_RenderWindow = Renderer_RenderWindow;
+        platformIO.Renderer_RenderWindow = Renderer_RenderViewport;
 
         // we dont need to set Renderer_SwapBuffers
         // present is already handled in Renderer_RenderWindow
+    }
+
+    void ImGuiHost::Platform_Shutdown() {
+        ZoneScoped;
+
+        // "DestroyWindow" just destroys platform data and removes reference
+        auto mainViewport = ImGui::GetMainViewport();
+        Platform_DestroyWindow(mainViewport);
+    }
+
+    void ImGuiHost::Renderer_Shutdown() {
+        ZoneScoped;
+
+        // again, "DestroyWindow" just destroys platform data and removes references
+        auto mainViewport = ImGui::GetMainViewport();
+        Renderer_DestroyWindow(mainViewport);
     }
 
     void ImGuiHost::Platform_NewFrame() {
@@ -582,6 +755,182 @@ namespace fuujin {
             result.PlatformHandle = monitor.Handle;
 
             platformIO.Monitors.push_back(result);
+        }
+    }
+
+    void ImGuiHost::Renderer_RenderViewport(ImGuiViewport* viewport, void* renderArg) {
+        ZoneScoped;
+
+        auto rendererData = (ViewportRendererData*)viewport->RendererUserData;
+        Renderer::PushRenderTarget(rendererData->ViewSwapchain);
+
+        Renderer_RenderDrawData(viewport, rendererData->ViewPipeline);
+
+        Renderer::PopRenderTarget();
+    }
+
+    void ImGuiHost::Renderer_RenderMainViewport(const Ref<RenderTarget>& target) {
+        ZoneScoped;
+
+        uint64_t id = target->GetID();
+        if (!s_Data->MainViewportPipelines.contains(id)) {
+            s_Data->MainViewportPipelines[id] = Renderer_CreatePipeline(target);
+        }
+
+        auto pipeline = s_Data->MainViewportPipelines.at(id);
+        auto drawData = ImGui::GetDrawData();
+
+        Renderer_RenderDrawData(ImGui::GetMainViewport(), pipeline);
+    }
+
+    struct ImGuiBufferLoadData {
+        Buffer Data;
+        Ref<DeviceBuffer> Destination;
+    };
+
+    static void RT_LoadImGuiBuffer(ImGuiBufferLoadData* data) {
+        ZoneScoped;
+
+        DeviceBuffer::Spec stagingSpec;
+        stagingSpec.Size = data->Data.GetSize();
+        stagingSpec.BufferUsage = DeviceBuffer::Usage::Staging;
+        stagingSpec.QueueOwnership = { QueueType::Transfer };
+
+        auto context = Renderer::GetContext();
+        auto staging = context->CreateBuffer(stagingSpec);
+
+        auto mapped = staging->RT_Map();
+        Buffer::Copy(data->Data, mapped, data->Data.GetSize());
+        staging->RT_Unmap();
+
+        auto queue = context->GetQueue(QueueType::Transfer);
+        auto& cmdlist = queue->RT_Get();
+
+        cmdlist.AddDependency(staging);
+        cmdlist.AddDependency(data->Destination);
+
+        cmdlist.RT_Begin();
+        staging->RT_CopyToBuffer(cmdlist, data->Destination);
+        cmdlist.RT_End();
+
+        queue->RT_Submit(cmdlist);
+
+        delete data;
+    }
+
+    template <typename _Ty>
+    static void LoadImGuiBuffer(Ref<DeviceBuffer>& buffer, const std::vector<_Ty>& data,
+                                DeviceBuffer::Usage usage) {
+        size_t dataSize = data.size() * sizeof(_Ty);
+        if (buffer.IsEmpty() || buffer->GetSpec().Size < dataSize) {
+            DeviceBuffer::Spec spec;
+            spec.Size = dataSize;
+            spec.QueueOwnership = { QueueType::Graphics, QueueType::Transfer };
+            spec.BufferUsage = usage;
+
+            auto context = Renderer::GetContext();
+            buffer = context->CreateBuffer(spec);
+        }
+
+        auto loadData = new ImGuiBufferLoadData;
+        loadData->Destination = buffer;
+        loadData->Data = Buffer::Wrapper(data).Copy(); // we cant guarantee lifetime
+
+        Renderer::Submit([loadData]() { RT_LoadImGuiBuffer(loadData); });
+    }
+
+    void ImGuiHost::Renderer_RenderDrawData(ImGuiViewport* viewport,
+                                            const Ref<Pipeline>& pipeline) {
+        ZoneScoped;
+
+        auto rendererData = (ViewportRendererData*)viewport->RendererUserData;
+        auto renderTarget = pipeline->GetSpec().Target;
+
+        auto drawData = viewport->DrawData;
+        if (rendererData->RenderBuffers.size() < drawData->CmdListsCount) {
+            rendererData->RenderBuffers.resize(drawData->CmdListsCount);
+        }
+
+        ImVec2 clipOffset = drawData->DisplayPos;
+        ImVec2 clipScale = drawData->FramebufferScale;
+
+        glm::vec2 scale;
+        scale.x = 2.f / drawData->DisplaySize.x;
+        scale.y = 2.f / drawData->DisplaySize.y;
+
+        glm::vec2 translation;
+        translation.x = -1.f - drawData->DisplayPos.x * scale.x;
+        translation.y = -1.f - drawData->DisplayPos.y * scale.y;
+
+        auto pushConstantsType = s_Data->ImGuiShader->GetPushConstants()->GetType();
+        ShaderBuffer pushConstants(pushConstantsType);
+
+        pushConstants.Set("Scale", scale);
+        pushConstants.Set("Translation", translation);
+
+        IndexedRenderCall call;
+        call.RenderPipeline = pipeline;
+        call.PushConstants = pushConstants.GetBuffer();
+        call.Flip = false;
+
+        for (int i = 0; i < drawData->CmdListsCount; i++) {
+            auto cmdlist = drawData->CmdLists[i];
+            auto& buffers = rendererData->RenderBuffers[i];
+
+            std::vector<ImGuiVertex> vertices(cmdlist->VtxBuffer.size());
+            std::vector<uint32_t> indices(cmdlist->IdxBuffer.size());
+
+            for (int j = 0; j < cmdlist->VtxBuffer.size(); j++) {
+                const auto& drawVertex = cmdlist->VtxBuffer[j];
+                auto& vertex = vertices[j];
+
+                vertex.Position = glm::vec2(drawVertex.pos.x, drawVertex.pos.y);
+                vertex.UV = glm::vec2(drawVertex.uv.x, drawVertex.uv.y);
+
+                auto color = ImGui::ColorConvertU32ToFloat4(drawVertex.col);
+                vertex.Color = glm::vec4(color.x, color.y, color.y, color.z);
+            }
+
+            for (int j = 0; j < cmdlist->IdxBuffer.size(); j++) {
+                ImDrawIdx drawIndex = cmdlist->IdxBuffer[j];
+                indices[j] = (uint32_t)drawIndex;
+            }
+
+            LoadImGuiBuffer(buffers.VertexBuffer, vertices, DeviceBuffer::Usage::Vertex);
+            LoadImGuiBuffer(buffers.IndexBuffer, indices, DeviceBuffer::Usage::Index);
+
+            call.VertexBuffers = { buffers.VertexBuffer };
+            call.IndexBuffer = buffers.IndexBuffer;
+
+            for (int j = 0; j < cmdlist->CmdBuffer.size(); j++) {
+                const auto& cmd = cmdlist->CmdBuffer[j];
+                const auto& clip = cmd.ClipRect;
+
+                // min
+                float clipX = (clip.x - clipOffset.x) * clipScale.x;
+                float clipY = (clip.y - clipOffset.y) * clipScale.y;
+
+                // max
+                float clipZ = (clip.z - clipOffset.x) * clipScale.x;
+                float clipW = (clip.w - clipOffset.y) * clipScale.y;
+
+                Scissor scissor;
+                scissor.X = (int32_t)clipX;
+                scissor.Y = (int32_t)clipY;
+                scissor.Width = (uint32_t)(clipZ - clipX);
+                scissor.Height = (uint32_t)(clipW - clipY);
+
+                ImTextureID id = cmd.GetTexID();
+                auto allocation = s_Data->TextureAllocations.at(id);
+
+                call.ScissorRect = scissor;
+                call.Resources = { allocation };
+                call.VertexOffset = (int32_t)cmd.VtxOffset;
+                call.IndexOffset = (uint32_t)cmd.IdxOffset;
+                call.IndexCount = (uint32_t)cmd.ElemCount;
+                
+                Renderer::RenderIndexed(call);
+            }
         }
     }
 } // namespace fuujin

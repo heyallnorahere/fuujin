@@ -4,6 +4,7 @@
 
 #include "fuujin/renderer/Texture.h"
 #include "fuujin/renderer/Framebuffer.h"
+#include "fuujin/renderer/Pipeline.h"
 
 namespace fuujin {
     class CommandList;
@@ -32,14 +33,17 @@ namespace fuujin {
         static void Platform_Init();
         static void Renderer_Init();
 
+        static void Platform_Shutdown();
+        static void Renderer_Shutdown();
+
         static void Platform_NewFrame();
         static void Platform_UpdateMouse();
         static void Platform_UpdateCursor();
         static void Platform_UpdateMonitors();
 
-        static void Renderer_RenderWindow(ImGuiViewport* viewport, void* renderArg);
+        static void Renderer_RenderViewport(ImGuiViewport* viewport, void* renderArg);
+        static void Renderer_RenderMainViewport(const Ref<RenderTarget>& target);
 
-        static void Renderer_RenderDrawData(ImDrawData* data, CommandList& cmdlist,
-                                   const Ref<RenderTarget>& mainRenderTarget);
+        static void Renderer_RenderDrawData(ImGuiViewport* viewport, const Ref<Pipeline>& pipeline);
     };
 } // namespace fuujin

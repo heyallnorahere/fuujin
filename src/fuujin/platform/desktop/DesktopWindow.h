@@ -47,10 +47,14 @@ namespace fuujin {
 
         virtual void* CreateVulkanSurface(void* instance) const override;
 
+        void SendResizeEvent(const std::optional<ViewSize>& newSize,
+                             const std::optional<ViewSize>& newFramebufferSize);
+
     private:
         GLFWwindow* m_Window;
         uint64_t m_ID;
 
         Ref<DesktopPlatform> m_Platform;
+        std::optional<ViewSize> m_NewSize, m_NewFramebufferSize;
     };
 } // namespace fuujin

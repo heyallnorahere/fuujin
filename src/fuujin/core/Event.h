@@ -3,6 +3,7 @@
 namespace fuujin {
     enum class EventType {
         ViewResized,
+        ViewMoved,
         ViewFocused,
         CursorEntered,
         CursorPosition,
@@ -10,7 +11,8 @@ namespace fuujin {
         Scroll,
         Key,
         Char,
-        MonitorUpdate
+        MonitorUpdate,
+        ViewClosed
     };
 
     class Event {

@@ -1,3 +1,4 @@
+#include "fuujin/renderer/Framebuffer.h"
 #include "fuujinpch.h"
 #include "fuujin/platform/vulkan/VulkanRenderer.h"
 
@@ -432,6 +433,7 @@ namespace fuujin {
 
         cmdlist.AddDependency(data.IndexBuffer);
         cmdlist.AddDependency(data.RenderPipeline);
+        cmdlist.AddDependency(data.RenderPipeline);
 
         auto indexBuffer = data.IndexBuffer.As<VulkanBuffer>()->Get();
         auto vkPipeline = data.RenderPipeline.As<VulkanPipeline>();
@@ -472,42 +474,48 @@ namespace fuujin {
             }
         }
 
-        vkCmdDrawIndexed(cmdBuffer, data.IndexCount, 1, 0, 0, 0);
+        vkCmdDrawIndexed(cmdBuffer, data.IndexCount, 1, data.IndexOffset, data.VertexOffset, 0);
     }
 
-    void VulkanRenderer::RT_SetViewport(CommandList& cmdlist, Ref<RenderTarget> target) const {
+    void VulkanRenderer::RT_SetViewport(CommandList& cmdlist, Ref<RenderTarget> target,
+                                        const std::optional<bool>& flip,
+                                        const std::optional<Scissor>& scissor) const {
         ZoneScoped;
 
         uint32_t width = target->GetWidth();
         uint32_t height = target->GetHeight();
 
-        VkRect2D scissor{};
-        scissor.extent.width = width;
-        scissor.extent.height = height;
+        VkRect2D vkScissor{};
+        if (scissor.has_value()) {
+            const auto& sc = scissor.value();
+            vkScissor.offset.x = sc.X;
+            vkScissor.offset.y = sc.Y;
+            vkScissor.extent.width = sc.Width;
+            vkScissor.extent.height = sc.Height;
+        } else {
+            vkScissor.extent.width = width;
+            vkScissor.extent.height = height;
+        }
 
         VkViewport viewport{};
         viewport.minDepth = 0.f;
         viewport.maxDepth = 1.f;
 
-        switch (target->GetType()) {
-        case RenderTargetType::Swapchain:
+        bool doFlip = flip.value_or(target->GetType() == RenderTargetType::Swapchain);
+        if (doFlip) {
             viewport.x = 0.f;
             viewport.y = (float)height;
             viewport.width = (float)width;
             viewport.height = -(float)height;
-            break;
-        case RenderTargetType::Framebuffer:
+        } else {
             viewport.x = 0.f;
             viewport.y = 0.f;
             viewport.width = (float)width;
             viewport.height = (float)height;
-            break;
-        default:
-            throw std::runtime_error("Invalid render target type!");
         }
 
         auto cmdBuffer = ((VulkanCommandBuffer&)cmdlist).Get();
-        vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+        vkCmdSetScissor(cmdBuffer, 0, 1, &vkScissor);
         vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
     }
 

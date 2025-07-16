@@ -55,18 +55,36 @@ static int ImGui_ImplGlfw_TranslateUntranslatedKey(int key, int scancode) {
 namespace fuujin {
     static uint64_t s_WindowID = 0;
 
-    static void GLFW_FramebufferSize(GLFWwindow* window, int width, int height) {
+    static void GLFW_WindowSize(GLFWwindow* window, int width, int height) {
         ZoneScoped;
 
         ViewSize size;
-        size.Width = (uint32_t)std::max(0, width);
-        size.Height = (uint32_t)std::max(0, height);
+        size.Width = (uint32_t)width;
+        size.Height = (uint32_t)height;
+
+        auto view = (DesktopWindow*)glfwGetWindowUserPointer(window);
+        view->SendResizeEvent(size, {});
+    }
+
+    static void GLFW_WindowPos(GLFWwindow* window, int x, int y) {
+        ZoneScoped;
 
         auto view = (DesktopWindow*)glfwGetWindowUserPointer(window);
         uint64_t id = view->GetID();
 
-        ViewResizedEvent event(size, id);
+        ViewMovedEvent event((int32_t)x, (int32_t)y, id);
         Application::ProcessEvent(event);
+    }
+
+    static void GLFW_FramebufferSize(GLFWwindow* window, int width, int height) {
+        ZoneScoped;
+
+        ViewSize framebufferSize;
+        framebufferSize.Width = (uint32_t)width;
+        framebufferSize.Height = (uint32_t)height;
+
+        auto view = (DesktopWindow*)glfwGetWindowUserPointer(window);
+        view->SendResizeEvent({}, framebufferSize);
     }
 
     static void GLFW_WindowFocus(GLFWwindow* window, int focused) {
@@ -276,6 +294,16 @@ namespace fuujin {
         Application::ProcessEvent(event);
     }
 
+    static void GLFW_WindowClose(GLFWwindow* window) {
+        ZoneScoped;
+
+        auto view = (DesktopWindow*)glfwGetWindowUserPointer(window);
+        uint64_t id = view->GetID();
+
+        ViewClosedEvent event(id);
+        Application::ProcessEvent(event);
+    }
+
     DesktopWindow::DesktopWindow(const std::string& title, const ViewSize& size,
                                  const ViewCreationOptions& options,
                                  const Ref<DesktopPlatform>& platform) {
@@ -304,6 +332,8 @@ namespace fuujin {
         }
 
         glfwSetWindowUserPointer(m_Window, this);
+        glfwSetWindowSizeCallback(m_Window, GLFW_WindowSize);
+        glfwSetWindowPosCallback(m_Window, GLFW_WindowPos);
         glfwSetFramebufferSizeCallback(m_Window, GLFW_FramebufferSize);
         glfwSetWindowFocusCallback(m_Window, GLFW_WindowFocus);
         glfwSetCursorEnterCallback(m_Window, GLFW_CursorEnter);
@@ -312,6 +342,7 @@ namespace fuujin {
         glfwSetScrollCallback(m_Window, GLFW_Scroll);
         glfwSetKeyCallback(m_Window, GLFW_Key);
         glfwSetCharCallback(m_Window, GLFW_Char);
+        glfwSetWindowCloseCallback(m_Window, GLFW_WindowClose);
     }
 
     DesktopWindow::~DesktopWindow() {
@@ -509,5 +540,26 @@ namespace fuujin {
 #else
         return nullptr;
 #endif
+    }
+
+    void DesktopWindow::SendResizeEvent(const std::optional<ViewSize>& newSize,
+                                        const std::optional<ViewSize>& newFramebufferSize) {
+        ZoneScoped;
+
+        if (newSize.has_value()) {
+            m_NewSize = newSize;
+        }
+
+        if (newFramebufferSize.has_value()) {
+            m_NewFramebufferSize = newFramebufferSize;
+        }
+
+        if (m_NewSize.has_value() && m_NewFramebufferSize.has_value()) {
+            ViewResizedEvent event(m_NewSize.value(), m_NewFramebufferSize.value(), m_ID);
+            Application::ProcessEvent(event);
+
+            m_NewSize.reset();
+            m_NewFramebufferSize.reset();
+        }
     }
 } // namespace fuujin

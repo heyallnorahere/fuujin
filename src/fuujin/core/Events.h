@@ -8,14 +8,32 @@
 namespace fuujin {
     class ViewResizedEvent : public Event {
     public:
-        ViewResizedEvent(const ViewSize& size, uint64_t view)
-            : Event(EventType::ViewResized), m_Size(size), m_View(view) {}
+        ViewResizedEvent(const ViewSize& size, const ViewSize& framebufferSize, uint64_t view)
+            : Event(EventType::ViewResized), m_Size(size), m_FramebufferSize(framebufferSize),
+              m_View(view) {}
 
         const ViewSize& GetSize() const { return m_Size; }
+        const ViewSize& GetFramebufferSize() const { return m_FramebufferSize; }
+
         uint64_t GetView() const { return m_View; }
 
     private:
-        ViewSize m_Size;
+        ViewSize m_Size, m_FramebufferSize;
+        uint64_t m_View;
+    };
+
+    class ViewMovedEvent : public Event {
+    public:
+        ViewMovedEvent(int32_t x, int32_t y, uint64_t view)
+            : Event(EventType::ViewMoved), m_X(x), m_Y(y) {}
+
+        int32_t GetX() const { return m_X; }
+        int32_t GetY() const { return m_Y; }
+
+        uint64_t GetView() const { return m_View; }
+
+    private:
+        int32_t m_X, m_Y;
         uint64_t m_View;
     };
 
@@ -131,5 +149,15 @@ namespace fuujin {
     private:
         MonitorInfo m_Monitor;
         uint32_t m_Index;
+    };
+
+    class ViewClosedEvent : public Event {
+    public:
+        ViewClosedEvent(uint64_t view) : Event(EventType::ViewClosed), m_View(view) {}
+
+        uint64_t GetView() const { return m_View; }
+
+    private:
+        uint64_t m_View;
     };
 } // namespace fuujin

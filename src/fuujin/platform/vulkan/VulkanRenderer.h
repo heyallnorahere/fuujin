@@ -92,7 +92,9 @@ namespace fuujin {
 
         virtual void RT_RenderIndexed(CommandList& cmdlist, const IndexedRenderCall& data) override;
 
-        virtual void RT_SetViewport(CommandList& cmdlist, Ref<RenderTarget> target) const override;
+        virtual void RT_SetViewport(CommandList& cmdlist, Ref<RenderTarget> target,
+                                    const std::optional<bool>& flip,
+                                    const std::optional<Scissor>& scissor) const override;
 
         virtual Ref<RendererAllocation> CreateAllocation(const Ref<Shader>& shader) const override;
 

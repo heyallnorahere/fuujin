@@ -1,3 +1,4 @@
+#include "fuujin/renderer/Framebuffer.h"
 #include "fuujinpch.h"
 #include "fuujin/renderer/Renderer.h"
 
@@ -26,6 +27,7 @@ namespace fuujin {
     struct ActiveRenderTarget {
         Ref<RenderTarget> Target;
         CommandList* CmdList;
+        bool ResetViewport;
     };
 
     struct ObjectAllocation {
@@ -260,13 +262,15 @@ namespace fuujin {
     void Renderer::ProcessEvent(Event& event) {
         ZoneScoped;
 
-        if (event.GetType() == EventType::FramebufferResized) {
+        if (event.GetType() == EventType::ViewResized) {
             auto swapchain = s_Data->Context->GetSwapchain();
             if (swapchain.IsPresent()) {
-                auto& resizeEvent = (FramebufferResizedEvent&)event;
-                swapchain->RequestResize(resizeEvent.GetSize());
+                auto& resizeEvent = (ViewResizedEvent&)event;
+                auto view = swapchain->GetView();
 
-                resizeEvent.SetProcessed();
+                if (resizeEvent.GetView() == view->GetID()) {
+                    swapchain->RequestResize(resizeEvent.GetFramebufferSize());
+                }
             }
         }
     }
@@ -663,7 +667,7 @@ namespace fuujin {
         }
 
         auto callback = [&](ShaderBuffer& buffer) {
-            for (size_t i  = 0; i < boneTransforms.size(); i++) {
+            for (size_t i = 0; i < boneTransforms.size(); i++) {
                 buffer.Set("Transforms[" + std::to_string(i) + "]", boneTransforms[i]);
             }
         };
@@ -837,7 +841,6 @@ namespace fuujin {
         target.CmdList->RT_Begin();
 
         target.Target->RT_BeginRender(*target.CmdList);
-        s_Data->API->RT_SetViewport(*target.CmdList, target.Target);
     }
 
     static void RT_EndRenderTarget() {
@@ -866,6 +869,7 @@ namespace fuujin {
         auto& newTarget = s_Data->Targets.emplace();
         newTarget.Target = target;
         newTarget.CmdList = nullptr;
+        newTarget.ResetViewport = true;
 
         if (target->GetType() == RenderTargetType::Swapchain) {
             RT_BeginRenderTarget();
@@ -905,20 +909,33 @@ namespace fuujin {
         Renderer::Submit([]() { RT_PopRenderTarget(); }, "Pop render target");
     }
 
+    static void RT_RenderIndexed(IndexedRenderCall* data) {
+        ZoneScoped;
+
+        RT_BeginRenderTarget();
+
+        auto& target = s_Data->Targets.top();
+        bool customViewport = data->Flip.has_value() || data->ScissorRect.has_value();
+
+        if (target.ResetViewport || customViewport) {
+            s_Data->API->RT_SetViewport(*target.CmdList, target.Target, data->Flip,
+                                        data->ScissorRect);
+
+            target.ResetViewport = customViewport;
+        }
+
+        s_Data->API->RT_RenderIndexed(*target.CmdList, *data);
+
+        delete data;
+    }
+
     void Renderer::RenderIndexed(const IndexedRenderCall& data) {
         ZoneScoped;
 
         auto copy = new IndexedRenderCall;
         *copy = data;
 
-        Renderer::Submit([copy]() {
-            RT_BeginRenderTarget();
-
-            const auto& target = s_Data->Targets.top();
-            s_Data->API->RT_RenderIndexed(*target.CmdList, *copy);
-
-            delete copy;
-        });
+        Renderer::Submit([copy]() { RT_RenderIndexed(copy); });
     }
 
     void Renderer::RenderWithMaterial(const MaterialRenderCall& data) {

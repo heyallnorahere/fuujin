@@ -24,11 +24,23 @@ namespace fuujin {
         virtual bool Bind(const std::string& name, Ref<Texture> texture, uint32_t index = 0) = 0;
     };
 
+    struct Scissor {
+        int32_t X, Y;
+        uint32_t Width, Height;
+    };
+
     struct IndexedRenderCall {
+        // these two should not be handled by the renderer backend
+        std::optional<bool> Flip;
+        std::optional<Scissor> ScissorRect;
+
         std::vector<Ref<DeviceBuffer>> VertexBuffers;
         Ref<DeviceBuffer> IndexBuffer;
         Ref<Pipeline> RenderPipeline;
-        uint32_t IndexCount;
+        
+        int32_t VertexOffset = 0;
+        uint32_t IndexOffset = 0;
+        uint32_t IndexCount = 0;
 
         Buffer PushConstants;
         std::vector<Ref<RendererAllocation>> Resources;
@@ -69,7 +81,9 @@ namespace fuujin {
 
         virtual void RT_RenderIndexed(CommandList& cmdlist, const IndexedRenderCall& data) = 0;
 
-        virtual void RT_SetViewport(CommandList& cmdlist, Ref<RenderTarget> target) const = 0;
+        virtual void RT_SetViewport(CommandList& cmdlist, Ref<RenderTarget> target,
+                                    const std::optional<bool>& flip,
+                                    const std::optional<Scissor>& scissor) const = 0;
 
         virtual Ref<RendererAllocation> CreateAllocation(const Ref<Shader>& shader) const = 0;
     };

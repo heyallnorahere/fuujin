@@ -1,6 +1,8 @@
 #pragma once
 #include "fuujin/core/Ref.h"
 
+#include "fuujin/renderer/CommandQueue.h"
+
 namespace fuujin {
     enum class RenderTargetType {
         Swapchain,

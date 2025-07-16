@@ -87,17 +87,6 @@ namespace fuujin {
         }
     }
 
-    void VulkanSwapchain::ProcessEvent(Event& event) {
-        if (event.GetType() == EventType::ViewResized) {
-            auto& resizeEvent = (ViewResizedEvent&)event;
-            if (resizeEvent.GetView() != m_View->GetID()) {
-                return;
-            }
-
-            m_NewViewSize = resizeEvent.GetSize();
-        }
-    }
-
     void VulkanSwapchain::RequestResize(const ViewSize& viewSize) {
         ZoneScoped;
         m_NewViewSize = viewSize;

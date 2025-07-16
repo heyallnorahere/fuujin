@@ -11,6 +11,19 @@
 namespace fuujin {
     bool s_GLFWInitialized = false;
 
+    static float GetMonitorContentScale(GLFWmonitor* monitor) {
+        ZoneScoped;
+
+#if GLFW_HAS_PER_MONITOR_DPI &&                                                                    \
+    !(defined(__APPLE__) || defined(__EMSCRIPTEN__) || defined(__ANDROID__))
+        float x, y;
+        glfwGetMonitorContentScale(monitor, &x, &y);
+        return x;
+#else
+        return 1.f;
+#endif
+    }
+
     static bool ProcessMonitor(GLFWmonitor* monitor, MonitorInfo& info) {
         ZoneScoped;
 
@@ -141,20 +154,7 @@ namespace fuujin {
                                           const ViewCreationOptions& options) const {
         ZoneScoped;
 
-        return Ref<DesktopWindow>::Create(title, size, options, this);
-    }
-
-    static float GetMonitorContentScale(GLFWmonitor* monitor) {
-        ZoneScoped;
-
-#if GLFW_HAS_PER_MONITOR_DPI &&                                                                    \
-    !(defined(__APPLE__) || defined(__EMSCRIPTEN__) || defined(__ANDROID__))
-        float x, y;
-        glfwGetMonitorContentScale(monitor, &x, &y);
-        return x;
-#else
-        return 1.f;
-#endif
+        return Ref<DesktopWindow>::Create(title, size, options, (DesktopPlatform*)this);
     }
 
     bool DesktopPlatform::QueryMonitors(std::vector<MonitorInfo>& monitors) const {

@@ -19,8 +19,6 @@ namespace fuujin {
         std::optional<uint32_t> RT_FindDeviceQueue();
         void RT_Initialize(VmaAllocator allocator);
 
-        void ProcessEvent(Event& event);
-
         virtual Ref<View> GetView() const override { return m_View; }
         virtual Ref<GraphicsDevice> GetDevice() const override { return m_Device; }
         Ref<VulkanDevice> GetVulkanDevice() const { return m_Device; }
