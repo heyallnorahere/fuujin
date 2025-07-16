@@ -312,6 +312,7 @@ namespace fuujin {
 
         m_ID = s_WindowID++;
         m_Platform = platform;
+        m_Platform->RegisterWindow(m_ID, this);
 
         glfwWindowHint(GLFW_VISIBLE, options.Visible);
         glfwWindowHint(GLFW_FOCUSED, options.Focused);
@@ -348,6 +349,7 @@ namespace fuujin {
     DesktopWindow::~DesktopWindow() {
         ZoneScoped;
 
+        m_Platform->FreeWindow(m_ID);
         glfwDestroyWindow(m_Window);
     }
 

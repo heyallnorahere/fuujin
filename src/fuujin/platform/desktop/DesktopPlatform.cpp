@@ -7,6 +7,7 @@
 #include "fuujin/core/Events.h"
 
 #include <GLFW/glfw3.h>
+#include <stdexcept>
 
 namespace fuujin {
     bool s_GLFWInitialized = false;
@@ -151,10 +152,20 @@ namespace fuujin {
     }
 
     Ref<View> DesktopPlatform::CreateView(const std::string& title, const ViewSize& size,
-                                          const ViewCreationOptions& options) const {
+                                          const ViewCreationOptions& options) {
         ZoneScoped;
 
         return Ref<DesktopWindow>::Create(title, size, options, (DesktopPlatform*)this);
+    }
+
+    Ref<View> DesktopPlatform::GetViewByID(uint64_t id) const {
+        ZoneScoped;
+
+        if (!m_Windows.contains(id)) {
+            return nullptr;
+        }
+
+        return m_Windows.at(id);
     }
 
     bool DesktopPlatform::QueryMonitors(std::vector<MonitorInfo>& monitors) const {
@@ -188,5 +199,20 @@ namespace fuujin {
         }
 
         return m_Cursors.at(Cursor::Arrow);
+    }
+
+    void DesktopPlatform::RegisterWindow(uint64_t id, DesktopWindow* window) {
+        ZoneScoped;
+
+        if (m_Windows.contains(id)) {
+            throw std::runtime_error("Window of id " + std::to_string(id) + " already exists!");
+        }
+
+        m_Windows[id] = window;
+    }
+
+    void DesktopPlatform::FreeWindow(uint64_t id) {
+        ZoneScoped;
+        m_Windows.erase(id);
     }
 } // namespace fuujin

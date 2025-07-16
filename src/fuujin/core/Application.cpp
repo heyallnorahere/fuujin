@@ -130,6 +130,8 @@ namespace fuujin {
             return "Char";
         case EventType::MonitorUpdate:
             return "MonitorUpdate";
+        case EventType::ViewClosed:
+            return "ViewClosed";
         default:
             return "Unknown";
         }
@@ -144,7 +146,7 @@ namespace fuujin {
         }
 
         auto name = GetEventName(event.GetType());
-        FUUJIN_DEBUG("Processing event of type {}", name.c_str());
+        FUUJIN_TRACE("Processing event of type {}", name.c_str());
 
         s_App->OnEvent(event);
     }

@@ -1,4 +1,5 @@
 #include "fuujinpch.h"
+#include "fuujin/imgui/ImGuiHost.h"
 
 #include "fuujin/renderer/DeviceBuffer.h"
 #include "fuujin/renderer/GraphicsDevice.h"
@@ -9,9 +10,6 @@
 #include "fuujin/core/Application.h"
 #include "fuujin/core/Events.h"
 #include "fuujin/core/Platform.h"
-#include "imgui.h"
-
-#include "fuujin/imgui/ImGuiHost.h"
 
 // combination of imgui_impl_glfw and imgui_impl_vulkan using the abstracted interfaces
 
@@ -161,21 +159,6 @@ namespace fuujin {
         return true;
     }
 
-    static bool ImGui_OnClose(const ViewClosedEvent& event) {
-        ZoneScoped;
-
-        auto viewport = ImGui::FindViewportByPlatformHandle((void*)event.GetView());
-        auto mainViewport = ImGui::GetMainViewport();
-
-        // window is not ours or is main viewport (dont want to fuck with application)
-        if (viewport == nullptr || viewport->ID == mainViewport->ID) {
-            return false;
-        }
-
-        viewport->PlatformRequestClose = true;
-        return true;
-    }
-
     static bool ImGui_OnFocus(const ViewFocusedEvent& event) {
         ZoneScoped;
 
@@ -200,14 +183,325 @@ namespace fuujin {
     static bool ImGui_OnCursorEnter(const CursorEnteredEvent& event) {
         ZoneScoped;
 
-        auto& io = ImGui::GetIO();
-        if (event.DidEnter()) {
-            s_Data->MouseView = event.GetView();
-            io.AddMousePosEvent(s_Data->LastValidMousePos.x, s_Data->LastValidMousePos.y);
-        } else {
+        uint64_t id = event.GetView();
+        auto viewport = ImGui::FindViewportByPlatformHandle((void*)id);
+
+        if (viewport == nullptr) {
+            return false; // we dont care
         }
 
-        return false;
+        auto& io = ImGui::GetIO();
+        if (event.DidEnter()) {
+            s_Data->MouseView = id;
+
+            io.AddMousePosEvent(s_Data->LastValidMousePos.x, s_Data->LastValidMousePos.y);
+        } else {
+            s_Data->LastValidMousePos = io.MousePos;
+            s_Data->MouseView.reset();
+
+            static constexpr float max = std::numeric_limits<float>::max();
+            io.AddMousePosEvent(-max, -max);
+        }
+
+        auto mainViewport = ImGui::GetMainViewport();
+        return viewport->ID != mainViewport->ID;
+    }
+
+    static bool ImGui_CursorPos(const CursorPositionEvent& event) {
+        ZoneScoped;
+
+        uint64_t id = event.GetView();
+        auto mainViewport = ImGui::GetMainViewport();
+        auto viewport = ImGui::FindViewportByPlatformHandle((void*)id);
+        bool isMainViewport = viewport != nullptr && viewport->ID == mainViewport->ID;
+
+        float x = (float)event.GetX();
+        float y = (float)event.GetY();
+
+        auto& io = ImGui::GetIO();
+        bool viewportsEnabled = (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0;
+
+        if (viewportsEnabled || !isMainViewport) {
+            auto view = Platform::GetViewByID(event.GetView());
+
+            uint32_t windowX, windowY;
+            view->GetPosition(windowX, windowY);
+
+            x += windowX;
+            y += windowY;
+
+            // if viewports arent enabled, all mouse inputs are relative to the main viewport
+            if (!viewportsEnabled && !isMainViewport) {
+                auto platformData = (ViewportPlatformData*)mainViewport->PlatformUserData;
+                auto mainView = platformData->ViewportView;
+
+                mainView->GetPosition(windowX, windowY);
+
+                x -= windowY;
+                y -= windowY;
+            }
+        }
+
+        io.AddMousePosEvent(x, y);
+        s_Data->LastValidMousePos = ImVec2(x, y);
+
+        // if imgui tells us to, we want to block main engine from receiving mouse inputs
+        return io.WantCaptureMouse;
+    }
+
+    static bool ImGui_OnMouseButton(const MouseButtonEvent& event) {
+        ZoneScoped;
+
+        bool pressed = event.IsPressed();
+        uint32_t button = event.GetButton();
+
+        if (s_Data->IgnoreMouseUp && !pressed) {
+            return false; // explicit ignore
+        }
+
+        uint64_t id = event.GetView();
+        auto viewport = ImGui::FindViewportByPlatformHandle((void*)id);
+
+        if (viewport == nullptr) {
+            return false; // we dont care
+        }
+
+        auto& io = ImGui::GetIO();
+        if (button < ImGuiMouseButton_COUNT) {
+            io.AddMouseButtonEvent((int)button, pressed);
+        }
+
+        return io.WantCaptureMouse;
+    }
+
+    static bool ImGui_OnScroll(const ScrollEvent& event) {
+        ZoneScoped;
+
+        uint64_t id = event.GetView();
+        auto viewport = ImGui::FindViewportByPlatformHandle((void*)id);
+
+        if (viewport == nullptr) {
+            return false; // we dont care
+        }
+
+        float xOffset = (float)event.GetXOffset();
+        float yOffset = (float)event.GetYOffset();
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.AddMouseWheelEvent(xOffset, yOffset);
+
+        return io.WantCaptureMouse;
+    }
+
+    static ImGuiKey ToImGuiKey(Key key) {
+#define TRANSLATE(fuujin, imgui)                                                                   \
+    case Key::fuujin:                                                                              \
+        return ImGuiKey_##imgui
+
+        switch (key) {
+            TRANSLATE(Tab, Tab);
+            TRANSLATE(Left, LeftArrow);
+            TRANSLATE(Right, RightArrow);
+            TRANSLATE(Up, UpArrow);
+            TRANSLATE(Down, DownArrow);
+            TRANSLATE(PageUp, PageUp);
+            TRANSLATE(PageDown, PageDown);
+            TRANSLATE(Home, Home);
+            TRANSLATE(End, End);
+            TRANSLATE(Insert, Insert);
+            TRANSLATE(Delete, Delete);
+            TRANSLATE(Backspace, Backspace);
+            TRANSLATE(Space, Space);
+            TRANSLATE(Enter, Enter);
+            TRANSLATE(Escape, Escape);
+            TRANSLATE(Apostrophe, Apostrophe);
+            TRANSLATE(Comma, Comma);
+            TRANSLATE(Minus, Minus);
+            TRANSLATE(Period, Period);
+            TRANSLATE(Slash, Slash);
+            TRANSLATE(Semicolon, Semicolon);
+            TRANSLATE(Equal, Equal);
+            TRANSLATE(LeftBracket, LeftBracket);
+            TRANSLATE(Backslash, Backslash);
+            TRANSLATE(Oem102, Oem102);
+            TRANSLATE(RightBracket, RightBracket);
+            TRANSLATE(GraveAccent, GraveAccent);
+            TRANSLATE(CapsLock, CapsLock);
+            TRANSLATE(ScrollLock, ScrollLock);
+            TRANSLATE(NumLock, NumLock);
+            TRANSLATE(PrintScreen, PrintScreen);
+            TRANSLATE(Pause, Pause);
+            TRANSLATE(Keypad0, Keypad0);
+            TRANSLATE(Keypad1, Keypad1);
+            TRANSLATE(Keypad2, Keypad2);
+            TRANSLATE(Keypad3, Keypad3);
+            TRANSLATE(Keypad4, Keypad4);
+            TRANSLATE(Keypad5, Keypad5);
+            TRANSLATE(Keypad6, Keypad6);
+            TRANSLATE(Keypad7, Keypad7);
+            TRANSLATE(Keypad8, Keypad8);
+            TRANSLATE(Keypad9, Keypad9);
+            TRANSLATE(KeypadDecimal, KeypadDecimal);
+            TRANSLATE(KeypadDivide, KeypadDivide);
+            TRANSLATE(KeypadMultiply, KeypadMultiply);
+            TRANSLATE(KeypadSubtract, KeypadSubtract);
+            TRANSLATE(KeypadAdd, KeypadAdd);
+            TRANSLATE(KeypadEnter, KeypadEnter);
+            TRANSLATE(KeypadEqual, KeypadEqual);
+            TRANSLATE(LeftShift, LeftShift);
+            TRANSLATE(LeftControl, LeftCtrl);
+            TRANSLATE(LeftAlt, LeftAlt);
+            TRANSLATE(LeftSuper, LeftSuper);
+            TRANSLATE(RightShift, RightShift);
+            TRANSLATE(RightControl, RightCtrl);
+            TRANSLATE(RightAlt, RightAlt);
+            TRANSLATE(RightSuper, RightSuper);
+            TRANSLATE(Menu, Menu);
+            TRANSLATE(_0, 0);
+            TRANSLATE(_1, 1);
+            TRANSLATE(_2, 2);
+            TRANSLATE(_3, 3);
+            TRANSLATE(_4, 4);
+            TRANSLATE(_5, 5);
+            TRANSLATE(_6, 6);
+            TRANSLATE(_7, 7);
+            TRANSLATE(_8, 8);
+            TRANSLATE(_9, 9);
+            TRANSLATE(A, A);
+            TRANSLATE(B, B);
+            TRANSLATE(C, C);
+            TRANSLATE(D, D);
+            TRANSLATE(E, E);
+            TRANSLATE(F, F);
+            TRANSLATE(G, G);
+            TRANSLATE(H, H);
+            TRANSLATE(I, I);
+            TRANSLATE(J, J);
+            TRANSLATE(K, K);
+            TRANSLATE(L, L);
+            TRANSLATE(M, M);
+            TRANSLATE(N, N);
+            TRANSLATE(O, O);
+            TRANSLATE(P, P);
+            TRANSLATE(Q, Q);
+            TRANSLATE(R, R);
+            TRANSLATE(S, S);
+            TRANSLATE(T, T);
+            TRANSLATE(U, U);
+            TRANSLATE(V, V);
+            TRANSLATE(W, W);
+            TRANSLATE(X, X);
+            TRANSLATE(Y, Y);
+            TRANSLATE(Z, Z);
+            TRANSLATE(F1, F1);
+            TRANSLATE(F2, F2);
+            TRANSLATE(F3, F3);
+            TRANSLATE(F4, F4);
+            TRANSLATE(F5, F5);
+            TRANSLATE(F6, F6);
+            TRANSLATE(F7, F7);
+            TRANSLATE(F8, F8);
+            TRANSLATE(F9, F9);
+            TRANSLATE(F10, F10);
+            TRANSLATE(F11, F11);
+            TRANSLATE(F12, F12);
+            TRANSLATE(F13, F13);
+            TRANSLATE(F14, F14);
+            TRANSLATE(F15, F15);
+            TRANSLATE(F16, F16);
+            TRANSLATE(F17, F17);
+            TRANSLATE(F18, F18);
+            TRANSLATE(F19, F19);
+            TRANSLATE(F20, F20);
+            TRANSLATE(F21, F21);
+            TRANSLATE(F22, F22);
+            TRANSLATE(F23, F23);
+            TRANSLATE(F24, F24);
+        default:
+            return ImGuiKey_None;
+        }
+    }
+
+    static ImGuiKey ToKeyModifier(Key key) {
+        ZoneScoped;
+
+        switch (key) {
+        case Key::LeftShift:
+        case Key::RightShift:
+            return ImGuiMod_Shift;
+        case Key::LeftAlt:
+        case Key::RightAlt:
+            return ImGuiMod_Alt;
+        case Key::LeftControl:
+        case Key::RightControl:
+            return ImGuiMod_Ctrl;
+        case Key::LeftSuper:
+        case Key::RightSuper:
+            return ImGuiMod_Super;
+        default:
+            return ImGuiKey_None;
+        }
+    }
+
+    static bool ImGui_OnKey(const KeyEvent& event) {
+        ZoneScoped;
+
+        uint64_t id = event.GetView();
+        auto viewport = ImGui::FindViewportByPlatformHandle((void*)id);
+
+        if (viewport == nullptr) {
+            return false; // we dont care
+        }
+
+        auto key = event.GetKey();
+        bool pressed = event.IsPressed();
+
+        auto converted = ToImGuiKey(key);
+        if (converted == ImGuiKey_None) {
+            // we dont have a mapping
+            return false;
+        }
+
+        auto& io = ImGui::GetIO();
+        io.AddKeyEvent(converted, pressed);
+
+        auto mod = ToKeyModifier(key);
+        if (mod != ImGuiKey_None) {
+            io.AddKeyEvent(mod, pressed);
+        }
+
+        return io.WantCaptureKeyboard;
+    }
+
+    static bool ImGui_OnChar(const CharEvent& event) {
+        ZoneScoped;
+
+        uint64_t id = event.GetView();
+        auto viewport = ImGui::FindViewportByPlatformHandle((void*)id);
+
+        if (viewport == nullptr) {
+            return false; // we dont care
+        }
+
+        auto& io = ImGui::GetIO();
+        io.AddInputCharacter(event.GetCharacter());
+
+        return io.WantCaptureKeyboard;
+    }
+    
+    static bool ImGui_OnClose(const ViewClosedEvent& event) {
+        ZoneScoped;
+
+        uint64_t id = event.GetView();
+        auto viewport = ImGui::FindViewportByPlatformHandle((void*)id);
+        auto mainViewport = ImGui::GetMainViewport();
+
+        if (viewport == nullptr || viewport->ID == mainViewport->ID) {
+            return false; // don't care
+        }
+
+        viewport->PlatformRequestClose = true;
+        return true;
     }
 
     void ImGuiHost::ProcessEvent(Event& event) {
@@ -221,9 +515,14 @@ namespace fuujin {
         EventDispatcher dispatcher(event);
         dispatcher.Dispatch<ViewResizedEvent>(EventType::ViewResized, ImGui_OnResize);
         dispatcher.Dispatch<ViewMovedEvent>(EventType::ViewMoved, ImGui_OnMove);
-        dispatcher.Dispatch<ViewClosedEvent>(EventType::ViewClosed, ImGui_OnClose);
         dispatcher.Dispatch<ViewFocusedEvent>(EventType::ViewFocused, ImGui_OnFocus);
         dispatcher.Dispatch<CursorEnteredEvent>(EventType::CursorEntered, ImGui_OnCursorEnter);
+        dispatcher.Dispatch<CursorPositionEvent>(EventType::CursorPosition, ImGui_CursorPos);
+        dispatcher.Dispatch<MouseButtonEvent>(EventType::MouseButton, ImGui_OnMouseButton);
+        dispatcher.Dispatch<ScrollEvent>(EventType::Scroll, ImGui_OnScroll);
+        dispatcher.Dispatch<KeyEvent>(EventType::Key, ImGui_OnKey);
+        dispatcher.Dispatch<CharEvent>(EventType::Char, ImGui_OnChar);
+        dispatcher.Dispatch<ViewClosedEvent>(EventType::ViewClosed, ImGui_OnClose);
     }
 
     void ImGuiHost::NewFrame() {
@@ -928,7 +1227,7 @@ namespace fuujin {
                 call.VertexOffset = (int32_t)cmd.VtxOffset;
                 call.IndexOffset = (uint32_t)cmd.IdxOffset;
                 call.IndexCount = (uint32_t)cmd.ElemCount;
-                
+
                 Renderer::RenderIndexed(call);
             }
         }

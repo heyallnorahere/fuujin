@@ -50,6 +50,11 @@ namespace fuujin {
         return s_API->CreateView(title, size, options);
     }
 
+    Ref<View> Platform::GetViewByID(uint64_t id) {
+        ZoneScoped;
+        return s_API->GetViewByID(id);
+    }
+
     bool Platform::QueryMonitors(std::vector<MonitorInfo>& monitors) {
         ZoneScoped;
         return s_API->QueryMonitors(monitors);

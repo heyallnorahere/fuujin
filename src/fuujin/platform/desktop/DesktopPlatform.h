@@ -26,6 +26,7 @@
 #endif
 
 namespace fuujin {
+    class DesktopWindow;
     class DesktopPlatform : public PlatformAPI {
     public:
         DesktopPlatform();
@@ -40,13 +41,19 @@ namespace fuujin {
         virtual std::string GetName() const override;
 
         virtual Ref<View> CreateView(const std::string& title, const ViewSize& size,
-                                     const ViewCreationOptions& options) const override;
+                                     const ViewCreationOptions& options) override;
+
+        virtual Ref<View> GetViewByID(uint64_t id) const override;
 
         virtual bool QueryMonitors(std::vector<MonitorInfo>& monitors) const override;
 
         GLFWcursor* GetCursor(Cursor name) const;
 
+        void RegisterWindow(uint64_t id, DesktopWindow* window);
+        void FreeWindow(uint64_t id);
+
     private:
         std::map<Cursor, GLFWcursor*> m_Cursors;
+        std::map<uint64_t, DesktopWindow*> m_Windows;
     };
 } // namespace fuujin

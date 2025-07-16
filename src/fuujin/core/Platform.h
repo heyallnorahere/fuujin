@@ -19,7 +19,9 @@ namespace fuujin {
         virtual std::string GetName() const = 0;
 
         virtual Ref<View> CreateView(const std::string& title, const ViewSize& size,
-                                     const ViewCreationOptions& options) const = 0;
+                                     const ViewCreationOptions& options) = 0;
+
+        virtual Ref<View> GetViewByID(uint64_t id) const = 0;
         
         virtual bool QueryMonitors(std::vector<MonitorInfo>& monitors) const = 0;
     };
@@ -40,6 +42,8 @@ namespace fuujin {
 
         static Ref<View> CreateView(const std::string& title, const ViewSize& size,
                                     const ViewCreationOptions& options = ViewCreationOptions());
+
+        static Ref<View> GetViewByID(uint64_t id);
 
         static bool QueryMonitors(std::vector<MonitorInfo>& monitors);
     };
