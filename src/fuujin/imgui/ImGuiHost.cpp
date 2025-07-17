@@ -85,11 +85,13 @@ namespace fuujin {
 
         ImGui::StyleColorsDark();
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-        s_Data->TextureID = 1;
-
-        s_Data->IgnoreMouseUp = false;
-        s_Data->IgnoreMouseUpOnFocusLoss = false;
+        ImGuiStyle& style = ImGui::GetStyle();
+        if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0) {
+            style.WindowRounding = 0.f;
+            style.Colors[ImGuiCol_WindowBg].w = 1.f;
+        }
 
         Platform_Init();
         Renderer_Init();
@@ -767,10 +769,8 @@ namespace fuujin {
         s_Data->PlatformName = Platform::GetName();
         io.BackendPlatformName = s_Data->PlatformName.c_str();
 
-        s_Data->RendererContext = Renderer::GetContext();
-        if (s_Data->RendererContext.IsEmpty()) {
-            FUUJIN_ERROR("Renderer not initialized!");
-        }
+        s_Data->IgnoreMouseUp = false;
+        s_Data->IgnoreMouseUpOnFocusLoss = false;
 
         if (Platform::HasCursors()) {
             io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
@@ -859,8 +859,15 @@ namespace fuujin {
     void ImGuiHost::Renderer_Init() {
         ZoneScoped;
 
+        s_Data->RendererContext = Renderer::GetContext();
+        if (s_Data->RendererContext.IsEmpty()) {
+            FUUJIN_ERROR("Renderer not initialized!");
+        }
+
         auto& library = Renderer::GetShaderLibrary();
         s_Data->ImGuiShader = library.Get("fuujin/shaders/ImGui.glsl");
+
+        s_Data->TextureID = 1;
 
         // we do not own a swapchain for the main viewport
         // also, we manage pipelines on a per-render target basis
