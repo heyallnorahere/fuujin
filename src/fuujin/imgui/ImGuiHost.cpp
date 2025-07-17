@@ -95,6 +95,8 @@ namespace fuujin {
 
         Platform_Init();
         Renderer_Init();
+
+        io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/roboto/Roboto-Medium.ttf");
     }
 
     void ImGuiHost::Shutdown() {
@@ -823,7 +825,7 @@ namespace fuujin {
         spec.DisableCulling = true;
         spec.Depth.Test = false;
         spec.Depth.Write = false;
-        spec.Blending = ColorBlending::None;
+        spec.Blending = ColorBlending::Default;
 
         return s_Data->RendererContext->CreatePipeline(spec);
     }

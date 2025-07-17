@@ -207,6 +207,9 @@ namespace fuujin {
         colorBlend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         colorBlend.logicOpEnable = VK_FALSE;
 
+        colorBlend.attachmentCount = 1;
+        colorBlend.pAttachments = &colorBlendAttachment;
+
         if (m_Spec.Blending != ColorBlending::None) {
             colorBlendAttachment.blendEnable = VK_TRUE;
             colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
@@ -233,9 +236,6 @@ namespace fuujin {
 
             colorBlendAttachment.srcAlphaBlendFactor = colorBlendAttachment.srcColorBlendFactor;
             colorBlendAttachment.dstAlphaBlendFactor = colorBlendAttachment.dstColorBlendFactor;
-
-            colorBlend.attachmentCount = 1;
-            colorBlend.pAttachments = &colorBlendAttachment;
         }
 
         VkGraphicsPipelineCreateInfo createInfo{};
