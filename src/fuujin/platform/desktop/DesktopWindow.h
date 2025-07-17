@@ -47,6 +47,9 @@ namespace fuujin {
 
         virtual void* CreateVulkanSurface(void* instance) const override;
 
+        virtual std::string GetClipboardString() override;
+        virtual void SetClipboardString(const std::string& value) override;
+
         void SendResizeEvent(const std::optional<ViewSize>& newSize,
                              const std::optional<ViewSize>& newFramebufferSize);
 

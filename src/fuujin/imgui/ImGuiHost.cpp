@@ -41,6 +41,7 @@ namespace fuujin {
         std::string PlatformName, RendererName;
 
         Ref<View> MainView;
+        std::string Clipboard;
         std::optional<std::chrono::high_resolution_clock::time_point> Time;
 
         bool IgnoreMouseUp;
@@ -762,6 +763,20 @@ namespace fuujin {
         platformData->ViewportView->SetAlpha(alpha);
     }
 
+    static const char* Platform_GetClipboardText(ImGuiContext* context) {
+        ZoneScoped;
+
+        s_Data->Clipboard = s_Data->MainView->GetClipboardString();
+        return s_Data->Clipboard.c_str();
+    }
+
+    static void Platform_SetClipboardText(ImGuiContext* context, const char* text) {
+        ZoneScoped;
+
+        s_Data->Clipboard = text;
+        s_Data->MainView->SetClipboardString(s_Data->Clipboard);
+    }
+
     void ImGuiHost::Platform_Init() {
         ZoneScoped;
 
@@ -803,6 +818,9 @@ namespace fuujin {
         platformIO.Platform_GetWindowFocus = Platform_GetWindowFocus;
         platformIO.Platform_GetWindowMinimized = Platform_GetWindowMinimized;
         platformIO.Platform_SetWindowAlpha = Platform_SetWindowAlpha;
+
+        platformIO.Platform_GetClipboardTextFn = Platform_GetClipboardText;
+        platformIO.Platform_SetClipboardTextFn = Platform_SetClipboardText;
 
         auto& app = Application::Get();
         s_Data->MainView = app.GetView();

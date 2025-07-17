@@ -544,6 +544,19 @@ namespace fuujin {
 #endif
     }
 
+    std::string DesktopWindow::GetClipboardString() {
+        ZoneScoped;
+
+        auto string = glfwGetClipboardString(m_Window);
+        return string != nullptr ? string : "";
+    }
+
+    void DesktopWindow::SetClipboardString(const std::string& value) {
+        ZoneScoped;
+
+        glfwSetClipboardString(m_Window, value.c_str());
+    }
+
     void DesktopWindow::SendResizeEvent(const std::optional<ViewSize>& newSize,
                                         const std::optional<ViewSize>& newFramebufferSize) {
         ZoneScoped;
