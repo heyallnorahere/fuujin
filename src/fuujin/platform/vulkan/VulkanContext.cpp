@@ -221,6 +221,10 @@ namespace fuujin {
         {
             auto& deviceSpec = device->GetSpec();
             deviceSpec.RequestedQueues = { QueueType::Graphics, QueueType::Transfer };
+            deviceSpec.Extensions.insert({
+                "VK_KHR_maintenance5",
+                "VK_KHR_dynamic_rendering",
+            });
         }
 
         if (view.IsPresent()) {

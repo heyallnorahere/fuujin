@@ -174,8 +174,19 @@ namespace fuujin {
         Renderer::NewFrame();
         Renderer::PushRenderTarget(Renderer::GetContext()->GetSwapchain());
 
+        // pre-update (e.g. update ImGui)
+        for (const auto& layer : m_Data->LayerStack) {
+            layer->PreUpdate(delta);
+        }
+
+        // update (render and create ImGui windows)
         for (const auto& layer : m_Data->LayerStack) {
             layer->Update(delta);
+        }
+
+        // post update (render ImGui)
+        for (const auto& layer : m_Data->LayerStack) {
+            layer->PostUpdate(delta);
         }
 
         Renderer::PopRenderTarget();

@@ -13,5 +13,8 @@ namespace fuujin {
 
         virtual void ProcessEvent(Event& event) {}
         virtual void Update(Duration delta) {}
+
+        virtual void PreUpdate(Duration delta) {}
+        virtual void PostUpdate(Duration delta) {}
     };
 } // namespace fuujin

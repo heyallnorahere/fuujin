@@ -37,7 +37,7 @@ namespace fuujin {
         std::vector<Ref<DeviceBuffer>> VertexBuffers;
         Ref<DeviceBuffer> IndexBuffer;
         Ref<Pipeline> RenderPipeline;
-        
+
         int32_t VertexOffset = 0;
         uint32_t IndexOffset = 0;
         uint32_t IndexCount = 0;
@@ -142,6 +142,9 @@ namespace fuujin {
         static Ref<Texture> CreateTexture(uint32_t width, uint32_t height, Texture::Format format,
                                           const Buffer& data, const Ref<Sampler>& sampler = {},
                                           const fs::path& path = fs::path());
+
+        static void UpdateTexture(const Ref<Texture>& texture, const Buffer& data,
+                                  const Scissor& scissor);
 
         // submits a job to the render thread
         // all jobs will be executed in order submitted

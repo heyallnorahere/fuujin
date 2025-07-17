@@ -4,12 +4,15 @@
 #include "fuujin/asset/ModelImporter.h"
 
 #include "fuujin/renderer/Renderer.h"
-#include "fuujin/renderer/ShaderLibrary.h"
 #include "fuujin/renderer/Model.h"
 
 #include "fuujin/animation/Animation.h"
 
+#include "fuujin/imgui/ImGuiLayer.h"
+
 #include <numbers>
+
+#include <imgui.h>
 
 using namespace std::chrono_literals;
 using namespace fuujin;
@@ -123,6 +126,11 @@ public:
         }
 
         Renderer::RenderModel(m_Call);
+
+        static bool open = true;
+        if (open) {
+            ImGui::ShowDemoWindow(&open);
+        }
     }
 
 private:
@@ -165,7 +173,11 @@ private:
     Ref<Animation> m_Animation;
 };
 
-void InitializeApplication() { Application::PushLayer<TestLayer>(); }
+void InitializeApplication() {
+    Application::PushLayer<TestLayer>();
+    Application::PushLayer<ImGuiLayer>();
+}
+
 int RunApplication() { return Application::Run(InitializeApplication); }
 
 int main(int argc, const char** argv) {

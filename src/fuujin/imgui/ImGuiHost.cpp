@@ -58,6 +58,7 @@ namespace fuujin {
         ImTextureID TextureID;
         std::map<ImTextureID, Ref<RendererAllocation>> TextureAllocations;
         std::map<uint64_t, ImTextureID> TextureMap;
+        std::unordered_map<int, Ref<Texture>> ImGuiTextures;
     };
 
     static std::unique_ptr<ImGuiHostData> s_Data;
@@ -85,7 +86,7 @@ namespace fuujin {
         ImGui::StyleColorsDark();
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-        s_Data->TextureID = 0;
+        s_Data->TextureID = 1;
 
         s_Data->IgnoreMouseUp = false;
         s_Data->IgnoreMouseUpOnFocusLoss = false;
@@ -102,7 +103,8 @@ namespace fuujin {
 
         ImGui::SetCurrentContext(s_Data->Context);
 
-        // todo: platform/renderer shutdown
+        Renderer_Shutdown();
+        Platform_Shutdown();
 
         ImGui::SetCurrentContext(nullptr);
         ImGui::DestroyContext(s_Data->Context);
@@ -488,7 +490,7 @@ namespace fuujin {
 
         return io.WantCaptureKeyboard;
     }
-    
+
     static bool ImGui_OnClose(const ViewClosedEvent& event) {
         ZoneScoped;
 
@@ -533,7 +535,7 @@ namespace fuujin {
         ImGui::NewFrame();
     }
 
-    void ImGuiHost::Render(CommandList& cmdlist, const Ref<RenderTarget>& mainRenderTarget) {
+    void ImGuiHost::Render(const Ref<RenderTarget>& mainRenderTarget) {
         ZoneScoped;
         ImGui::SetCurrentContext(s_Data->Context);
 
@@ -815,12 +817,13 @@ namespace fuujin {
         ZoneScoped;
 
         Pipeline::Spec spec;
+        spec.PipelineType = Pipeline::Type::Graphics;
         spec.Target = target;
         spec.PipelineShader = s_Data->ImGuiShader;
         spec.DisableCulling = true;
         spec.Depth.Test = false;
         spec.Depth.Write = false;
-        spec.Blending = ColorBlending::Default;
+        spec.Blending = ColorBlending::None;
 
         return s_Data->RendererContext->CreatePipeline(spec);
     }
@@ -857,7 +860,7 @@ namespace fuujin {
         ZoneScoped;
 
         auto& library = Renderer::GetShaderLibrary();
-        s_Data->ImGuiShader = library.Get("ImGui");
+        s_Data->ImGuiShader = library.Get("fuujin/shaders/ImGui.glsl");
 
         // we do not own a swapchain for the main viewport
         // also, we manage pipelines on a per-render target basis
@@ -1138,6 +1141,83 @@ namespace fuujin {
         Renderer::Submit([loadData]() { RT_LoadImGuiBuffer(loadData); });
     }
 
+    static void Renderer_UpdateTexture(ImTextureData* tex) {
+        ZoneScoped;
+
+        if (tex->Status == ImTextureStatus_OK) {
+            return;
+        }
+
+        Scissor scissor;
+        if (tex->Status == ImTextureStatus_WantCreate) {
+            scissor.X = 0;
+            scissor.Y = 0;
+            scissor.Width = (uint32_t)tex->Width;
+            scissor.Height = (uint32_t)tex->Height;
+        } else {
+            scissor.X = (int32_t)tex->UpdateRect.x;
+            scissor.Y = (int32_t)tex->UpdateRect.y;
+            scissor.Width = (uint32_t)tex->UpdateRect.w;
+            scissor.Height = (uint32_t)tex->UpdateRect.h;
+        }
+
+        Buffer data;
+        if (tex->Pixels != nullptr) {
+            size_t pitch = (size_t)scissor.Width * tex->BytesPerPixel;
+            size_t dataSize = pitch * scissor.Height;
+            data = Buffer(dataSize);
+
+            for (uint32_t y = 0; y < scissor.Height; y++) {
+                void* row = tex->GetPixelsAt((int)scissor.X, (int)(scissor.Y + y));
+                auto rowData = Buffer::Wrapper(row, pitch);
+
+                Buffer::Copy(rowData, data.Slice(pitch * y));
+            }
+        }
+
+        switch (tex->Status) {
+        case ImTextureStatus_WantCreate: {
+            Texture::Format format;
+            switch (tex->Format) {
+            case ImTextureFormat_RGBA32:
+                format = Texture::Format::RGBA8;
+                break;
+            case ImTextureFormat_Alpha8:
+                format = Texture::Format::A8;
+                break;
+            default:
+                throw std::runtime_error("Invalid texture format!");
+            }
+
+            auto texture =
+                Renderer::CreateTexture((uint32_t)tex->Width, (uint32_t)tex->Height, format, data);
+
+            tex->SetTexID(ImGuiHost::GetTextureID(texture));
+            tex->SetStatus(ImTextureStatus_OK);
+
+            s_Data->ImGuiTextures[tex->UniqueID] = texture;
+        } break;
+        case ImTextureStatus_WantUpdates: {
+            auto texture = s_Data->ImGuiTextures.at(tex->UniqueID);
+            Renderer::UpdateTexture(texture, data, scissor);
+
+            tex->SetStatus(ImTextureStatus_OK);
+        } break;
+        case ImTextureStatus_WantDestroy: {
+            auto texture = s_Data->ImGuiTextures.at(tex->UniqueID);
+            ImGuiHost::FreeTexture(texture->GetID());
+
+            s_Data->ImGuiTextures.erase(tex->UniqueID);
+
+            tex->SetTexID(ImTextureID_Invalid);
+            tex->SetStatus(ImTextureStatus_Destroyed);
+        } break;
+        default:
+            // nothing
+            break;
+        }
+    }
+
     void ImGuiHost::Renderer_RenderDrawData(ImGuiViewport* viewport,
                                             const Ref<Pipeline>& pipeline) {
         ZoneScoped;
@@ -1146,6 +1226,18 @@ namespace fuujin {
         auto renderTarget = pipeline->GetSpec().Target;
 
         auto drawData = viewport->DrawData;
+        if (drawData->TotalVtxCount == 0 || drawData->TotalIdxCount == 0) {
+            return;
+        }
+
+        if (drawData->Textures != nullptr) {
+            const auto& textures = *drawData->Textures;
+            for (int i = 0; i < textures.size(); i++) {
+                auto tex = textures[i];
+                Renderer_UpdateTexture(tex);
+            }
+        }
+
         if (rendererData->RenderBuffers.size() < drawData->CmdListsCount) {
             rendererData->RenderBuffers.resize(drawData->CmdListsCount);
         }
@@ -1187,7 +1279,7 @@ namespace fuujin {
                 vertex.UV = glm::vec2(drawVertex.uv.x, drawVertex.uv.y);
 
                 auto color = ImGui::ColorConvertU32ToFloat4(drawVertex.col);
-                vertex.Color = glm::vec4(color.x, color.y, color.y, color.z);
+                vertex.Color = glm::vec4(color.x, color.y, color.z, color.w);
             }
 
             for (int j = 0; j < cmdlist->IdxBuffer.size(); j++) {

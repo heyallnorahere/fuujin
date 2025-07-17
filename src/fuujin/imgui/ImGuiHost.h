@@ -20,7 +20,7 @@ namespace fuujin {
         static void ProcessEvent(Event& event);
 
         static void NewFrame();
-        static void Render(CommandList& cmdlist, const Ref<RenderTarget>& mainRenderTarget);
+        static void Render(const Ref<RenderTarget>& mainRenderTarget);
 
         static ImGuiContext* GetContext();
 

@@ -18,6 +18,7 @@ namespace fuujin {
         static Buffer CreateCopy(const void* data, size_t size);
 
         static void Copy(const Buffer& src, Buffer& dst, size_t size = 0);
+        static void Copy(const Buffer& src, Buffer&& dst, size_t size = 0);
 
         Buffer();
         Buffer(size_t size);

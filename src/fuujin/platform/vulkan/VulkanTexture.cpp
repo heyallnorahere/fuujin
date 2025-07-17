@@ -40,6 +40,8 @@ namespace fuujin {
             return VK_FORMAT_R8G8B8A8_UNORM;
         case Format::RGB8:
             return VK_FORMAT_R8G8B8_UNORM;
+        case Format::A8:
+            return VK_FORMAT_A8_UNORM_KHR;
         default:
             throw std::runtime_error("Invalid texture format!");
         }

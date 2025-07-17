@@ -44,6 +44,17 @@ namespace fuujin {
         std::memcpy(dst.m_Buffer, src.m_Buffer, copySize);
     }
 
+    void Buffer::Copy(const Buffer& src, Buffer&& dst, size_t size) {
+        ZoneScoped;
+
+        size_t copySize = size > 0 ? size : std::min(src.m_Size, dst.m_Size);
+        if (copySize > src.m_Size || copySize > dst.m_Size) {
+            throw std::runtime_error("Attempted to copy out of bounds!");
+        }
+
+        std::memcpy(dst.m_Buffer, src.m_Buffer, copySize);
+    }
+
     Buffer::Buffer() {
         m_Owned = false;
         Release();

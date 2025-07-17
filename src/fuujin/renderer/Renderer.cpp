@@ -678,35 +678,44 @@ namespace fuujin {
         return allocation.Allocation;
     }
 
-    struct TextureCreationInfo {
+    struct TextureLoadInfo {
         Ref<DeviceBuffer> StagingBuffer;
         Ref<Texture> Instance;
         Buffer ImageData;
+        Scissor CopyRect;
     };
 
-    static void RT_LoadTextureData(TextureCreationInfo* createInfo) {
+    static void RT_LoadTextureData(TextureLoadInfo* loadInfo) {
         ZoneScoped;
 
-        auto mapped = createInfo->StagingBuffer->RT_Map();
-        Buffer::Copy(createInfo->ImageData, mapped);
-        createInfo->StagingBuffer->RT_Unmap();
+        auto mapped = loadInfo->StagingBuffer->RT_Map();
+        Buffer::Copy(loadInfo->ImageData, mapped);
+        loadInfo->StagingBuffer->RT_Unmap();
 
         auto transferQueue = s_Data->Context->GetQueue(QueueType::Transfer);
         auto& cmdlist = transferQueue->RT_Get();
         cmdlist.RT_Begin();
 
-        auto image = createInfo->Instance->GetImage();
-        createInfo->StagingBuffer->RT_CopyToImage(cmdlist, image);
-        cmdlist.AddDependency(createInfo->StagingBuffer);
+        ImageCopy copy{};
+        copy.X = loadInfo->CopyRect.X;
+        copy.Y = loadInfo->CopyRect.Y;
+        copy.Width = loadInfo->CopyRect.Width;
+        copy.Height = loadInfo->CopyRect.Height;
+        copy.Depth = 1;
+        copy.ArraySize = 1;
 
-        if (createInfo->Instance->GetSpec().MipLevels > 1) {
+        auto image = loadInfo->Instance->GetImage();
+        loadInfo->StagingBuffer->RT_CopyToImage(cmdlist, image, 0, copy);
+        cmdlist.AddDependency(loadInfo->StagingBuffer);
+
+        if (loadInfo->Instance->GetSpec().MipLevels > 1) {
             // todo: generate mipmaps
         }
 
         cmdlist.RT_End();
         transferQueue->RT_Submit(cmdlist);
 
-        delete createInfo;
+        delete loadInfo;
     }
 
     Ref<Texture> Renderer::CreateTexture(uint32_t width, uint32_t height, Texture::Format format,
@@ -725,11 +734,6 @@ namespace fuujin {
             return nullptr;
         }
 
-        DeviceBuffer::Spec stagingSpec;
-        stagingSpec.QueueOwnership = { QueueType::Transfer };
-        stagingSpec.Size = data.GetSize();
-        stagingSpec.BufferUsage = DeviceBuffer::Usage::Staging;
-
         Texture::Spec textureSpec;
         textureSpec.TextureSampler = sampler.IsPresent() ? sampler : s_Data->DefaultSampler;
         textureSpec.Path = path;
@@ -741,16 +745,34 @@ namespace fuujin {
         textureSpec.ImageFormat = format;
         textureSpec.TextureType = Texture::Type::_2D;
 
-        auto stagingBuffer = s_Data->Context->CreateBuffer(stagingSpec);
+        Scissor scissor;
+        scissor.X = 0;
+        scissor.Y = 0;
+        scissor.Width = width;
+        scissor.Height = height;
+
         auto texture = s_Data->Context->CreateTexture(textureSpec);
+        UpdateTexture(texture, data, scissor);
 
-        auto createInfo = new TextureCreationInfo;
-        createInfo->StagingBuffer = stagingBuffer;
-        createInfo->Instance = texture;
-        createInfo->ImageData = data;
-
-        Renderer::Submit([=]() { RT_LoadTextureData(createInfo); });
         return texture;
+    }
+
+    void Renderer::UpdateTexture(const Ref<Texture>& texture, const Buffer& data,
+                                 const Scissor& scissor) {
+        ZoneScoped;
+
+        DeviceBuffer::Spec stagingSpec;
+        stagingSpec.QueueOwnership = { QueueType::Transfer };
+        stagingSpec.Size = data.GetSize();
+        stagingSpec.BufferUsage = DeviceBuffer::Usage::Staging;
+
+        auto loadInfo = new TextureLoadInfo;
+        loadInfo->StagingBuffer = s_Data->Context->CreateBuffer(stagingSpec);
+        loadInfo->Instance = texture;
+        loadInfo->ImageData = data;
+        loadInfo->CopyRect = scissor;
+
+        Renderer::Submit([=]() { RT_LoadTextureData(loadInfo); });
     }
 
     void Renderer::Submit(const std::function<void()>& callback,
