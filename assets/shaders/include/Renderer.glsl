@@ -1,5 +1,5 @@
 layout(push_constant) uniform PushConstants {
     mat4 Model;
-    int CameraIndex;
+    int FirstCamera, CameraCount;
     int BoneOffset;
 } u_PushConstants;

@@ -27,29 +27,29 @@ namespace fuujin {
         void SetType(Type type) {
             ZoneScoped;
 
+            m_OutOfDate |= type != m_Type;
             m_Type = type;
-            m_OutOfDate = true;
         }
 
         void SetViewSize(const ViewSize& size) {
             ZoneScoped;
 
+            m_OutOfDate |= size.Width != m_ViewSize.Width || size.Height != m_ViewSize.Height;
             m_ViewSize = size;
-            m_OutOfDate = true;
         }
 
         void SetVerticalFOV(float fov) {
             ZoneScoped;
 
-            m_VerticalFOV = fov;
             m_OutOfDate |= m_Type == Type::Perspective;
+            m_VerticalFOV = fov;
         }
 
         void SetZRange(const glm::vec2& range) {
             ZoneScoped;
 
-            m_ZRange = range;
             m_OutOfDate = true;
+            m_ZRange = range;
         }
 
         glm::mat4 CalculateViewProjection(const glm::vec3& translation, const glm::quat& rotation);

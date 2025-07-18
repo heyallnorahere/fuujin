@@ -53,7 +53,7 @@ namespace fuujin {
         uint32_t IndexCount;
 
         glm::mat4 ModelMatrix;
-        size_t CameraIndex;
+        size_t FirstCamera, CameraCount;
         std::unordered_map<std::string, Buffer> PushConstants;
 
         uint64_t SceneID;
@@ -64,12 +64,11 @@ namespace fuujin {
     struct ModelRenderCall {
         Ref<Model> RenderedModel;
         Ref<Animator> ModelAnimator;
-        Ref<RenderTarget> Target;
 
         uint64_t SceneID;
 
         glm::mat4 ModelMatrix;
-        size_t CameraIndex;
+        size_t FirstCamera, CameraCount;
     };
 
     class RendererAPI {
@@ -92,7 +91,7 @@ namespace fuujin {
     public:
         struct Camera {
             glm::vec3 Position;
-            glm::mat4 Projection, View;
+            glm::mat4 ViewProjection;
         };
 
         struct SceneData {
@@ -167,6 +166,8 @@ namespace fuujin {
 
         // flushes and pops a render target from the stack
         static void PopRenderTarget();
+
+        static Ref<RenderTarget> GetActiveRenderTarget();
 
         // renders a mesh with the provided resources
         // note that a render target needs to have been pushed

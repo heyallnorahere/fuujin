@@ -5,10 +5,12 @@
 
 #include "fuujin/renderer/Renderer.h"
 #include "fuujin/renderer/Model.h"
-
-#include "fuujin/animation/Animation.h"
+#include "fuujin/renderer/SceneRenderer.h"
 
 #include "fuujin/imgui/ImGuiLayer.h"
+
+#include "fuujin/scene/Components.h"
+#include "fuujin/scene/Scene.h"
 
 #include <numbers>
 
@@ -16,26 +18,6 @@
 
 using namespace std::chrono_literals;
 using namespace fuujin;
-
-template <typename _Ty>
-inline glm::mat<4, 4, _Ty, glm::defaultp> Perspective(_Ty fovy, _Ty aspect, _Ty zNear, _Ty zFar) {
-    if (Renderer::GetAPI().LeftHanded) {
-        return glm::perspectiveLH(fovy, aspect, zNear, zFar);
-    } else {
-        return glm::perspectiveRH(fovy, aspect, zNear, zFar);
-    }
-}
-
-template <typename _Ty, glm::qualifier Q>
-inline glm::mat<4, 4, _Ty, Q> LookAt(const glm::vec<3, _Ty, Q>& eye,
-                                     const glm::vec<3, _Ty, Q>& center,
-                                     const glm::vec<3, _Ty, Q>& up) {
-    if (Renderer::GetAPI().LeftHanded) {
-        return glm::lookAtLH(eye, center, up);
-    } else {
-        return glm::lookAtRH(eye, center, up);
-    }
-}
 
 static const float s_PI = std::numbers::pi_v<float>;
 class TestLayer : public Layer {
@@ -57,18 +39,6 @@ public:
             m_ResourcesLoaded = true;
         }
 
-        auto context = Renderer::GetContext();
-        auto swapchain = context->GetSwapchain();
-        uint32_t width = swapchain->GetWidth();
-        uint32_t height = swapchain->GetHeight();
-
-        float aspect;
-        if (height > 0) {
-            aspect = (float)width / height;
-        } else {
-            aspect = 1.f;
-        }
-
         float yaw = m_Time * s_PI;
         float sinYaw = glm::sin(yaw);
         float cosYaw = glm::cos(yaw);
@@ -77,57 +47,17 @@ public:
         float sinPitch = glm::sin(pitch);
         float cosPitch = glm::cos(pitch);
 
-        glm::vec3 radial = glm::vec3(cosYaw * cosPitch, sinPitch, sinYaw * cosPitch);
-        glm::vec3 position = radial * 5.f;
+        glm::vec3 radial = glm::vec3(sinYaw * cosPitch, -sinPitch, cosYaw * cosPitch);
+        static constexpr float cameraDistance = 5.f;
 
-        glm::vec3 up = glm::vec3(0.f, 1.f, 0.f);
-        glm::vec3 direction = -radial;
+        auto pitchMat = glm::rotate(glm::mat4(1.f), pitch, glm::vec3(1.f, 0.f, 0.f));
+        auto yawMat = glm::rotate(glm::mat4(1.f), yaw, glm::vec3(0.f, 1.f, 0.f));
 
-        Renderer::SceneData scene;
-        Renderer::Camera& camera = scene.Cameras.emplace_back();
-        camera.Position = position;
-        camera.Projection = Perspective(s_PI / 4.f, aspect, 0.1f, 10.f);
-        camera.View = LookAt(position, position + direction, up);
-        Renderer::UpdateScene(0, scene);
+        auto& transform = m_Camera.GetComponent<TransformComponent>().Data;
+        transform.SetTranslation(radial * cameraDistance);
+        transform.SetRotation(glm::toQuat(yawMat * pitchMat));
 
-        m_Call.ModelMatrix = glm::mat4(1.f);
-        m_Call.SceneID = 0;
-        m_Call.CameraIndex = 0;
-        m_Call.Target = swapchain;
-
-        static constexpr float hueMax = 360.f;
-        float hue = m_Time * hueMax * 0.75f;
-        while (hue > hueMax) {
-            hue -= hueMax;
-        }
-
-        if (m_Animation.IsPresent()) {
-            m_AnimationTime += delta;
-
-            auto duration = m_Animation->GetDuration();
-            while (m_AnimationTime > duration) {
-                m_AnimationTime -= duration;
-            }
-
-            const auto& channels = m_Animation->GetChannels();
-            for (const auto& channel : channels) {
-                auto nodeIndex = m_Call.RenderedModel->FindNode(channel.Name);
-                if (!nodeIndex.has_value()) {
-                    continue;
-                }
-
-                size_t node = nodeIndex.value();
-
-                auto transform = Animation::InterpolateChannel(m_AnimationTime, channel);
-                if (transform.has_value()) {
-                    m_Call.ModelAnimator->SetLocalTransform(node, transform.value());
-                } else {
-                    m_Call.ModelAnimator->ResetLocalTransform(node);
-                }
-            }
-        }
-
-        Renderer::RenderModel(m_Call);
+        m_Renderer->RenderScene();
 
         static bool demoOpen = true;
         if (demoOpen) {
@@ -158,10 +88,18 @@ private:
             }
         }
 
-        m_Call.RenderedModel = AssetManager::GetAsset<Model>(modelPath);
-        m_Call.ModelAnimator = Ref<Animator>::Create(m_Call.RenderedModel);
+        auto model = AssetManager::GetAsset<Model>(modelPath);
 
-        m_Animation = AssetManager::GetAsset<Animation>("fuujin/models/animations/Wave.anim");
+        m_Scene = Ref<Scene>::Create();
+        m_Renderer = Ref<SceneRenderer>::Create(m_Scene);
+
+        auto cube = m_Scene->Create("Cube");
+        cube.AddComponent<TransformComponent>();
+        cube.AddComponent<ModelComponent>().RenderedModel = model;
+
+        m_Camera = m_Scene->Create("Camera");
+        m_Camera.AddComponent<TransformComponent>();
+        m_Camera.AddComponent<CameraComponent>().MainCamera = true;
 
         Renderer::Wait();
     }
@@ -170,9 +108,9 @@ private:
     Duration m_AnimationTime;
 
     bool m_ResourcesLoaded;
-    ModelRenderCall m_Call;
-
-    Ref<Animation> m_Animation;
+    Ref<Scene> m_Scene;
+    Ref<SceneRenderer> m_Renderer;
+    Scene::Entity m_Camera;
 };
 
 void InitializeApplication() {

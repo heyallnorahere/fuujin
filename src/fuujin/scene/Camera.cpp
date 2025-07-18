@@ -84,7 +84,12 @@ namespace fuujin {
             m_OutOfDate = false;
         }
 
-        static const glm::vec3 defaultDirection = glm::vec3(1.f, 0.f, 0.f);
+        // right hand rule
+        // index finger to the right (+x)
+        // middle finger up (+y)
+        // thumb will be towards you (+z)
+        // into the screen is -1
+        static const glm::vec3 defaultDirection = glm::vec3(0.f, 0.f, -1.f);
         static const glm::vec3 defaultUp = glm::vec3(0.f, 1.f, 0.f);
 
         glm::mat3 rotationMatrix = glm::toMat3(rotation);
@@ -103,7 +108,13 @@ namespace fuujin {
 
         switch (m_Type) {
         case Type::Perspective: {
-            float aspectRatio = (float)m_ViewSize.Width / m_ViewSize.Height;
+            float aspectRatio;
+            if (m_ViewSize.Height > 0) {
+                aspectRatio = (float)m_ViewSize.Width / m_ViewSize.Height;
+            } else {
+                aspectRatio = 1.f;
+            }
+
             m_Projection = Perspective(api, m_VerticalFOV, aspectRatio, zNear, zFar);
         } break;
         case Type::Orthographic: {

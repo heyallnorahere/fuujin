@@ -71,7 +71,8 @@ namespace fuujin {
         uint32_t FrameCount;
         std::optional<uint32_t> CurrentFrame;
 
-        std::stack<ActiveRenderTarget> Targets;
+        // use shared_ptr to keep structure in same place in memory
+        std::stack<std::shared_ptr<ActiveRenderTarget>> Targets;
     };
 
     static std::unique_ptr<RendererData> s_Data;
@@ -434,8 +435,7 @@ namespace fuujin {
                 std::string basePath = "Cameras[" + std::to_string(i) + "]";
 
                 buffer.Set(basePath + ".Position", camera.Position);
-                buffer.Set(basePath + ".Projection", camera.Projection);
-                buffer.Set(basePath + ".View", camera.View);
+                buffer.Set(basePath + ".ViewProjection", camera.ViewProjection);
             }
         };
 
@@ -824,7 +824,61 @@ namespace fuujin {
         return std::this_thread::get_id() == s_Data->RenderThread.ID;
     }
 
-    static void RT_NewFrame() {
+    static void RT_NewFrame(uint32_t frame) {
+        ZoneScoped;
+
+        s_Data->API->RT_NewFrame(frame);
+    }
+
+    static void RT_BeginRenderTarget(std::shared_ptr<ActiveRenderTarget> target) {
+        ZoneScoped;
+
+        if (target->CmdList != nullptr) {
+            return; // nothing to do
+        }
+
+        target->CmdList = &s_Data->GraphicsQueue->RT_Get();
+        target->CmdList->RT_Begin();
+
+        target->Target->RT_BeginRender(*target->CmdList);
+    }
+
+    static void RT_EndRenderTarget(std::shared_ptr<ActiveRenderTarget> target) {
+        ZoneScoped;
+
+        target->Target->RT_EndRender(*target->CmdList);
+
+        if (target->Target->GetType() == RenderTargetType::Swapchain) {
+            s_Data->API->RT_PrePresent(*target->CmdList);
+        }
+
+        auto fence = target->Target->GetCurrentFence();
+        fence->Reset();
+
+        target->CmdList->RT_End();
+        s_Data->GraphicsQueue->RT_Submit(*target->CmdList, fence);
+
+        target->CmdList = nullptr;
+        target->Target->RT_EndFrame();
+    }
+
+    static void RT_PushRenderTarget(std::shared_ptr<ActiveRenderTarget> target) {
+        ZoneScoped;
+
+        if (target->Target->GetType() == RenderTargetType::Swapchain) {
+            RT_BeginRenderTarget(target);
+        }
+    }
+
+    static void RT_PopRenderTarget(std::shared_ptr<ActiveRenderTarget> target) {
+        ZoneScoped;
+
+        if (target->CmdList != nullptr) {
+            RT_EndRenderTarget(target);
+        }
+    }
+
+    void Renderer::NewFrame() {
         ZoneScoped;
 
         if (!s_Data->Targets.empty()) {
@@ -844,110 +898,59 @@ namespace fuujin {
             s_Data->CurrentFrame = frame = 0;
         }
 
-        s_Data->API->RT_NewFrame(frame);
-    }
-
-    static void RT_BeginRenderTarget() {
-        ZoneScoped;
-
-        if (s_Data->Targets.empty()) {
-            throw std::runtime_error("No render targets on the stack!");
-        }
-
-        auto& target = s_Data->Targets.top();
-        if (target.CmdList != nullptr) {
-            return; // nothing to do
-        }
-
-        target.CmdList = &s_Data->GraphicsQueue->RT_Get();
-        target.CmdList->RT_Begin();
-
-        target.Target->RT_BeginRender(*target.CmdList);
-    }
-
-    static void RT_EndRenderTarget() {
-        ZoneScoped;
-
-        auto& target = s_Data->Targets.top();
-        target.Target->RT_EndRender(*target.CmdList);
-
-        if (target.Target->GetType() == RenderTargetType::Swapchain) {
-            s_Data->API->RT_PrePresent(*target.CmdList);
-        }
-
-        auto fence = target.Target->GetCurrentFence();
-        fence->Reset();
-
-        target.CmdList->RT_End();
-        s_Data->GraphicsQueue->RT_Submit(*target.CmdList, fence);
-
-        target.CmdList = nullptr;
-        target.Target->RT_EndFrame();
-    }
-
-    static void RT_PushRenderTarget(Ref<RenderTarget> target) {
-        ZoneScoped;
-
-        auto& newTarget = s_Data->Targets.emplace();
-        newTarget.Target = target;
-        newTarget.CmdList = nullptr;
-        newTarget.ResetViewport = true;
-
-        if (target->GetType() == RenderTargetType::Swapchain) {
-            RT_BeginRenderTarget();
-        }
-    }
-
-    static void RT_PopRenderTarget() {
-        ZoneScoped;
-        if (s_Data->Targets.empty()) {
-            return;
-        }
-
-        auto& target = s_Data->Targets.top();
-        if (target.CmdList != nullptr) {
-            RT_EndRenderTarget();
-        }
-
-        s_Data->Targets.pop();
-    }
-
-    void Renderer::NewFrame() {
-        ZoneScoped;
-
-        Renderer::Submit([]() { RT_NewFrame(); }, "New frame");
+        Renderer::Submit([frame]() { RT_NewFrame(frame); }, "New frame");
     }
 
     void Renderer::PushRenderTarget(Ref<RenderTarget> target) {
         ZoneScoped;
 
-        auto targetRaw = target.Raw();
-        Renderer::Submit([=]() { RT_PushRenderTarget(targetRaw); }, "Push render target");
+        auto newTarget = std::make_shared<ActiveRenderTarget>();
+        newTarget->Target = target;
+        newTarget->CmdList = nullptr;
+        newTarget->ResetViewport = true;
+
+        s_Data->Targets.push(newTarget);
+        Renderer::Submit([=]() { RT_PushRenderTarget(newTarget); }, "Push render target");
     }
 
     void Renderer::PopRenderTarget() {
         ZoneScoped;
 
-        Renderer::Submit([]() { RT_PopRenderTarget(); }, "Pop render target");
-    }
-
-    static void RT_RenderIndexed(IndexedRenderCall* data) {
-        ZoneScoped;
-
-        RT_BeginRenderTarget();
-
-        auto& target = s_Data->Targets.top();
-        bool customViewport = data->Flip.has_value() || data->ScissorRect.has_value();
-
-        if (target.ResetViewport || customViewport) {
-            s_Data->API->RT_SetViewport(*target.CmdList, target.Target, data->Flip,
-                                        data->ScissorRect);
-
-            target.ResetViewport = customViewport;
+        if (s_Data->Targets.empty()) {
+            return;
         }
 
-        s_Data->API->RT_RenderIndexed(*target.CmdList, *data);
+        const auto& target = s_Data->Targets.top();
+        Renderer::Submit([target]() { RT_PopRenderTarget(target); }, "Pop render target");
 
+        s_Data->Targets.pop();
+    }
+
+    Ref<RenderTarget> Renderer::GetActiveRenderTarget() {
+        ZoneScoped;
+
+        if (s_Data->Targets.empty()) {
+            return nullptr;
+        }
+
+        return s_Data->Targets.top()->Target;
+    }
+
+    static void RT_RenderIndexed(IndexedRenderCall* data,
+                                 std::shared_ptr<ActiveRenderTarget> target) {
+        ZoneScoped;
+
+        RT_BeginRenderTarget(target);
+
+        bool customViewport = data->Flip.has_value() || data->ScissorRect.has_value();
+        if (target->ResetViewport || customViewport) {
+            s_Data->API->RT_SetViewport(*target->CmdList, target->Target, data->Flip,
+                                        data->ScissorRect);
+
+            target->ResetViewport = customViewport;
+        }
+
+        s_Data->API->RT_RenderIndexed(*target->CmdList, *data);
         delete data;
     }
 
@@ -957,16 +960,12 @@ namespace fuujin {
         auto copy = new IndexedRenderCall;
         *copy = data;
 
-        Renderer::Submit([copy]() { RT_RenderIndexed(copy); });
+        const auto& renderTarget = s_Data->Targets.top();
+        Renderer::Submit([copy, renderTarget]() { RT_RenderIndexed(copy, renderTarget); });
     }
 
     void Renderer::RenderWithMaterial(const MaterialRenderCall& data) {
         ZoneScoped;
-
-        glm::mat4 model = data.ModelMatrix;
-        if (s_Data->DeviceProperties.API.TransposeMatrices) {
-            model = glm::transpose(model);
-        }
 
         IndexedRenderCall innerCall;
         innerCall.VertexBuffers = data.VertexBuffers;
@@ -988,7 +987,8 @@ namespace fuujin {
 
             // see assets/shaders/include/Renderer.glsl
             buffer.Set("Model", data.ModelMatrix);
-            buffer.Set("CameraIndex", (int32_t)data.CameraIndex);
+            buffer.Set("FirstCamera", (int32_t)data.FirstCamera);
+            buffer.Set("CameraCount", (int32_t)data.CameraCount);
 
             for (const auto& [name, fieldData] : data.PushConstants) {
                 buffer.SetData(name, fieldData);
@@ -996,7 +996,7 @@ namespace fuujin {
 
             innerCall.PushConstants = buffer.GetBuffer().Copy();
         } else {
-            FUUJIN_WARN("No push constants on shader! Cannot pass model matrix or camera index!");
+            FUUJIN_WARN("No push constants on shader! Cannot pass model matrix or camera indices!");
         }
 
         RenderIndexed(innerCall);
@@ -1005,14 +1005,20 @@ namespace fuujin {
     void Renderer::RenderModel(const ModelRenderCall& data) {
         ZoneScoped;
 
-        data.ModelAnimator->Update();
-        const auto& nodeTransforms = data.ModelAnimator->GetNodeTransforms();
-        const auto& boneOffsets = data.ModelAnimator->GetArmatureOffsets();
+        if (s_Data->Targets.empty()) {
+            FUUJIN_ERROR("Attempted to render to an empty target stack!");
+            return;
+        }
+
+        if (data.ModelAnimator.IsPresent()) {
+            data.ModelAnimator->Update();
+        }
 
         const auto& nodes = data.RenderedModel->GetNodes();
         const auto& meshes = data.RenderedModel->GetMeshes();
         const auto& meshNodes = data.RenderedModel->GetMeshNodes();
 
+        auto target = GetActiveRenderTarget();
         for (size_t index : meshNodes) {
             const auto& node = nodes[index];
 
@@ -1027,7 +1033,21 @@ namespace fuujin {
                 const auto& shader = s_Data->Library->Get(shaderIdentifier);
 
                 const auto& material = mesh->GetMaterial();
-                auto pipeline = GetMaterialPipeline(shader, data.Target, material->GetPipeline());
+                auto pipeline = GetMaterialPipeline(shader, target, material->GetPipeline());
+
+                glm::mat4 nodeTransform(1.f);
+                if (data.ModelAnimator.IsPresent()) {
+                    const auto& nodeTransforms = data.ModelAnimator->GetNodeTransforms();
+                    nodeTransform = nodeTransforms[index];
+                } else {
+                    std::optional<size_t> currentNode = index;
+                    while (currentNode.has_value()) {
+                        const auto& currentNodeData = nodes[currentNode.value()];
+
+                        nodeTransform *= currentNodeData.Transform;
+                        currentNode = currentNodeData.Parent;
+                    }
+                }
 
                 MaterialRenderCall innerCall;
                 innerCall.VertexBuffers = buffers.VertexBuffers;
@@ -1036,18 +1056,26 @@ namespace fuujin {
                 innerCall.RenderMaterial = material;
                 innerCall.RenderPipeline = pipeline;
                 innerCall.SceneID = data.SceneID;
-                innerCall.ModelMatrix = data.ModelMatrix * nodeTransforms[index];
-                innerCall.CameraIndex = data.CameraIndex;
+                innerCall.ModelMatrix = data.ModelMatrix * nodeTransform;
+                innerCall.FirstCamera = data.FirstCamera;
+                innerCall.CameraCount = data.CameraCount;
 
                 if (isSkinned) {
-                    auto allocation = GetAnimatorAllocation(data.ModelAnimator, shader);
-                    innerCall.AdditionalResources.push_back(allocation);
+                    if (data.ModelAnimator.IsEmpty()) {
+                        FUUJIN_WARN("No animator present on a skinned model! This will cause "
+                                    "rendering errors");
+                    } else {
+                        const auto& boneOffsets = data.ModelAnimator->GetArmatureOffsets();
 
-                    size_t armature = mesh->GetArmatureIndex();
-                    int32_t boneOffset = (int32_t)boneOffsets[armature];
+                        auto allocation = GetAnimatorAllocation(data.ModelAnimator, shader);
+                        innerCall.AdditionalResources.push_back(allocation);
 
-                    innerCall.PushConstants["BoneOffset"] =
-                        Buffer::CreateCopy(&boneOffset, sizeof(int32_t));
+                        size_t armature = mesh->GetArmatureIndex();
+                        int32_t boneOffset = (int32_t)boneOffsets[armature];
+
+                        innerCall.PushConstants["BoneOffset"] =
+                            Buffer::CreateCopy(&boneOffset, sizeof(int32_t));
+                    }
                 }
 
                 RenderWithMaterial(innerCall);

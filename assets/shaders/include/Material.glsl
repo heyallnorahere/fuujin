@@ -1,5 +1,10 @@
 #include "Renderer.glsl"
 #include "Scene.glsl"
+#include "InterStage.glsl"
+
+layout(location = 0) in GeometryOut in_Data;
+
+layout(location = 0) out vec4 out_Color;
 
 layout(set = 1, binding = 0, std140) uniform Material {
     vec4 Albedo, Specular, Ambient;
@@ -30,16 +35,16 @@ vec4 MaterialAmbient(vec2 uv) {
     return u_Material.Ambient * tex;
 }
 
-vec4 MaterialOutputColor(vec3 unorm, vec3 utan, vec3 ubitan, vec2 uv, vec3 position) {
-    vec3 nnorm = normalize(unorm);
+void main() {
+    vec3 nnorm = normalize(in_Data.VertexData.Normal);
 
     vec3 normal;
     if (u_Material.HasNormalMap) {
-        vec3 tangent = normalize(utan);
-        vec3 bitangent = normalize(ubitan);
+        vec3 tangent = normalize(in_Data.VertexData.Tangent);
+        vec3 bitangent = normalize(in_Data.VertexData.Bitangent);
 
         mat3 tbn = mat3(tangent, bitangent, nnorm);
-        vec3 normalSample = texture(u_Normal, uv).rgb;
+        vec3 normalSample = texture(u_Normal, in_Data.VertexData.UV).rgb;
 
         normal = normalize(tbn * normalSample);
     } else {
@@ -47,5 +52,5 @@ vec4 MaterialOutputColor(vec3 unorm, vec3 utan, vec3 ubitan, vec2 uv, vec3 posit
     }
 
     // no fancy lighting
-    return MaterialAlbedo(uv);
+    out_Color = MaterialAlbedo(in_Data.VertexData.UV);
 }

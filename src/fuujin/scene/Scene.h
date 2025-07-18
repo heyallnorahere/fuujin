@@ -8,23 +8,26 @@ namespace fuujin {
     public:
         class Entity {
         public:
+            Entity() : m_ID(entt::null), m_Scene(nullptr) {}
             Entity(entt::entity id, const Ref<Scene>& scene) : m_ID(id), m_Scene(scene) {}
             ~Entity() = default;
 
             template <typename _Ty, typename... Args>
-            _Ty& AddComponent(Args&&... args);
+            _Ty& AddComponent(Args&&... args) const;
 
             template <typename _Ty>
-            _Ty& GetComponent();
-
-            template <typename _Ty>
-            const _Ty& GetComponent() const;
+            _Ty& GetComponent() const;
 
             template <typename... _Ty>
             bool HasAny() const;
 
             template <typename... _Ty>
             bool HasAll() const;
+
+            bool IsPresent() const { return m_ID != entt::null && m_Scene.IsPresent(); }
+            bool IsEmpty() const { return m_ID == entt::null || m_Scene.IsEmpty(); }
+
+            operator bool() const { return IsPresent(); }
 
         private:
             entt::entity m_ID;
@@ -40,6 +43,30 @@ namespace fuujin {
 
         Entity Create(const std::optional<std::string>& tag = {});
 
+        // callback signature:
+        // void(const Scene::Entity[&], _Ty&...)
+        // OR
+        // bool(const Scene::Entity[&], _Ty&...)
+        // a return value of true signifies "break"
+        template <typename... _Ty, typename _Func>
+        void View(const _Func& callback) {
+            ZoneScoped;
+
+            auto view = m_Registry.view<_Ty...>();
+            for (entt::entity id : view) {
+                const Entity entity(id, this);
+
+                if constexpr (std::is_same_v<std::invoke_result_t<_Func, Entity, _Ty&...>, bool>) {
+                    bool doBreak = callback(entity, std::forward<_Ty&>(m_Registry.get<_Ty>(id))...);
+                    if (doBreak) {
+                        break;
+                    }
+                } else {
+                    callback(entity, std::forward<_Ty&>(m_Registry.get<_Ty>(id))...);
+                }
+            }
+        }
+
     private:
         entt::registry m_Registry;
         uint64_t m_ID;
@@ -48,7 +75,7 @@ namespace fuujin {
     };
 
     template <typename _Ty, typename... Args>
-    inline _Ty& Scene::Entity::AddComponent(Args&&... args) {
+    inline _Ty& Scene::Entity::AddComponent(Args&&... args) const {
         ZoneScoped;
 
         auto& registry = m_Scene->m_Registry;
@@ -56,15 +83,7 @@ namespace fuujin {
     }
 
     template <typename _Ty>
-    inline _Ty& Scene::Entity::GetComponent() {
-        ZoneScoped;
-
-        auto& registry = m_Scene->m_Registry;
-        return registry.get<_Ty>(m_ID);
-    }
-
-    template <typename _Ty>
-    inline const _Ty& Scene::Entity::GetComponent() const {
+    inline _Ty& Scene::Entity::GetComponent() const {
         ZoneScoped;
 
         auto& registry = m_Scene->m_Registry;

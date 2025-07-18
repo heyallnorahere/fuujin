@@ -48,6 +48,24 @@ namespace fuujin {
         }
     }
 
+    Transform::Transform(const Transform& other) {
+        ZoneScoped;
+
+        SetTranslation(other.m_Translation);
+        SetRotation(other.m_RotationQuat);
+        SetScale(other.m_Scale);
+    }
+
+    Transform& Transform::operator=(const Transform& other) {
+        ZoneScoped;
+
+        SetTranslation(other.m_Translation);
+        SetRotation(other.m_RotationQuat);
+        SetScale(other.m_Scale);
+
+        return *this;
+    }
+
     glm::mat4 Transform::ToMatrix() const {
         ZoneScoped;
 

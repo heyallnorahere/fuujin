@@ -1,6 +1,6 @@
 struct Camera {
     vec3 Position;
-    mat4 Projection, View;
+    mat4 ViewProjection;
 };
 
 layout(set = 0, binding = 0, std140) uniform Scene {
@@ -9,5 +9,5 @@ layout(set = 0, binding = 0, std140) uniform Scene {
 
 mat4 GetViewProjection(int index) {
     Camera camera = u_Scene.Cameras[index];
-    return camera.Projection * camera.View;
+    return camera.ViewProjection;
 }
