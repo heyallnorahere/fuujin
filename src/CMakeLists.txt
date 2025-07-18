@@ -9,7 +9,7 @@ add_library(fuujin_imgui STATIC ${IMGUI_SOURCE})
 target_include_directories(fuujin_imgui PUBLIC ${IMGUI_DIR})
 
 list(APPEND FUUJIN_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR})
-list(APPEND FUUJIN_LIBRARIES TracyClient spdlog::spdlog glm::glm spirv-cross-core stb assimp::assimp yaml-cpp::yaml-cpp fuujin_imgui)
+list(APPEND FUUJIN_LIBRARIES TracyClient spdlog::spdlog glm::glm spirv-cross-core stb assimp::assimp yaml-cpp::yaml-cpp fuujin_imgui EnTT::EnTT)
 
 set(ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
 set(SHADER_DIR "${ASSET_DIR}/shaders")

@@ -7,12 +7,18 @@ namespace fuujin {
 
     class GraphicsDevice : public RefCounted {
     public:
+        enum class DepthRange {
+            ZeroToOne,
+            NegativeOneToOne,
+        };
+
         struct APISpec {
             std::string Name;
             Version APIVersion;
 
             bool TransposeMatrices;
             bool LeftHanded;
+            DepthRange Depth;
         };
 
         struct Properties {

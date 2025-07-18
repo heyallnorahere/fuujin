@@ -61,9 +61,11 @@ public:
         auto swapchain = context->GetSwapchain();
         uint32_t width = swapchain->GetWidth();
         uint32_t height = swapchain->GetHeight();
-        float aspect = (float)width / height;
 
-        if (height == 0) {
+        float aspect;
+        if (height > 0) {
+            aspect = (float)width / height;
+        } else {
             aspect = 1.f;
         }
 
@@ -127,9 +129,9 @@ public:
 
         Renderer::RenderModel(m_Call);
 
-        static bool open = true;
-        if (open) {
-            ImGui::ShowDemoWindow(&open);
+        static bool demoOpen = true;
+        if (demoOpen) {
+            ImGui::ShowDemoWindow(&demoOpen);
         }
     }
 

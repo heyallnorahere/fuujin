@@ -381,6 +381,7 @@ namespace fuujin {
         api.APIVersion = FromVulkanVersion(properties.properties.apiVersion);
         api.TransposeMatrices = false;
         api.LeftHanded = false;
+        api.Depth = DepthRange::ZeroToOne;
 
         switch (properties.properties.deviceType) {
         case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
