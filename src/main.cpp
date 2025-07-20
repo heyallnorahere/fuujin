@@ -19,6 +19,12 @@
 using namespace std::chrono_literals;
 using namespace fuujin;
 
+struct DemoLight {
+    Scene::Entity Entity;
+    float Angle;
+    glm::vec3 Axis, Coaxis;
+};
+
 static const float s_PI = std::numbers::pi_v<float>;
 class TestLayer : public Layer {
 public:
@@ -53,9 +59,22 @@ public:
         auto pitchMat = glm::rotate(glm::mat4(1.f), pitch, glm::vec3(1.f, 0.f, 0.f));
         auto yawMat = glm::rotate(glm::mat4(1.f), yaw, glm::vec3(0.f, 1.f, 0.f));
 
-        auto& transform = m_Camera.GetComponent<TransformComponent>().Data;
-        transform.SetTranslation(radial * cameraDistance);
-        transform.SetRotation(glm::toQuat(yawMat * pitchMat));
+        auto& cameraTransform = m_Camera.GetComponent<TransformComponent>().Data;
+        cameraTransform.SetTranslation(radial * cameraDistance);
+        cameraTransform.SetRotation(glm::toQuat(yawMat * pitchMat));
+
+        for (auto& light : m_Lights) {
+            light.Angle += (float)delta.count() * s_PI * 3.f;
+
+            float sin = glm::sin(light.Angle);
+            float cos = glm::cos(light.Angle);
+
+            glm::vec3 tertiaryAxis = glm::cross(light.Axis, light.Coaxis);
+            glm::vec3 radialLightAxis = cos * light.Coaxis + sin * tertiaryAxis;
+
+            auto& lightTransform = light.Entity.GetComponent<TransformComponent>().Data;
+            lightTransform.SetTranslation(radialLightAxis * 2.f);
+        }
 
         m_Renderer->RenderScene();
 
@@ -101,11 +120,26 @@ private:
         m_Camera.AddComponent<TransformComponent>();
         m_Camera.AddComponent<CameraComponent>().MainCamera = true;
 
-        auto pointLight = Ref<PointLight>::Create();
+        static constexpr size_t lightCount = 3;
+        for (size_t i = 0; i < lightCount; i++) {
+            glm::vec3 axis(0.f);
+            axis[i] = 1.f;
 
-        auto light = m_Scene->Create("Light");
-        light.AddComponent<TransformComponent>().Data.SetTranslation(glm::vec3(2.f, 2.f, 2.f));
-        light.AddComponent<LightComponent>().SceneLight = pointLight;
+            glm::vec3 coaxis(0.f);
+            coaxis[(i + 1) % 3] = 1.f;
+
+            auto pointLight = Ref<PointLight>::Create();
+            pointLight->SetColor(Light::Color::Diffuse, axis);
+
+            auto& light = m_Lights.emplace_back();
+            light.Axis = axis;
+            light.Coaxis = coaxis;
+            light.Angle = 2.f * s_PI * (float)i / (float)lightCount;
+
+            light.Entity = m_Scene->Create("Entity #" + std::to_string(i + 1));
+            light.Entity.AddComponent<TransformComponent>();
+            light.Entity.AddComponent<LightComponent>().SceneLight = pointLight;
+        }
 
         Renderer::Wait();
     }
@@ -116,7 +150,9 @@ private:
     bool m_ResourcesLoaded;
     Ref<Scene> m_Scene;
     Ref<SceneRenderer> m_Renderer;
+
     Scene::Entity m_Camera;
+    std::vector<DemoLight> m_Lights;
 };
 
 void InitializeApplication() {

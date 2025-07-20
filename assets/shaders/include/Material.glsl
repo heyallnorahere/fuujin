@@ -45,15 +45,16 @@ vec3 CalculateLightColor(int index, vec3 normal, vec3 materialAlbedo, vec3 mater
         lightToFragment = in_Data.WorldPosition - light.Position;
         break;
     default:
-        lightToFragment = vec3(0);
-        break;
+        return vec3(0);
     }
 
-    vec3 lightDirection = -normalize(lightToFragment);
-    float diffuseStrength = dot(normal, lightDirection);
+    vec3 lightDirection = normalize(lightToFragment);
+    float diffuseStrength = dot(normal, -lightDirection);
 
-    // todo: specular lighting
-    float specularStrength = 0;
+    vec3 fragmentToCamera = normalize(in_Data.CameraPosition - in_Data.WorldPosition);
+    vec3 reflectedDirection = normalize(reflect(lightDirection, normal));
+    float cameraLightCoincidence = max(dot(fragmentToCamera, reflectedDirection), 0);
+    float specularStrength = pow(cameraLightCoincidence, u_Material.Shininess);
 
     vec3 diffuse = materialAlbedo * light.Colors.Diffuse * diffuseStrength;
     vec3 specular = materialSpecular * light.Colors.Specular * specularStrength;
