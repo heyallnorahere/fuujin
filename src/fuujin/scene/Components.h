@@ -4,6 +4,7 @@
 #include "fuujin/scene/Transform.h"
 
 #include "fuujin/renderer/Model.h"
+#include "fuujin/renderer/Light.h"
 
 namespace fuujin {
     struct TagComponent {
@@ -23,5 +24,9 @@ namespace fuujin {
 
     struct ModelComponent {
         Ref<Model> RenderedModel;
+    };
+
+    struct LightComponent {
+        Ref<Light> SceneLight;
     };
 } // namespace fuujin

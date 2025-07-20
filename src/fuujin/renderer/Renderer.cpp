@@ -434,8 +434,28 @@ namespace fuujin {
                 const auto& camera = data.Cameras[i];
                 std::string basePath = "Cameras[" + std::to_string(i) + "]";
 
-                buffer.Set(basePath + ".Position", camera.Position);
-                buffer.Set(basePath + ".ViewProjection", camera.ViewProjection);
+                ShaderBuffer cameraSlice;
+                if (!buffer.Slice(basePath, cameraSlice)) {
+                    continue;
+                }
+
+                cameraSlice.Set("Position", camera.Position);
+                cameraSlice.Set("ViewProjection", camera.ViewProjection);
+            }
+
+            size_t lightCount = data.Lights.size();
+            buffer.Set("LightCount", (int32_t)lightCount);
+
+            for (size_t i = 0; i < lightCount; i++) {
+                const auto& light = data.Lights[i];
+                std::string basePath = "Lights[" + std::to_string(i) + "]";
+                
+                ShaderBuffer lightSlice;
+                if (!buffer.Slice(basePath, lightSlice)) {
+                    continue;
+                }
+
+                light.LightData->SetUniforms(lightSlice, light.TransformMatrix);
             }
         };
 

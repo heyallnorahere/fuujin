@@ -14,7 +14,8 @@ namespace fuujin {
         };
 
         struct RecursiveFieldInfo {
-            size_t TotalOffset, Size;
+            size_t TotalOffset;
+            std::shared_ptr<GPUType> Type;
         };
 
         static bool ParseFieldExpresssion(const std::string& expression, FieldExpression& data);
@@ -29,6 +30,10 @@ namespace fuujin {
         // we dont care about copying
         ShaderBuffer(const ShaderBuffer&) = default;
         ShaderBuffer& operator=(const ShaderBuffer&) = default;
+
+        // we do want to use the Buffer l-value operators tho
+        ShaderBuffer(ShaderBuffer&& other);
+        ShaderBuffer& operator=(ShaderBuffer&& other);
 
         bool SetData(const std::string& name, const Buffer& data);
         bool GetData(const std::string& name, Buffer& data) const;
@@ -79,7 +84,11 @@ namespace fuujin {
         Buffer& GetBuffer() { return m_Buffer; }
         const Buffer& GetBuffer() const { return m_Buffer; }
 
+        bool Slice(const std::string& name, ShaderBuffer& slice);
+
     private:
+        ShaderBuffer(Buffer&& data, const std::shared_ptr<GPUType>& type);
+
         Buffer m_Buffer;
         std::shared_ptr<GPUType> m_Type;
     };

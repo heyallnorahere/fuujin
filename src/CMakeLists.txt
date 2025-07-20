@@ -16,10 +16,13 @@ set(SHADER_DIR "${ASSET_DIR}/shaders")
 set(SPIRV_DIR "${CMAKE_CURRENT_BINARY_DIR}/spirv")
 set(OUTPUT_LIST "${SPIRV_DIR}/outputs.txt")
 
-file(GLOB SHADER_SOURCE CONFIGURE_DEPENDS "${SHADER_DIR}/*.glsl")
+set(SHADER_GLOB "${SHADER_DIR}/*.glsl")
+file(GLOB SHADER_SOURCE CONFIGURE_DEPENDS ${SHADER_GLOB})
+file(GLOB_RECURSE ALL_SHADER_SOURCE CONFIGURE_DEPENDS ${SHADER_GLOB})
+
 add_custom_command(OUTPUT ${OUTPUT_LIST}
                    COMMAND compile_shaders ${SPIRV_DIR} ${SHADER_SOURCE}
-                   DEPENDS ${SHADER_SOURCE})
+                   DEPENDS ${ALL_SHADER_SOURCE})
 
 set(SHADER_DATA_FILE "${CMAKE_CURRENT_BINARY_DIR}/shaders.generated.cpp")
 add_custom_command(OUTPUT ${SHADER_DATA_FILE}

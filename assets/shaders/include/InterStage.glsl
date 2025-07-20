@@ -5,5 +5,7 @@ struct VertexOut {
 
 struct GeometryOut {
     vec3 WorldPosition;
+    vec3 CameraPosition;
+
     VertexOut VertexData;
 };

@@ -55,6 +55,17 @@ namespace fuujin {
                 rendererCamera.ViewProjection = viewProjection;
             });
 
+        m_Scene->View<TransformComponent, LightComponent>(
+            [&](Scene::Entity entity, TransformComponent& transform, LightComponent& light) {
+                if (light.SceneLight.IsEmpty()) {
+                    return;
+                }
+
+                auto& rendererLight = mainScene.Lights.emplace_back();
+                rendererLight.LightData = light.SceneLight;
+                rendererLight.TransformMatrix = transform.Data.ToMatrix();
+            });
+
         if (!mainScene.Cameras.empty()) {
             Renderer::UpdateScene(m_MainID, mainScene);
             RenderSceneWithID(m_MainID, mainCamera, 1);

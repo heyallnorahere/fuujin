@@ -93,8 +93,8 @@ namespace fuujin {
         }
 
         if (child.empty()) {
-            field.Size = fieldData.Type->GetSize();
             field.TotalOffset = newOffset;
+            field.Type = fieldData.Type;
 
             return true;
         } else {
@@ -109,6 +109,22 @@ namespace fuujin {
         m_Buffer = Buffer(type->GetSize());
     }
 
+    ShaderBuffer::ShaderBuffer(ShaderBuffer&& other) {
+        ZoneScoped;
+
+        m_Buffer = Buffer(std::move(other.m_Buffer));
+        m_Type = other.m_Type;
+    }
+
+    ShaderBuffer& ShaderBuffer::operator=(ShaderBuffer&& other) {
+        ZoneScoped;
+
+        m_Buffer = Buffer(std::move(other.m_Buffer));
+        m_Type = other.m_Type;
+
+        return *this;
+    }
+
     bool ShaderBuffer::SetData(const std::string& name, const Buffer& data) {
         ZoneScoped;
 
@@ -117,7 +133,7 @@ namespace fuujin {
             return false;
         }
 
-        auto slice = m_Buffer.Slice(field.TotalOffset, field.Size);
+        auto slice = m_Buffer.Slice(field.TotalOffset, field.Type->GetSize());
         Buffer::Copy(data, slice, data.GetSize());
 
         return true;
@@ -131,9 +147,30 @@ namespace fuujin {
             return false;
         }
 
-        auto slice = m_Buffer.Slice(field.TotalOffset, field.Size);
+        auto slice = m_Buffer.Slice(field.TotalOffset, field.Type->GetSize());
         Buffer::Copy(slice, data, data.GetSize());
 
         return true;
+    }
+
+    bool ShaderBuffer::Slice(const std::string& name, ShaderBuffer& slice) {
+        ZoneScoped;
+
+        RecursiveFieldInfo field;
+        if (!FindField(name, m_Type, field)) {
+            return false;
+        }
+
+        auto bufferSlice = m_Buffer.Slice(field.TotalOffset, field.Type->GetSize());
+        slice = ShaderBuffer(std::move(bufferSlice), field.Type);
+
+        return true;
+    }
+
+    ShaderBuffer::ShaderBuffer(Buffer&& slice, const std::shared_ptr<GPUType>& type) {
+        ZoneScoped;
+
+        m_Buffer = Buffer(std::move(slice));
+        m_Type = type;
     }
 } // namespace fuujin

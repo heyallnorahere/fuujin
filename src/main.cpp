@@ -101,6 +101,12 @@ private:
         m_Camera.AddComponent<TransformComponent>();
         m_Camera.AddComponent<CameraComponent>().MainCamera = true;
 
+        auto pointLight = Ref<PointLight>::Create();
+
+        auto light = m_Scene->Create("Light");
+        light.AddComponent<TransformComponent>().Data.SetTranslation(glm::vec3(2.f, 2.f, 2.f));
+        light.AddComponent<LightComponent>().SceneLight = pointLight;
+
         Renderer::Wait();
     }
 

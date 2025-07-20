@@ -35,6 +35,39 @@ vec4 MaterialAmbient(vec2 uv) {
     return u_Material.Ambient * tex;
 }
 
+vec3 CalculateLightColor(int index, vec3 normal, vec3 materialAlbedo, vec3 materialSpecular,
+                         vec3 materialAmbient) {
+    Light light = u_Scene.Lights[index];
+
+    vec3 lightToFragment;
+    switch (light.Type) {
+    case POINT_LIGHT:
+        lightToFragment = in_Data.WorldPosition - light.Position;
+        break;
+    default:
+        lightToFragment = vec3(0);
+        break;
+    }
+
+    vec3 lightDirection = -normalize(lightToFragment);
+    float diffuseStrength = dot(normal, lightDirection);
+
+    // todo: specular lighting
+    float specularStrength = 0;
+
+    vec3 diffuse = materialAlbedo * light.Colors.Diffuse * diffuseStrength;
+    vec3 specular = materialSpecular * light.Colors.Specular * specularStrength;
+    vec3 ambient = materialAmbient * light.Colors.Ambient * 0.05;
+
+    float distance = length(lightToFragment);
+    float attenuationQuadratic = light.Attenuation.Quadratic * distance * distance;
+    float attenuationLinear = light.Attenuation.Linear * distance;
+    float attenuationConstant = light.Attenuation.Constant;
+
+    float attenuation = 1 / (attenuationQuadratic + attenuationLinear + attenuationConstant);
+    return attenuation * (diffuse + specular + ambient);
+}
+
 void main() {
     vec3 nnorm = normalize(in_Data.VertexData.Normal);
 
@@ -51,6 +84,15 @@ void main() {
         normal = nnorm;
     }
 
-    // no fancy lighting
-    out_Color = MaterialAlbedo(in_Data.VertexData.UV);
+    vec4 albedo = MaterialAlbedo(in_Data.VertexData.UV);
+    vec4 specular = MaterialSpecular(in_Data.VertexData.UV);
+    vec4 ambient = MaterialAlbedo(in_Data.VertexData.UV);
+
+    vec3 fragmentColor = vec3(0);
+    for (int i = 0; i < u_Scene.LightCount; i++) {
+        fragmentColor += CalculateLightColor(i, normal, albedo.rgb, specular.rgb, ambient.rgb);
+    }
+
+    float alpha = albedo.a + specular.a + ambient.a;
+    out_Color = vec4(fragmentColor, alpha);
 }

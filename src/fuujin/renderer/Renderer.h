@@ -2,6 +2,7 @@
 
 #include "fuujin/core/Ref.h"
 #include "fuujin/core/Buffer.h"
+
 #include "fuujin/renderer/GraphicsContext.h"
 #include "fuujin/renderer/Framebuffer.h"
 #include "fuujin/renderer/DeviceBuffer.h"
@@ -9,6 +10,8 @@
 #include "fuujin/renderer/Texture.h"
 #include "fuujin/renderer/Material.h"
 #include "fuujin/renderer/Model.h"
+#include "fuujin/renderer/Light.h"
+
 #include "fuujin/animation/Animator.h"
 
 namespace fuujin {
@@ -94,8 +97,14 @@ namespace fuujin {
             glm::mat4 ViewProjection;
         };
 
+        struct RendererLight {
+            glm::mat4 TransformMatrix;
+            Ref<Light> LightData;
+        };
+
         struct SceneData {
             std::vector<Camera> Cameras;
+            std::vector<RendererLight> Lights;
         };
 
         struct MeshBuffers {
