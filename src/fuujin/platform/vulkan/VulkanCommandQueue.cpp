@@ -153,6 +153,7 @@ namespace fuujin {
         vkResetCommandBuffer(m_Buffer, 0);
         m_Semaphores.clear();
         m_WaitStages.clear();
+        m_SemaphoreDependencyMap.clear();
         m_Dependencies.clear();
     }
 
@@ -160,6 +161,15 @@ namespace fuujin {
         ZoneScoped;
 
         auto vkSemaphore = semaphore.As<VulkanSemaphore>();
+        if (usage == SemaphoreUsage::Wait) {
+            auto semaphorePtr = vkSemaphore->Get();
+            if (m_SemaphoreDependencyMap.contains(semaphorePtr)) {
+                return;
+            }
+
+            m_SemaphoreDependencyMap[semaphorePtr] = m_Semaphores[usage].size();
+        }
+
         m_Semaphores[usage].push_back(vkSemaphore);
     }
 
@@ -172,13 +182,19 @@ namespace fuujin {
                                                VkPipelineStageFlags wait) {
         ZoneScoped;
 
-        size_t waitSemaphoreCount = 0;
-        if (m_Semaphores.contains(SemaphoreUsage::Wait)) {
-            waitSemaphoreCount = m_Semaphores.at(SemaphoreUsage::Wait).size();
+        size_t semaphoreIndex = 0;
+        auto vkSemaphore = semaphore->Get();
+
+        if (m_SemaphoreDependencyMap.contains(vkSemaphore)) {
+            semaphoreIndex = m_SemaphoreDependencyMap.at(vkSemaphore);
+            m_WaitStages[semaphoreIndex] |= wait;
+        } else if (m_Semaphores.contains(SemaphoreUsage::Wait)) {
+            semaphoreIndex = m_Semaphores.at(SemaphoreUsage::Wait).size();
+            m_SemaphoreDependencyMap[vkSemaphore] = semaphoreIndex;
+            m_WaitStages.insert(std::make_pair(semaphoreIndex, wait));
         }
 
-        m_WaitStages.insert(std::make_pair(waitSemaphoreCount, wait));
-        AddSemaphore(semaphore, SemaphoreUsage::Wait);
+        m_Semaphores[SemaphoreUsage::Wait].push_back(semaphore);
     }
 
     bool VulkanCommandBuffer::GetSemaphores(SemaphoreUsage usage,

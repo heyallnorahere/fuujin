@@ -3,6 +3,7 @@
 #include "fuujin/platform/vulkan/Vulkan.h"
 
 #include "fuujin/platform/vulkan/VulkanDevice.h"
+#include "fuujin/platform/vulkan/VulkanCommandQueue.h"
 
 namespace fuujin {
     class VulkanImage : public DeviceImage {
@@ -48,11 +49,15 @@ namespace fuujin {
 
         virtual uint32_t GetMipLevels() const override { return m_Spec.MipLevels; }
 
+        Ref<VulkanSemaphore> SignalUsed();
+        Ref<VulkanSemaphore> GetSignaledSemaphore();
+
     private:
         void RT_CreateImage();
         void RT_CreateView();
 
         Ref<VulkanDevice> m_Device;
+        Ref<VulkanSemaphore> m_SignaledSemaphore;
 
         VulkanSpec m_Spec;
 
@@ -64,7 +69,7 @@ namespace fuujin {
 
     class ImageTransition {
     public:
-        ImageTransition(VkCommandBuffer cmdBuffer, const Ref<VulkanImage>& image,
+        ImageTransition(VulkanCommandBuffer& cmdBuffer, const Ref<VulkanImage>& image,
                         VkImageLayout layout, VkPipelineStageFlags stage,
                         VkPipelineStageFlags endStage = 0);
 
@@ -74,7 +79,7 @@ namespace fuujin {
         ImageTransition& operator=(const ImageTransition&) = delete;
 
     private:
-        VkCommandBuffer m_Buffer;
+        VulkanCommandBuffer* m_Buffer;
         Ref<VulkanImage> m_Image;
 
         VkImageLayout m_Layout;

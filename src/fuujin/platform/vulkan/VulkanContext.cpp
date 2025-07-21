@@ -370,6 +370,17 @@ namespace fuujin {
         return new VulkanRenderer(m_Data->Devices[m_Data->UsedDevice], frames);
     }
 
+    bool VulkanContext::AreDiscreteQueues(const std::unordered_set<QueueType>& types) const {
+        ZoneScoped;
+
+        auto device = m_Data->Devices[m_Data->UsedDevice];
+
+        std::vector<uint32_t> indices;
+        auto sharingMode = device->GetSharingMode(types, indices);
+
+        return sharingMode != VK_SHARING_MODE_CONCURRENT;
+    }
+
     void VulkanContext::RT_LoadGlobal() const {
         ZoneScoped;
 
@@ -468,7 +479,8 @@ namespace fuujin {
         VkDebugUtilsMessengerCreateInfoEXT createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
         createInfo.pfnUserCallback = VulkanDebugCallback;
-        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                     VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
         createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
 

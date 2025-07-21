@@ -4,6 +4,7 @@
 
 #include "fuujin/platform/vulkan/VulkanDevice.h"
 #include "fuujin/platform/vulkan/VulkanShader.h"
+#include "fuujin/platform/vulkan/VulkanCommandQueue.h"
 
 namespace fuujin {
     struct VulkanDescriptor {
@@ -13,6 +14,8 @@ namespace fuujin {
     };
 
     enum class VulkanBindingType { Buffer, Image };
+    enum class VulkanImageType { None, Image, Texture };
+
     struct VulkanBinding {
         bool DescriptorsChanged;
         std::map<uint32_t, uint32_t> Groups;
@@ -23,6 +26,7 @@ namespace fuujin {
 
         std::map<uint32_t, VulkanDescriptor> Descriptors;
         VulkanBindingType Type;
+        VulkanImageType ImageType;
     };
 
     class VulkanRendererAllocation : public RendererAllocation {
@@ -51,7 +55,8 @@ namespace fuujin {
                                  void* object) const;
 
         void SetDescriptor(uint32_t set, uint32_t binding, uint32_t index,
-                           const VulkanDescriptor& data, VulkanBindingType type);
+                           const VulkanDescriptor& data, VulkanBindingType type,
+                           VulkanImageType imageType);
 
         void RecalculateGroups();
 
@@ -73,8 +78,11 @@ namespace fuujin {
     public:
         struct FrameAllocationData {
             Ref<VulkanRendererAllocation> Allocation;
+
             VulkanRendererAllocation::Bindings Bindings; // we keep references until frame reset
             VulkanRendererAllocation::DescriptorSetArray Sets;
+
+            std::vector<Ref<VulkanSemaphore>> ImageSemaphores;
         };
 
         struct DescriptorPool {
@@ -102,7 +110,8 @@ namespace fuujin {
         void RT_CreatePools();
         void RT_ResetCurrentPool();
 
-        void RT_BindAllocation(VkCommandBuffer cmdBuffer, Ref<VulkanRendererAllocation> allocation,
+        void RT_BindAllocation(VulkanCommandBuffer& cmdBuffer,
+                               Ref<VulkanRendererAllocation> allocation,
                                VkPipelineBindPoint bindPoint, std::set<uint32_t>& boundSets);
 
         Ref<VulkanDevice> m_Device;

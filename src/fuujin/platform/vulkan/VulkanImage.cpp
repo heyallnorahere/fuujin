@@ -84,6 +84,22 @@ namespace fuujin {
             "Destroy image");
     }
 
+    Ref<VulkanSemaphore> VulkanImage::SignalUsed() {
+        ZoneScoped;
+
+        m_SignaledSemaphore = Ref<VulkanSemaphore>::Create(m_Device);
+        return m_SignaledSemaphore;
+    }
+
+    Ref<VulkanSemaphore> VulkanImage::GetSignaledSemaphore() {
+        ZoneScoped;
+
+        auto semaphore = m_SignaledSemaphore;
+        m_SignaledSemaphore.Reset();
+
+        return semaphore;
+    }
+
     void VulkanImage::RT_CreateImage() {
         ZoneScoped;
 
@@ -136,6 +152,8 @@ namespace fuujin {
                                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_Spec.SafeLayout,
                                     VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, subresource);
 
+                cmdlist.AddSemaphore(SignalUsed(), SemaphoreUsage::Signal);
+
                 cmdlist.RT_End();
                 queue->RT_Submit(cmdlist);
             } else {
@@ -170,7 +188,12 @@ namespace fuujin {
         }
     }
 
-    ImageTransition::ImageTransition(VkCommandBuffer cmdBuffer, const Ref<VulkanImage>& image,
+    struct TransitionSemaphoreData {
+        VulkanCommandBuffer* Buffer;
+        Ref<VulkanImage> Image;
+    };
+
+    ImageTransition::ImageTransition(VulkanCommandBuffer& cmdBuffer, const Ref<VulkanImage>& image,
                                      VkImageLayout layout, VkPipelineStageFlags stage,
                                      VkPipelineStageFlags endStage) {
         ZoneScoped;
@@ -186,17 +209,29 @@ namespace fuujin {
         VkImageLayout safeLayout = image->GetSpec().SafeLayout;
         VkImageSubresourceRange subresource = m_Subresource;
 
-        Renderer::Submit([=]() {
-            VulkanImage::RT_TransitionLayout(cmdBuffer, vkImage, safeLayout,
-                                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, layout, stage,
-                                             subresource);
-        });
-
-        m_Buffer = cmdBuffer;
+        m_Buffer = &cmdBuffer;
         m_Image = image;
 
         m_Layout = layout;
         m_EndStage = endStage != 0 ? endStage : stage;
+
+        auto semaphoreData = new TransitionSemaphoreData;
+        semaphoreData->Buffer = m_Buffer;
+        semaphoreData->Image = m_Image;
+
+        auto vkCmdBuffer = m_Buffer->Get();
+        Renderer::Submit([=]() {
+            VulkanImage::RT_TransitionLayout(vkCmdBuffer, vkImage, safeLayout,
+                                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, layout, stage,
+                                             subresource);
+
+            auto semaphore = semaphoreData->Image->GetSignaledSemaphore();
+            if (semaphore.IsPresent()) {
+                semaphoreData->Buffer->AddSemaphore(semaphore, SemaphoreUsage::Wait);
+            }
+
+            delete semaphoreData;
+        });
     }
 
     ImageTransition::~ImageTransition() {
@@ -204,7 +239,11 @@ namespace fuujin {
 
         VkImageLayout safeLayout = m_Image->GetSpec().SafeLayout;
         if (safeLayout != VK_IMAGE_LAYOUT_UNDEFINED) {
-            VkCommandBuffer cmdBuffer = m_Buffer;
+            auto semaphoreData = new TransitionSemaphoreData;
+            semaphoreData->Buffer = m_Buffer;
+            semaphoreData->Image = m_Image;
+
+            VkCommandBuffer cmdBuffer = m_Buffer->Get();
             VkImage vkImage = m_Image->GetImage();
             VkImageSubresourceRange subresource = m_Subresource;
 
@@ -214,6 +253,11 @@ namespace fuujin {
             Renderer::Submit([=]() {
                 VulkanImage::RT_TransitionLayout(cmdBuffer, vkImage, layout, stage, safeLayout,
                                                  VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, subresource);
+
+                semaphoreData->Buffer->AddSemaphore(semaphoreData->Image->SignalUsed(),
+                                                    SemaphoreUsage::Signal);
+
+                delete semaphoreData;
             });
         }
     }

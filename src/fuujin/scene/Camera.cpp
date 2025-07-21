@@ -72,6 +72,7 @@ namespace fuujin {
         SetType(Type::Perspective);
         SetViewSize(ViewSize(1, 1));
         SetVerticalFOV(glm::radians(45.f));
+        SetZRange(glm::vec2(0.1f, 100.f));
     }
 
     glm::mat4 Camera::CalculateViewProjection(const glm::vec3& translation,

@@ -39,6 +39,8 @@ namespace fuujin {
 
         virtual RendererAPI* CreateRendererAPI(uint32_t frames) const override;
 
+        virtual bool AreDiscreteQueues(const std::unordered_set<QueueType>& types) const override;
+
     private:
         VulkanContext(const std::optional<std::string>& deviceName);
 

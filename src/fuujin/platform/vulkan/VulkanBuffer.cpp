@@ -83,9 +83,11 @@ namespace fuujin {
                                       size_t offset, const ImageCopy& copy) const {
         ZoneScoped;
 
-        auto cmdBuffer = ((VulkanCommandBuffer&)cmdlist).Get();
+        auto& cmdBuffer = (VulkanCommandBuffer&)cmdlist;
+        auto vkCmdBuffer = cmdBuffer.Get();
+
         auto context = Renderer::GetContext().As<VulkanContext>();
-        TracyVkZone(context->GetTracyContext(), cmdBuffer, "RT_CopyToImage");
+        TracyVkZone(context->GetTracyContext(), vkCmdBuffer, "RT_CopyToImage");
 
         auto image = destination.As<VulkanImage>();
         const auto& spec = image->GetSpec();
@@ -107,7 +109,7 @@ namespace fuujin {
         static constexpr VkImageLayout layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         ImageTransition transition(cmdBuffer, image, layout, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-        vkCmdCopyBufferToImage(cmdBuffer, m_Buffer, image->GetImage(), layout, 1, &region);
+        vkCmdCopyBufferToImage(vkCmdBuffer, m_Buffer, image->GetImage(), layout, 1, &region);
     }
 
     void VulkanBuffer::RT_Allocate(VmaAllocator allocator) {

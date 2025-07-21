@@ -52,7 +52,9 @@ namespace fuujin {
             bufferInfo->range = bufferRange;
         };
 
-        SetDescriptor(descriptor.Set, descriptor.Binding, index, data, VulkanBindingType::Buffer);
+        SetDescriptor(descriptor.Set, descriptor.Binding, index, data, VulkanBindingType::Buffer,
+                      VulkanImageType::None);
+
         return true;
     }
 
@@ -79,7 +81,9 @@ namespace fuujin {
             imageInfo->sampler = sampler->GetSampler();
         };
 
-        SetDescriptor(descriptor.Set, descriptor.Binding, index, data, VulkanBindingType::Image);
+        SetDescriptor(descriptor.Set, descriptor.Binding, index, data, VulkanBindingType::Image,
+                      VulkanImageType::Texture);
+
         return true;
     }
 
@@ -179,7 +183,8 @@ namespace fuujin {
 
     void VulkanRendererAllocation::SetDescriptor(uint32_t set, uint32_t binding, uint32_t index,
                                                  const VulkanDescriptor& data,
-                                                 VulkanBindingType type) {
+                                                 VulkanBindingType type,
+                                                 VulkanImageType imageType) {
         ZoneScoped;
         std::lock_guard lock(m_Mutex);
 
@@ -211,10 +216,15 @@ namespace fuujin {
             }
 
             bindingData.Type = bindingType;
+            bindingData.ImageType = imageType;
         }
 
         if (type != bindingData.Type) {
             throw std::runtime_error("Invalid binding type!");
+        }
+
+        if (imageType != bindingData.ImageType) {
+            throw std::runtime_error("Invalid image type");
         }
 
         bindingData.Descriptors[index] = data;
@@ -438,15 +448,17 @@ namespace fuujin {
         auto indexBuffer = data.IndexBuffer.As<VulkanBuffer>()->Get();
         auto vkPipeline = data.RenderPipeline.As<VulkanPipeline>();
         auto shader = vkPipeline->GetSpec().PipelineShader.As<VulkanShader>();
-        auto cmdBuffer = ((VulkanCommandBuffer&)cmdlist).Get();
 
-        TracyVkZone(m_TracyContext, cmdBuffer, "RT_RenderIndexed");
+        auto& cmdBuffer = (VulkanCommandBuffer&)cmdlist;
+        auto vkCmdBuffer = cmdBuffer.Get();
+
+        TracyVkZone(m_TracyContext, vkCmdBuffer, "RT_RenderIndexed");
 
         uint32_t bufferCount = (uint32_t)vertexBuffers.size();
         std::vector<VkDeviceSize> offsets(bufferCount, 0);
-        vkCmdBindVertexBuffers(cmdBuffer, 0, bufferCount, vertexBuffers.data(), offsets.data());
-        vkCmdBindIndexBuffer(cmdBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-        vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline->GetPipeline());
+        vkCmdBindVertexBuffers(vkCmdBuffer, 0, bufferCount, vertexBuffers.data(), offsets.data());
+        vkCmdBindIndexBuffer(vkCmdBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindPipeline(vkCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline->GetPipeline());
 
         std::set<uint32_t> boundSets;
         for (const auto& allocation : data.Resources) {
@@ -468,13 +480,13 @@ namespace fuujin {
             }
 
             if (stages != 0) {
-                vkCmdPushConstants(cmdBuffer, shader->GetPipelineLayout(), stages, 0,
+                vkCmdPushConstants(vkCmdBuffer, shader->GetPipelineLayout(), stages, 0,
                                    (uint32_t)data.PushConstants.GetSize(),
                                    data.PushConstants.Get());
             }
         }
 
-        vkCmdDrawIndexed(cmdBuffer, data.IndexCount, 1, data.IndexOffset, data.VertexOffset, 0);
+        vkCmdDrawIndexed(vkCmdBuffer, data.IndexCount, 1, data.IndexOffset, data.VertexOffset, 0);
     }
 
     void VulkanRenderer::RT_SetViewport(CommandList& cmdlist, Ref<RenderTarget> target,
@@ -529,7 +541,8 @@ namespace fuujin {
         ZoneScoped;
 
         static const std::vector<VkDescriptorPoolSize> poolSizes = {
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 }
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100 },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 },
         };
 
         VkDescriptorPoolCreateInfo createInfo{};
@@ -564,33 +577,69 @@ namespace fuujin {
         pool.MarkedForReset = false;
     }
 
-    void VulkanRenderer::RT_BindAllocation(VkCommandBuffer cmdBuffer,
+    void VulkanRenderer::RT_BindAllocation(VulkanCommandBuffer& cmdBuffer,
                                            Ref<VulkanRendererAllocation> allocation,
                                            VkPipelineBindPoint bindPoint,
                                            std::set<uint32_t>& boundSets) {
         ZoneScoped;
-        TracyVkZone(m_TracyContext, cmdBuffer, "RT_BindAllocation");
+
+        auto vkCmdBuffer = cmdBuffer.Get();
+        TracyVkZone(m_TracyContext, vkCmdBuffer, "RT_BindAllocation");
 
         RT_ResetCurrentPool();
 
         uint64_t allocID = allocation->GetID();
         auto& pool = m_DescriptorPools[m_CurrentFrame];
 
+        FrameAllocationData* allocData = nullptr;
         if (!pool.Allocations.contains(allocID)) {
-            auto& allocData = pool.Allocations[allocID];
+            allocData = &pool.Allocations[allocID];
 
             // for ref counting
-            allocData.Allocation = allocation;
-            allocData.Bindings = allocation->GetBindings(); // intentionally copy
+            allocData->Allocation = allocation;
+            allocData->Bindings = allocation->GetBindings(); // intentionally copy
 
-            allocation->RT_AllocateDescriptorSets(m_Device, pool.DescriptorPool, allocData.Sets);
+            for (const auto& [setIndex, setBindings] : allocData->Bindings) {
+                for (const auto& [bindingIndex, bindingData] : setBindings) {
+                    if (bindingData.ImageType == VulkanImageType::None) {
+                        continue;
+                    }
+
+                    for (const auto& [descriptorIndex, resource] : bindingData.Descriptors) {
+                        Ref<VulkanImage> image;
+                        switch (bindingData.ImageType) {
+                        case VulkanImageType::Image:
+                            image = resource.Object.As<VulkanImage>();
+                            break;
+                        case VulkanImageType::Texture: {
+                            auto texture = resource.Object.As<VulkanTexture>();
+                            image = texture->GetImage().As<VulkanImage>();
+                        } break;
+                        default:
+                            image = nullptr;
+                            break;
+                        }
+
+                        if (image.IsEmpty()) {
+                            continue;
+                        }
+
+                        auto semaphore = image->GetSignaledSemaphore();
+                        if (semaphore.IsPresent()) {
+                            allocData->ImageSemaphores.push_back(semaphore);
+                        }
+                    }
+                }
+            }
+
+            allocation->RT_AllocateDescriptorSets(m_Device, pool.DescriptorPool, allocData->Sets);
         }
 
-        const auto& setGroups = pool.Allocations.at(allocID).Sets;
+        allocData = &pool.Allocations.at(allocID);
         auto pipelineLayout = allocation->GetShader()->GetPipelineLayout();
 
         std::set<uint32_t> currentSets;
-        for (const auto& [id, setBindings] : setGroups) {
+        for (const auto& [id, setBindings] : allocData->Sets) {
             if (boundSets.contains(id)) {
                 FUUJIN_ERROR(
                     "Set {} already bound for this render call! Aborting binding of allocation {}",
@@ -602,9 +651,13 @@ namespace fuujin {
             currentSets.insert(id);
         }
 
-        for (const auto& [firstSet, sets] : setGroups) {
-            vkCmdBindDescriptorSets(cmdBuffer, bindPoint, pipelineLayout, firstSet,
+        for (const auto& [firstSet, sets] : allocData->Sets) {
+            vkCmdBindDescriptorSets(vkCmdBuffer, bindPoint, pipelineLayout, firstSet,
                                     (uint32_t)sets.size(), sets.data(), 0, nullptr);
+        }
+
+        for (auto semaphore : allocData->ImageSemaphores) {
+            cmdBuffer.AddSemaphore(semaphore, SemaphoreUsage::Wait);
         }
 
         boundSets.insert(currentSets.begin(), currentSets.end());

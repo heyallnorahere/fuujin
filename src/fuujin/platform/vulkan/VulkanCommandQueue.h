@@ -43,6 +43,9 @@ namespace fuujin {
         VulkanCommandBuffer(Ref<VulkanDevice> device, VkCommandPool pool);
         virtual ~VulkanCommandBuffer() override;
 
+        VulkanCommandBuffer(const VulkanCommandBuffer&) = delete;
+        VulkanCommandBuffer& operator=(const VulkanCommandBuffer&) = delete;
+
         virtual void RT_Begin() override;
         virtual void RT_End() override;
         virtual void RT_Reset() override;
@@ -66,6 +69,7 @@ namespace fuujin {
         Ref<VulkanDevice> m_Device;
         std::unordered_map<SemaphoreUsage, std::vector<Ref<VulkanSemaphore>>> m_Semaphores;
         std::unordered_map<size_t, VkPipelineStageFlags> m_WaitStages;
+        std::unordered_map<VkSemaphore, size_t> m_SemaphoreDependencyMap;
         std::vector<Ref<RefCounted>> m_Dependencies;
 
         VkCommandPool m_Pool;

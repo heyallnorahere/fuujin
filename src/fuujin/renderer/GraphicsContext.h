@@ -32,5 +32,7 @@ namespace fuujin {
         virtual Ref<Swapchain> CreateSwapchain(const Ref<View>& view) const = 0;
 
         virtual RendererAPI* CreateRendererAPI(uint32_t frames) const = 0;
+
+        virtual bool AreDiscreteQueues(const std::unordered_set<QueueType>& types) const = 0;
     };
 } // namespace fuujin
