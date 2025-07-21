@@ -7,8 +7,6 @@
 #include "fuujin/core/Events.h"
 
 namespace fuujin {
-    static constexpr size_t s_SyncFrameCount = 3;
-
     static void ClearGraphicsQueue() {
         ZoneScoped;
 
@@ -95,8 +93,6 @@ namespace fuujin {
                     m_Extent.height, viewSize.Width, viewSize.Height);
     }
 
-    size_t VulkanSwapchain::GetSyncFrameCount() const { return s_SyncFrameCount; }
-
     void VulkanSwapchain::RT_BeginRender(CommandList& cmdList) {
         ZoneScoped;
         RT_AcquireImage();
@@ -105,8 +101,13 @@ namespace fuujin {
         auto framebuffer = m_Framebuffers[m_CurrentImage];
         framebuffer->RT_BeginRenderPass(buffer, glm::vec4(glm::vec3(0.1f), 1.f));
 
-        auto semaphore = m_Sync[m_SyncFrame].ImageAvailable;
+        auto& sync = m_Sync[m_CurrentImage];
+        auto semaphore = sync.ImageAvailable;
+
         buffer->AddWaitSemaphore(semaphore, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        m_UsedSemaphores.push(semaphore);
+
+        sync.ImageAvailable.Reset();
     }
 
     void VulkanSwapchain::RT_EndRender(CommandList& cmdList) {
@@ -116,7 +117,7 @@ namespace fuujin {
         auto framebuffer = m_Framebuffers[m_CurrentImage];
         framebuffer->RT_EndRenderPass(buffer);
 
-        auto semaphore = m_Sync[m_SyncFrame].RenderComplete;
+        auto semaphore = m_Sync[m_CurrentImage].RenderComplete;
         buffer->AddSemaphore(semaphore, SemaphoreUsage::Signal);
     }
 
@@ -129,31 +130,31 @@ namespace fuujin {
         ZoneScoped;
 
         while (true) {
-            const auto& sync = m_Sync[m_SyncFrame];
-            auto fence = sync.Fence;
+            size_t assumedSyncIndex =(m_CurrentImage + 1) % m_Framebuffers.size();
+
+            auto fence = m_Sync[assumedSyncIndex].Fence;
             fence->Wait(std::numeric_limits<uint64_t>::max());
+
+            Ref<VulkanSemaphore> imageAvailable;
+            if (m_UsedSemaphores.size() >= 3) {
+                imageAvailable = m_UsedSemaphores.front();
+                m_UsedSemaphores.pop();
+            } else {
+                imageAvailable = Ref<VulkanSemaphore>::Create(m_Device);
+            }
 
             auto result = vkAcquireNextImageKHR(
                 m_Device->GetDevice(), m_Swapchain, std::numeric_limits<uint64_t>::max(),
-                sync.ImageAvailable->Get(), VK_NULL_HANDLE, &m_CurrentImage);
+                imageAvailable->Get(), VK_NULL_HANDLE, &m_CurrentImage);
 
             if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
                 RT_Invalidate();
-
-                m_SyncFrame++;
-                m_SyncFrame %= s_SyncFrameCount;
-
                 continue;
             } else if (result != VK_SUCCESS) {
                 throw std::runtime_error("Failed to acquire swapchain image!");
             }
 
-            auto previousFence = m_ImageFences[m_CurrentImage];
-            if (previousFence.IsPresent()) {
-                previousFence->Wait(std::numeric_limits<uint64_t>::max());
-            }
-
-            m_ImageFences[m_CurrentImage] = fence;
+            m_Sync[m_CurrentImage].ImageAvailable = imageAvailable;
             break;
         }
     }
@@ -164,7 +165,7 @@ namespace fuujin {
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-        VkSemaphore waitSemaphore = m_Sync[m_SyncFrame].RenderComplete->Get();
+        VkSemaphore waitSemaphore = m_Sync[m_CurrentImage].RenderComplete->Get();
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = &waitSemaphore;
 
@@ -183,9 +184,6 @@ namespace fuujin {
             RT_Invalidate();
             m_NewViewSize.reset();
         }
-
-        m_SyncFrame++;
-        m_SyncFrame %= s_SyncFrameCount;
     }
 
     void VulkanSwapchain::RT_Invalidate() {
@@ -309,23 +307,20 @@ namespace fuujin {
 
                 m_Framebuffers.push_back(Ref<VulkanFramebuffer>::Create(m_Device, framebufferSpec));
             }
-
-            m_ImageFences.resize(m_Framebuffers.size());
         }
 
-        m_SyncFrame = 0;
-        if (m_Sync.empty()) {
-            m_Sync.resize(s_SyncFrameCount);
+        if (m_Sync.size() != m_Framebuffers.size()) {
+            m_Sync.resize(m_Framebuffers.size());
         }
 
-        for (size_t i = 0; i < s_SyncFrameCount; i++) {
+        for (size_t i = 0; i < m_Sync.size(); i++) {
             auto& frameSync = m_Sync[i];
 
             if (frameSync.Fence.IsEmpty()) {
                 frameSync.Fence = Ref<VulkanFence>::Create(m_Device, true);
             }
 
-            frameSync.ImageAvailable = Ref<VulkanSemaphore>::Create(m_Device);
+            frameSync.ImageAvailable.Reset();
             frameSync.RenderComplete = Ref<VulkanSemaphore>::Create(m_Device);
         }
     }

@@ -37,9 +37,7 @@ namespace fuujin {
             return m_Framebuffers[index];
         }
 
-        virtual size_t GetSyncFrameCount() const override;
-
-        virtual Ref<Fence> GetCurrentFence() const override { return m_Sync[m_SyncFrame].Fence; }
+        virtual Ref<Fence> GetCurrentFence() const override { return m_Sync[m_CurrentImage].Fence; }
 
         Ref<VulkanRenderPass> GetRenderPass() const { return m_RenderPass; }
 
@@ -77,11 +75,10 @@ namespace fuujin {
         bool m_DepthHasStencil;
 
         std::vector<Ref<VulkanFramebuffer>> m_Framebuffers;
-        std::vector<Ref<VulkanFence>> m_ImageFences;
         uint32_t m_CurrentImage;
 
-        size_t m_SyncFrame;
         std::vector<FrameSync> m_Sync;
+        std::queue<Ref<VulkanSemaphore>> m_UsedSemaphores;
 
         VkExtent2D m_Extent;
         std::optional<ViewSize> m_NewViewSize;

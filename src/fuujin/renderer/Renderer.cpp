@@ -185,11 +185,6 @@ namespace fuujin {
         Renderer::Submit([]() { LogGraphicsContext(); });
 
         uint32_t frameCount = 3;
-        auto swapchain = s_Data->Context->GetSwapchain();
-
-        if (swapchain) {
-            frameCount = (uint32_t)swapchain->GetSyncFrameCount();
-        }
 
         s_Data->API = s_Data->Context->CreateRendererAPI(frameCount);
         s_Data->FrameCount = frameCount;
