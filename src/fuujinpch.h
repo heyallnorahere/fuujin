@@ -186,7 +186,7 @@ namespace YAML {
 } // namespace YAML
 
 inline void* operator new(size_t size) { return fuujin::allocate(size); }
-inline void operator delete(void* block) { return fuujin::freemem(block); }
+inline void operator delete(void* block) noexcept { return fuujin::freemem(block); }
 
 #define FUUJIN_TRACE(...) SPDLOG_LOGGER_TRACE(&::fuujin::s_Logger, __VA_ARGS__)
 #define FUUJIN_DEBUG(...) SPDLOG_LOGGER_DEBUG(&::fuujin::s_Logger, __VA_ARGS__)
