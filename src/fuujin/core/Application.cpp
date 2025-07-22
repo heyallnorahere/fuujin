@@ -100,7 +100,7 @@ namespace fuujin {
         ZoneScoped;
 
         m_Data->LayerStack.clear();
-        AssetManager::Clear();
+        AssetManager::SHutdown();
         Renderer::Shutdown();
 
         m_Data->AppView.Reset();

@@ -17,16 +17,9 @@ namespace fuujin {
 
     static std::unique_ptr<AssetManagerData> s_Data;
 
-    void AssetManager::Clear() {
+    void AssetManager::SHutdown() {
         ZoneScoped;
-        if (!s_Data) {
-            return;
-        }
-
-        s_Data->PathTypeMap.clear();
-        for (auto& [type, data] : s_Data->AssetTypes) {
-            data.Assets.clear();
-        }
+        s_Data.reset();
     }
 
     fs::path AssetManager::NormalizePath(const fs::path& path) {

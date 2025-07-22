@@ -8,7 +8,7 @@ namespace fuujin {
 
         AssetManager() = delete;
 
-        static void Clear();
+        static void SHutdown();
 
         static fs::path NormalizePath(const fs::path& path);
         static std::optional<AssetType> DetermineAssetType(const fs::path& path);
