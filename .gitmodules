@@ -43,3 +43,6 @@
 [submodule "vendor/entt"]
 	path = vendor/entt
 	url = https://github.com/skypjack/entt.git
+[submodule "vendor/zstd"]
+	path = vendor/zstd
+	url = https://github.com/facebook/zstd.git

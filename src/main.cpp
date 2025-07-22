@@ -88,8 +88,8 @@ private:
     void LoadResources() {
         ZoneScoped;
 
-        static const std::string modelName = "Cube.model";
-        static const std::string sourceName = "Cube.gltf";
+        static const std::string modelName = "Gunman.model";
+        static const std::string sourceName = "Gunman.gltf";
 
         static const fs::path modelDirectory = "fuujin/models";
         static const fs::path modelPath = modelDirectory / modelName;
@@ -113,7 +113,7 @@ private:
         m_Renderer = Ref<SceneRenderer>::Create(m_Scene);
 
         auto cube = m_Scene->Create("Cube");
-        cube.AddComponent<TransformComponent>();
+        cube.AddComponent<TransformComponent>().Data.SetScale(glm::vec3(0.01f));
         cube.AddComponent<ModelComponent>().RenderedModel = model;
 
         m_Camera = m_Scene->Create("Camera");

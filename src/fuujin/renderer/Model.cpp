@@ -3,6 +3,8 @@
 
 #include "fuujin/asset/AssetManager.h"
 
+#include "fuujin/core/Compression.h"
+
 #include "fuujin/renderer/Renderer.h"
 
 #include <assimp/scene.h>
@@ -156,67 +158,48 @@ namespace fuujin {
         return {};
     }
 
-    static std::unique_ptr<Mesh> DeserializeMesh(const YAML::Node& node) {
+    ModelSerializer::ModelSerializer() {
         ZoneScoped;
 
-        const auto& verticesNode = node["Vertices"];
-        if (!verticesNode.IsDefined()) {
-            FUUJIN_ERROR("Mesh has no vertices!");
-            return nullptr;
-        }
+        Compression::Init();
+    }
 
-        const auto& facesNode = node["Faces"];
-        if (!facesNode.IsDefined()) {
-            FUUJIN_ERROR("Mesh has no faces!");
-            return nullptr;
-        }
+    ModelSerializer::~ModelSerializer() {
+        ZoneScoped;
+
+        Compression::Shutdown();
+    }
+
+    static std::unique_ptr<Mesh> DeserializeMesh(const YAML::Node& node, const Buffer& data) {
+        ZoneScoped;
+
+        size_t vertexCount = node["Vertices"].as<size_t>();
+        size_t faceCount = node["Faces"].as<size_t>();
+        size_t dataOffset = node["Offset"].as<size_t>();
+
+        std::vector<Vertex> vertices(vertexCount);
+        std::vector<uint32_t> indices(faceCount * Mesh::IndicesPerFace);
+
+        size_t verticesSize = vertices.size() * sizeof(Vertex);
+        size_t indicesSize = indices.size() * sizeof(uint32_t);
+        size_t totalDataSize = verticesSize + indicesSize;
+
+        size_t verticesOffset = 0;
+        size_t indicesOffset = verticesSize;
+
+        auto dataSlice = data.Slice(dataOffset, totalDataSize);
+        auto verticesSlice = data.Slice(verticesOffset, verticesSize);
+        auto indicesSlice = data.Slice(indicesOffset, indicesSize);
+
+        // this does not take into account endianness!
+        // todo: fix
+        Buffer::Copy(verticesSlice, Buffer::Wrapper(vertices), verticesSize);
+        Buffer::Copy(indicesSlice, Buffer::Wrapper(indices), indicesSize);
 
         const auto& materialNode = node["Material"];
         if (!materialNode.IsDefined()) {
             FUUJIN_ERROR("Mesh has no material!");
             return nullptr;
-        }
-
-        std::vector<Vertex> vertices;
-        for (const auto& vertexNode : verticesNode) {
-            Vertex vertex{};
-
-            const auto& positionNode = vertexNode["Position"];
-            if (!positionNode.IsDefined()) {
-                FUUJIN_ERROR("Vertex has no position - aborting mesh");
-                return nullptr;
-            }
-
-            const auto& uvNode = vertexNode["UV"];
-            const auto& normalNode = vertexNode["Normal"];
-            const auto& tangentNode = vertexNode["Tangent"];
-
-            vertex.Position = positionNode.as<glm::vec3>();
-            if (uvNode.IsDefined()) {
-                vertex.UV = uvNode.as<glm::vec2>();
-            }
-
-            if (normalNode.IsDefined()) {
-                vertex.Normal = normalNode.as<glm::vec3>();
-            }
-
-            if (tangentNode.IsDefined()) {
-                vertex.Tangent = tangentNode.as<glm::vec3>();
-            }
-
-            vertices.push_back(vertex);
-        }
-
-        std::vector<uint32_t> indices;
-        for (const auto& faceNode : facesNode) {
-            if (!faceNode.IsSequence() || faceNode.size() != Mesh::IndicesPerFace) {
-                FUUJIN_ERROR("Face not triangulated - skipping mesh");
-                return nullptr;
-            }
-
-            for (const auto& indexNode : faceNode) {
-                indices.push_back(indexNode.as<uint32_t>());
-            }
         }
 
         fs::path virtualMaterialPath = materialNode.as<std::string>();
@@ -280,10 +263,15 @@ namespace fuujin {
         return armature;
     }
 
+    static const fs::path s_ModelBinaryExtension = ".model.zstd";
     Ref<Asset> ModelSerializer::Deserialize(const fs::path& path) const {
         ZoneScoped;
 
+        auto binaryPath = path;
+        binaryPath.replace_extension(s_ModelBinaryExtension);
+
         std::ifstream file(path);
+        std::ifstream binaryFile(binaryPath, std::ios::binary | std::ios::in);
 
         auto pathText = path.string();
         if (!file.is_open()) {
@@ -291,9 +279,38 @@ namespace fuujin {
             return nullptr;
         }
 
+        auto binaryPathText = binaryPath.string();
+        if (!binaryFile.is_open()) {
+            FUUJIN_ERROR("Failed to open binary data file: {}", binaryPathText.c_str());
+            return nullptr;
+        }
+
         FUUJIN_INFO("Loading model from path: {}", pathText.c_str());
         auto node = YAML::Load(file);
         file.close();
+
+        binaryFile.seekg(0, std::ios::end);
+        size_t binarySize = (size_t)binaryFile.tellg();
+        binaryFile.seekg(0, std::ios::beg);
+
+        FUUJIN_INFO("Loading model vertex data ({} bytes compressed) from path: {}", binarySize,
+                    binaryPathText.c_str());
+
+        Buffer compressed(binarySize);
+        binaryFile.read((std::ifstream::char_type*)compressed.Get(), (std::streamsize)binarySize);
+
+        if (!binaryFile) {
+            FUUJIN_ERROR("Failed to read all vertex data! Aborting import");
+            return nullptr;
+        }
+
+        binaryFile.close();
+
+        auto vertexData = Compression::Decompress(compressed);
+        if (vertexData.IsEmpty()) {
+            FUUJIN_ERROR("Failed to decompress vertex data using ZSTD!");
+            return nullptr;
+        }
 
         auto model = Ref<Model>::Create(path);
 
@@ -322,7 +339,7 @@ namespace fuujin {
         const auto& meshesNode = node["Meshes"];
         if (meshesNode.IsDefined()) {
             for (const auto& meshNode : meshesNode) {
-                auto mesh = DeserializeMesh(meshNode);
+                auto mesh = DeserializeMesh(meshNode, vertexData);
                 if (!mesh) {
                     FUUJIN_WARN("Failed to load mesh - skipping");
                     continue;
@@ -349,47 +366,39 @@ namespace fuujin {
         return model;
     }
 
-    static bool SerializeMesh(const std::unique_ptr<Mesh>& mesh, YAML::Node& node) {
+    static Buffer SerializeMesh(const std::unique_ptr<Mesh>& mesh, YAML::Node& node,
+                                size_t offset) {
         ZoneScoped;
 
-        YAML::Node verticesNode;
         const auto& vertices = mesh->GetVertices();
-        for (const auto& vertex : vertices) {
-            YAML::Node vertexNode;
-
-            vertexNode["Position"] = vertex.Position;
-            vertexNode["UV"] = vertex.UV;
-            vertexNode["Normal"] = vertex.Normal;
-            vertexNode["Tangent"] = vertex.Tangent;
-
-            verticesNode.push_back(vertexNode);
-        }
-
-        YAML::Node facesNode;
         const auto& indices = mesh->GetIndices();
 
-        for (size_t i = 0; i < indices.size(); i += Mesh::IndicesPerFace) {
-            YAML::Node faceNode;
-            faceNode.SetStyle(YAML::EmitterStyle::Flow);
+        size_t verticesSize = vertices.size() * sizeof(Vertex);
+        size_t indicesSize = indices.size() * sizeof(uint32_t);
+        size_t totalSize = verticesSize + indicesSize;
 
-            for (size_t j = 0; j < Mesh::IndicesPerFace; j++) {
-                faceNode.push_back(indices[i + j]);
-            }
+        size_t verticesOffset = 0;
+        size_t indicesOffset = verticesSize;
 
-            facesNode.push_back(faceNode);
-        }
+        Buffer meshData(totalSize);
+        Buffer verticesSlice = meshData.Slice(verticesOffset, verticesSize);
+        Buffer indicesSlice = meshData.Slice(indicesOffset, indicesSize);
+
+        Buffer::Copy(Buffer::Wrapper(vertices), verticesSlice, verticesSize);
+        Buffer::Copy(Buffer::Wrapper(indices), indicesSlice, indicesSize);
 
         auto material = mesh->GetMaterial();
         auto virtualPath = AssetManager::GetVirtualPath(material->GetPath());
 
         if (!virtualPath.has_value()) {
             FUUJIN_ERROR("Material is not registered! Skipping mesh");
-            return false;
+            return Buffer();
         }
 
         node["Material"] = virtualPath.value().string();
-        node["Vertices"] = verticesNode;
-        node["Faces"] = facesNode;
+        node["Vertices"] = vertices.size();
+        node["Faces"] = indices.size() / Mesh::IndicesPerFace;
+        node["Offset"] = offset;
 
         const auto& bones = mesh->GetBones();
         if (!bones.empty()) {
@@ -415,7 +424,7 @@ namespace fuujin {
             node["Armature"] = mesh->GetArmatureIndex();
         }
 
-        return true;
+        return meshData;
     }
 
     static bool SerializeArmature(const std::unique_ptr<Armature>& armature, YAML::Node& node) {
@@ -456,9 +465,15 @@ namespace fuujin {
 
         YAML::Node meshesNode;
         size_t skippedMeshes = 0;
+
+        size_t meshDataOffset = 0;
+        std::vector<Buffer> meshDataBuffers;
+
         for (const auto& mesh : meshes) {
             YAML::Node meshNode;
-            if (!SerializeMesh(mesh, meshNode)) {
+            Buffer meshData = SerializeMesh(mesh, meshNode, meshDataOffset);
+
+            if (meshData.IsEmpty()) {
                 FUUJIN_WARN("Failed to serialize mesh! Skipping");
 
                 skippedMeshes++;
@@ -466,6 +481,8 @@ namespace fuujin {
             }
 
             meshesNode.push_back(meshNode);
+            meshDataBuffers.push_back(std::move(meshData));
+            meshDataOffset += meshData.GetSize();
         }
 
         if (skippedMeshes == meshes.size()) {
@@ -520,6 +537,22 @@ namespace fuujin {
             fs::create_directories(directory);
         }
 
+        size_t uncompressedSize = meshDataOffset;
+        Buffer uncompressed(uncompressedSize);
+
+        size_t uncompressedOffset = 0;
+        for (const auto& meshData : meshDataBuffers) {
+            Buffer::Copy(meshData, uncompressed.Slice(uncompressedOffset), meshData.GetSize());
+            uncompressedOffset += meshData.GetSize();
+        }
+
+        Buffer compressionStorage;
+        Buffer compressed = Compression::Compress(uncompressed, compressionStorage);
+
+        if (compressed.IsEmpty()) {
+            FUUJIN_ERROR("Failed to compress vertex data!");
+        }
+
         std::ofstream file(path);
 
         auto pathText = path.string();
@@ -530,6 +563,22 @@ namespace fuujin {
 
         file << YAML::Dump(node);
         file.close();
+
+        fs::path binaryPath = path;
+        binaryPath.replace_extension(s_ModelBinaryExtension);
+
+        std::ofstream binaryFile(binaryPath, std::ios::binary | std::ios::out);
+
+        auto binaryPathText = path.string();
+        if (!binaryFile.is_open()) {
+            FUUJIN_ERROR("Failed to open path {}", binaryPathText.c_str());
+            return false;
+        }
+
+        binaryFile.write((const std::ofstream::char_type*)compressed.Get(),
+                         (std::streamsize)compressed.GetSize());
+
+        binaryFile.close();
 
         FUUJIN_INFO("Serialized model to path {}", pathText.c_str());
         return true;

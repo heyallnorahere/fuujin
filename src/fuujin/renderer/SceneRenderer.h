@@ -1,6 +1,8 @@
 #pragma once
 #include "fuujin/core/Ref.h"
 
+#include "fuujin/animation/Animator.h"
+
 #include "fuujin/scene/Scene.h"
 
 namespace fuujin {
@@ -16,5 +18,7 @@ namespace fuujin {
 
         Ref<Scene> m_Scene;
         uint64_t m_MainID;
+
+        std::unordered_map<Scene::Entity, Ref<Animator>> m_Animators;
     };
 } // namespace fuujin

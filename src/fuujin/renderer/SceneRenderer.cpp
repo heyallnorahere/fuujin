@@ -76,12 +76,20 @@ namespace fuujin {
         ZoneScoped;
 
         m_Scene->View<TransformComponent, ModelComponent>(
-            [=](Scene::Entity entity, TransformComponent& transform, ModelComponent& model) {
+            [&](Scene::Entity entity, TransformComponent& transform, ModelComponent& model) {
                 glm::mat4 modelMatrix = transform.Data.ToMatrix();
+
+                if (!m_Animators.contains(entity) ||
+                    m_Animators.at(entity)->GetModel() != model.RenderedModel) {
+                    m_Animators[entity] = Ref<Animator>::Create(model.RenderedModel);
+                }
+
+                auto animator = m_Animators.at(entity);
+                // todo: animation components
 
                 ModelRenderCall call;
                 call.RenderedModel = model.RenderedModel;
-                call.ModelAnimator = nullptr; // todo: animation component
+                call.ModelAnimator = animator;
                 call.ModelMatrix = modelMatrix;
                 call.FirstCamera = firstCamera;
                 call.CameraCount = cameraCount;

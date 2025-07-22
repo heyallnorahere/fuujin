@@ -135,6 +135,9 @@ namespace fuujin {
 
     class ModelSerializer : public AssetSerializer {
     public:
+        ModelSerializer();
+        virtual ~ModelSerializer() override;
+
         virtual Ref<Asset> Deserialize(const fs::path& path) const override;
         virtual bool Serialize(const Ref<Asset>& asset) const override;
 

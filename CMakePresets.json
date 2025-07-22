@@ -21,7 +21,12 @@
                 
                 "GLFW_BUILD_WAYLAND": "OFF",
 		
-		"CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        		"CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+
+                "ZSTD_BUILD_SHARED": "OFF",
+                "ZSTD_BUILD_PROGRAMS": "OFF",
+                "ZSTD_BUILD_TESTS": "OFF",
+                "ZSTD_BUILD_CONTRIB": "OFF"
             }
         },
         {

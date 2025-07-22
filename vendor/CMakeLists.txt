@@ -7,6 +7,7 @@ add_subdirectory("stb")
 add_subdirectory("assimp")
 add_subdirectory("yaml-cpp")
 add_subdirectory("entt")
+add_subdirectory("zstd/build/cmake")
 
 find_package(Python3 REQUIRED)
 execute_process(COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/shaderc/utils/git-sync-deps")

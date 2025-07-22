@@ -11,6 +11,11 @@ namespace fuujin {
         static const Buffer Wrapper(const void* data, size_t size);
 
         template <typename _Ty>
+        static Buffer Wrapper(std::vector<_Ty>& data) {
+            return Wrapper(data.data(), data.size() * sizeof(_Ty));
+        }
+
+        template <typename _Ty>
         static const Buffer Wrapper(const std::vector<_Ty>& data) {
             return Wrapper(data.data(), data.size() * sizeof(_Ty));
         }

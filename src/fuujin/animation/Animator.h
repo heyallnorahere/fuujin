@@ -24,6 +24,8 @@ namespace fuujin {
         uint64_t GetID() const { return m_ID; }
         uint64_t GetState() const { return m_State; }
 
+        const Ref<Model>& GetModel() const { return m_Model; }
+
     private:
         void WalkTree(size_t nodeIndex, const glm::mat4& parentTransform);
 
