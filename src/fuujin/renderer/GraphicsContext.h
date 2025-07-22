@@ -30,6 +30,10 @@ namespace fuujin {
         virtual Ref<Texture> CreateTexture(const Texture::Spec& spec) const = 0;
 
         virtual Ref<Swapchain> CreateSwapchain(const Ref<View>& view) const = 0;
+        virtual Ref<Framebuffer> CreateFramebuffer(const Framebuffer::Spec& spec) const = 0;
+
+        virtual std::vector<Ref<Framebuffer>> CreateFramebuffers(const Framebuffer::Spec& spec,
+                                                                 size_t count) const = 0;
 
         virtual RendererAPI* CreateRendererAPI(uint32_t frames) const = 0;
 

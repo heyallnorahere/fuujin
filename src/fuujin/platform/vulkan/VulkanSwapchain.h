@@ -41,7 +41,7 @@ namespace fuujin {
 
         Ref<VulkanRenderPass> GetRenderPass() const { return m_RenderPass; }
 
-        virtual void RT_BeginRender(CommandList& cmdList) override;
+        virtual void RT_BeginRender(CommandList& cmdList, const glm::vec4& clearColor) override;
         virtual void RT_EndRender(CommandList& cmdList) override;
         virtual void RT_EndFrame() override;
 

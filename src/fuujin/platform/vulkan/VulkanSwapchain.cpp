@@ -93,13 +93,13 @@ namespace fuujin {
                     m_Extent.height, viewSize.Width, viewSize.Height);
     }
 
-    void VulkanSwapchain::RT_BeginRender(CommandList& cmdList) {
+    void VulkanSwapchain::RT_BeginRender(CommandList& cmdList, const glm::vec4& clearColor) {
         ZoneScoped;
         RT_AcquireImage();
 
         auto buffer = (VulkanCommandBuffer*)&cmdList;
         auto framebuffer = m_Framebuffers[m_CurrentImage];
-        framebuffer->RT_BeginRenderPass(buffer, glm::vec4(glm::vec3(0.1f), 1.f));
+        framebuffer->RT_BeginRenderPass(buffer, clearColor);
 
         auto& sync = m_Sync[m_CurrentImage];
         auto semaphore = sync.ImageAvailable;
@@ -130,7 +130,7 @@ namespace fuujin {
         ZoneScoped;
 
         while (true) {
-            size_t assumedSyncIndex =(m_CurrentImage + 1) % m_Framebuffers.size();
+            size_t assumedSyncIndex = (m_CurrentImage + 1) % m_Framebuffers.size();
 
             auto fence = m_Sync[assumedSyncIndex].Fence;
             fence->Wait(std::numeric_limits<uint64_t>::max());

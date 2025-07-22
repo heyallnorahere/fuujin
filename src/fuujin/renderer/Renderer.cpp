@@ -444,7 +444,7 @@ namespace fuujin {
             for (size_t i = 0; i < lightCount; i++) {
                 const auto& light = data.Lights[i];
                 std::string basePath = "Lights[" + std::to_string(i) + "]";
-                
+
                 ShaderBuffer lightSlice;
                 if (!buffer.Slice(basePath, lightSlice)) {
                     continue;
@@ -855,7 +855,7 @@ namespace fuujin {
         target->CmdList = &s_Data->GraphicsQueue->RT_Get();
         target->CmdList->RT_Begin();
 
-        target->Target->RT_BeginRender(*target->CmdList);
+        target->Target->RT_BeginRender(*target->CmdList, glm::vec4(glm::vec3(0.1f), 1.f));
     }
 
     static void RT_EndRenderTarget(std::shared_ptr<ActiveRenderTarget> target) {

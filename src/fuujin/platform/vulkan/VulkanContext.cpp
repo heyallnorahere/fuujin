@@ -366,6 +366,33 @@ namespace fuujin {
         return swapchain;
     }
 
+    Ref<Framebuffer> VulkanContext::CreateFramebuffer(const Framebuffer::Spec& spec) const {
+        return Ref<VulkanFramebuffer>::Create(m_Data->Devices[m_Data->UsedDevice], spec,
+                                              m_Data->Allocator, nullptr);
+    }
+
+    std::vector<Ref<Framebuffer>> VulkanContext::CreateFramebuffers(const Framebuffer::Spec& spec,
+                                                                    size_t count) const {
+        ZoneScoped;
+
+        std::vector<Ref<Framebuffer>> framebuffers;
+        Ref<VulkanRenderPass> renderPass;
+
+        auto device = m_Data->Devices[m_Data->UsedDevice];
+        for (size_t i = 0; i < count; i++) {
+            auto framebuffer =
+                Ref<VulkanFramebuffer>::Create(device, spec, m_Data->Allocator, renderPass);
+
+            if (renderPass.IsEmpty()) {
+                renderPass = framebuffer->GetRenderPass();
+            }
+
+            framebuffers.push_back(framebuffer);
+        }
+
+        return framebuffers;
+    }
+
     RendererAPI* VulkanContext::CreateRendererAPI(uint32_t frames) const {
         return new VulkanRenderer(m_Data->Devices[m_Data->UsedDevice], frames);
     }
