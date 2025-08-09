@@ -9,7 +9,10 @@ namespace fuujin {
     static void RT_WaitForFence(VkDevice device, VkFence fence, uint64_t timeout) {
         ZoneScoped;
 
-        vkWaitForFences(device, 1, &fence, VK_TRUE, timeout);
+        VkResult result = vkWaitForFences(device, 1, &fence, VK_TRUE, timeout);
+        if (result != VK_SUCCESS) {
+            throw std::runtime_error("Failed to wait for fence!");
+        }
     }
 
     VulkanFence::VulkanFence(Ref<VulkanDevice> device, bool signaled) {
@@ -78,6 +81,9 @@ namespace fuujin {
 
         m_Device = device;
         m_Semaphore = VK_NULL_HANDLE;
+
+        m_SignaledCount = 0;
+        m_WaitedCount = 0;
 
         Renderer::Submit([this]() { RT_Create(); }, "Create semaphore");
     }
@@ -323,22 +329,53 @@ namespace fuujin {
         std::vector<VkPipelineStageFlags> waitStageFlags;
         std::vector<VkSemaphore> waitSemaphores, signalSemaphores;
 
+        std::unordered_set<VkSemaphore> signaledSemaphores;
         std::vector<Ref<VulkanSemaphore>> semaphores;
         if (stored.Buffer->GetSemaphores(SemaphoreUsage::Signal, semaphores)) {
             for (auto semaphore : semaphores) {
-                signalSemaphores.push_back(semaphore->Get());
+                semaphore->SetSignaled();
+
+                VkSemaphore vkSemaphore = semaphore->Get();
+                signaledSemaphores.insert(vkSemaphore);
+                signalSemaphores.push_back(vkSemaphore);
             }
 
             submitInfo.signalSemaphoreCount = (uint32_t)signalSemaphores.size();
             submitInfo.pSignalSemaphores = signalSemaphores.data();
         }
 
+        std::unordered_map<VkSemaphore, size_t> waitedSemaphores;
         if (stored.Buffer->GetSemaphores(SemaphoreUsage::Wait, semaphores)) {
             const auto& waitStages = stored.Buffer->GetWaitStages();
             for (size_t i = 0; i < semaphores.size(); i++) {
-                waitSemaphores.push_back(semaphores[i]->Get());
-                waitStageFlags.push_back(
-                    waitStages.contains(i) ? waitStages.at(i) : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+                auto semaphore = semaphores[i];
+                VkSemaphore vkSemaphore = semaphore->Get();
+
+                if (signaledSemaphores.contains(vkSemaphore)) {
+                    throw std::runtime_error(
+                        "Attempted to signal and wait on a semaphore in the same command buffer!");
+                }
+
+                if (!waitedSemaphores.contains(vkSemaphore)) {
+                    waitSemaphores.push_back(vkSemaphore);
+                    waitStageFlags.push_back(waitStages.contains(i)
+                                                 ? waitStages.at(i)
+                                                 : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+
+                    semaphore->SetWaited();
+
+                    uint64_t signaledCount = semaphore->GetSignaledCount();
+                    uint64_t waitedCount = semaphore->GetWaitedCount();
+
+                    if (waitedCount > signaledCount) {
+                        throw std::runtime_error("Attempted to wait on an unsignaled semaphore!");
+                    }
+
+                    waitedSemaphores[vkSemaphore] = i;
+                } else if (waitStages.contains(i)) {
+                    size_t index = waitedSemaphores.at(vkSemaphore);
+                    waitStageFlags[index] |= waitStages.at(i);
+                }
             }
 
             submitInfo.waitSemaphoreCount = (uint32_t)waitSemaphores.size();
@@ -379,6 +416,7 @@ namespace fuujin {
 
             delete front.Buffer;
             if (front.FenceOwned) {
+                front.BufferWait->Reset();
                 m_AvailableFences.push(front.BufferWait);
             }
 

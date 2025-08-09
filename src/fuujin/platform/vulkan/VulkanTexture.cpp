@@ -34,14 +34,35 @@ namespace fuujin {
         }
     }
 
-    VkFormat VulkanTexture::ConvertFormat(Format format) {
+    VkBorderColor VulkanSampler::ConvertBorderColor(BorderColor color) {
+        switch (color) {
+        case BorderColor::FloatTransparentBlack:
+            return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+        case BorderColor::IntTransparentBlack:
+            return VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;
+        case BorderColor::FloatOpaqueBlack:
+            return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+        case BorderColor::IntOpaqueBlack:
+            return VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        case BorderColor::FloatOpaqueWhite:
+            return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        case BorderColor::IntOpaqueWhite:
+            return VK_BORDER_COLOR_INT_OPAQUE_WHITE;
+        default:
+            throw std::runtime_error("Invalid border color!");
+        }
+    }
+
+    VulkanTexture::FormatInfo VulkanTexture::QueryFormat(Format format) {
         switch (format) {
         case Format::RGBA8:
-            return VK_FORMAT_R8G8B8A8_UNORM;
+            return { VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT };
         case Format::RGB8:
-            return VK_FORMAT_R8G8B8_UNORM;
+            return { VK_FORMAT_R8G8B8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT };
         case Format::A8:
-            return VK_FORMAT_A8_UNORM_KHR;
+            return { VK_FORMAT_A8_UNORM_KHR, VK_IMAGE_ASPECT_COLOR_BIT };
+        case Format::D32:
+            return { VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT };
         default:
             throw std::runtime_error("Invalid texture format!");
         }
@@ -76,6 +97,7 @@ namespace fuujin {
         createInfo.addressModeU = ConvertAddressMode(m_Spec.U);
         createInfo.addressModeV = ConvertAddressMode(m_Spec.V);
         createInfo.addressModeW = ConvertAddressMode(m_Spec.W);
+        createInfo.borderColor = ConvertBorderColor(m_Spec.Border);
 
         switch (m_Spec.Mipmap) {
         case SamplerFilter::Linear:
@@ -105,8 +127,8 @@ namespace fuujin {
         }
     }
 
-    VulkanTexture::VulkanTexture(const Ref<VulkanDevice>& device,
-                                 const VmaAllocator& allocator, const Spec& spec) {
+    VulkanTexture::VulkanTexture(const Ref<VulkanDevice>& device, const VmaAllocator& allocator,
+                                 const Spec& spec) {
         ZoneScoped;
 
         m_ID = s_TextureID++;
@@ -118,18 +140,37 @@ namespace fuujin {
     }
 
     void VulkanTexture::CreateImage(VmaAllocator allocator) {
+        auto formatInfo = QueryFormat(m_Spec.ImageFormat);
+
         VulkanImage::VulkanSpec spec;
         spec.Allocator = allocator;
         spec.Extent.width = m_Spec.Width;
         spec.Extent.height = m_Spec.Height;
         spec.Extent.depth = m_Spec.Depth;
-        spec.Format = ConvertFormat(m_Spec.ImageFormat);
+        spec.Format = formatInfo.VulkanFormat;
         spec.Usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         spec.MipLevels = m_Spec.MipLevels;
         spec.ArrayLayers = 1;
         spec.SafeLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        spec.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT; // todo: depth?
-        spec.Samples = VK_SAMPLE_COUNT_1_BIT;         // todo: multisampling attachments?
+        spec.AspectFlags = formatInfo.Aspect;
+        spec.Samples = (VkSampleCountFlagBits)m_Spec.Samples;
+
+        for (auto feature : m_Spec.AdditionalFeatures) {
+            switch (feature) {
+            case Feature::ColorAttachment:
+                spec.Usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+                break;
+            case Feature::DepthAttachment:
+                spec.Usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+                break;
+            case Feature::ShaderStorage:
+                spec.Usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+                break;
+            case Feature::Transfer:
+                spec.Usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+                break;
+            }
+        }
 
         switch (m_Spec.TextureType) {
         case Type::_2D:

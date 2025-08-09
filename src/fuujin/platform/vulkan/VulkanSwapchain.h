@@ -37,7 +37,7 @@ namespace fuujin {
             return m_Framebuffers[index];
         }
 
-        virtual Ref<Fence> GetCurrentFence() const override { return m_Sync[m_CurrentImage].Fence; }
+        virtual Ref<Fence> GetCurrentFence() const override { return m_Sync[m_SyncFrame].Fence; }
 
         Ref<VulkanRenderPass> GetRenderPass() const { return m_RenderPass; }
 
@@ -51,7 +51,6 @@ namespace fuujin {
     private:
         struct FrameSync {
             Ref<VulkanFence> Fence;
-            Ref<VulkanSemaphore> ImageAvailable, RenderComplete;
         };
 
         void RT_Invalidate();
@@ -75,10 +74,13 @@ namespace fuujin {
         bool m_DepthHasStencil;
 
         std::vector<Ref<VulkanFramebuffer>> m_Framebuffers;
+        std::vector<Ref<VulkanSemaphore>> m_ImageSemaphores;
+        std::vector<Ref<VulkanSemaphore>> m_PresentationSemaphores;
+        std::queue<Ref<VulkanSemaphore>> m_AvailableSemaphores;
         uint32_t m_CurrentImage;
 
+        size_t m_SyncFrame;
         std::vector<FrameSync> m_Sync;
-        std::queue<Ref<VulkanSemaphore>> m_UsedSemaphores;
 
         VkExtent2D m_Extent;
         std::optional<ViewSize> m_NewViewSize;

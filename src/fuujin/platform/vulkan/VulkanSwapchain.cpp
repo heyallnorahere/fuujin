@@ -16,7 +16,8 @@ namespace fuujin {
     }
 
     VulkanSwapchain::VulkanSwapchain(Ref<View> view, Ref<VulkanDevice> device)
-        : m_View(view), m_Device(device), m_ImageFormat(VK_FORMAT_UNDEFINED), m_Extent({}) {
+        : m_View(view), m_Device(device), m_ImageFormat(VK_FORMAT_UNDEFINED), m_Extent({}),
+          m_SyncFrame(0) {
         ZoneScoped;
 
         m_Swapchain = VK_NULL_HANDLE;
@@ -101,13 +102,8 @@ namespace fuujin {
         auto framebuffer = m_Framebuffers[m_CurrentImage];
         framebuffer->RT_BeginRenderPass(buffer, clearColor);
 
-        auto& sync = m_Sync[m_CurrentImage];
-        auto semaphore = sync.ImageAvailable;
-
+        auto semaphore = m_ImageSemaphores[m_CurrentImage];
         buffer->AddWaitSemaphore(semaphore, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        m_UsedSemaphores.push(semaphore);
-
-        sync.ImageAvailable.Reset();
     }
 
     void VulkanSwapchain::RT_EndRender(CommandList& cmdList) {
@@ -117,46 +113,55 @@ namespace fuujin {
         auto framebuffer = m_Framebuffers[m_CurrentImage];
         framebuffer->RT_EndRenderPass(buffer);
 
-        auto semaphore = m_Sync[m_CurrentImage].RenderComplete;
+        auto semaphore = m_PresentationSemaphores[m_CurrentImage];
         buffer->AddSemaphore(semaphore, SemaphoreUsage::Signal);
     }
 
     void VulkanSwapchain::RT_EndFrame() {
         ZoneScoped;
         RT_Present();
+
+        m_SyncFrame = (m_SyncFrame + 1) % m_Framebuffers.size();
     }
 
     void VulkanSwapchain::RT_AcquireImage() {
         ZoneScoped;
 
+        Ref<VulkanSemaphore> imageAvailable;
+        if (m_AvailableSemaphores.empty()) {
+            imageAvailable = Ref<VulkanSemaphore>::Create(m_Device);
+        } else {
+            imageAvailable = m_AvailableSemaphores.front();
+            m_AvailableSemaphores.pop();
+        }
+
         while (true) {
-            size_t assumedSyncIndex = (m_CurrentImage + 1) % m_Framebuffers.size();
+            const auto& sync = m_Sync[m_SyncFrame];
+            auto fence = sync.Fence;
 
-            auto fence = m_Sync[assumedSyncIndex].Fence;
             fence->Wait(std::numeric_limits<uint64_t>::max());
-
-            Ref<VulkanSemaphore> imageAvailable;
-            if (m_UsedSemaphores.size() >= 3) {
-                imageAvailable = m_UsedSemaphores.front();
-                m_UsedSemaphores.pop();
-            } else {
-                imageAvailable = Ref<VulkanSemaphore>::Create(m_Device);
-            }
 
             auto result = vkAcquireNextImageKHR(
                 m_Device->GetDevice(), m_Swapchain, std::numeric_limits<uint64_t>::max(),
                 imageAvailable->Get(), VK_NULL_HANDLE, &m_CurrentImage);
 
-            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+            if (result == VK_ERROR_OUT_OF_DATE_KHR) {
                 RT_Invalidate();
                 continue;
             } else if (result != VK_SUCCESS) {
                 throw std::runtime_error("Failed to acquire swapchain image!");
             }
 
-            m_Sync[m_CurrentImage].ImageAvailable = imageAvailable;
             break;
         }
+
+        auto previousSemapohre = m_ImageSemaphores[m_CurrentImage];
+        if (previousSemapohre.IsPresent()) {
+            m_AvailableSemaphores.push(previousSemapohre);
+        }
+
+        imageAvailable->SetSignaled();
+        m_ImageSemaphores[m_CurrentImage] = imageAvailable;
     }
 
     void VulkanSwapchain::RT_Present() {
@@ -165,7 +170,7 @@ namespace fuujin {
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-        VkSemaphore waitSemaphore = m_Sync[m_CurrentImage].RenderComplete->Get();
+        VkSemaphore waitSemaphore = m_PresentationSemaphores[m_CurrentImage]->Get();
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = &waitSemaphore;
 
@@ -309,6 +314,13 @@ namespace fuujin {
             }
         }
 
+        m_SyncFrame %= m_Framebuffers.size();
+        m_ImageSemaphores.resize(m_Framebuffers.size());
+
+        while (m_PresentationSemaphores.size() < m_Framebuffers.size()) {
+            m_PresentationSemaphores.push_back(Ref<VulkanSemaphore>::Create(m_Device));
+        }
+
         if (m_Sync.size() != m_Framebuffers.size()) {
             m_Sync.resize(m_Framebuffers.size());
         }
@@ -319,9 +331,6 @@ namespace fuujin {
             if (frameSync.Fence.IsEmpty()) {
                 frameSync.Fence = Ref<VulkanFence>::Create(m_Device, true);
             }
-
-            frameSync.ImageAvailable.Reset();
-            frameSync.RenderComplete = Ref<VulkanSemaphore>::Create(m_Device);
         }
     }
 

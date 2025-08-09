@@ -663,13 +663,15 @@ namespace fuujin {
 
         std::vector<VkDescriptorSetLayout> layouts;
         for (auto [setIndex, setLayout] : m_SetLayouts) {
-            size_t index = layouts.size();
-            if (index != setIndex) {
-                throw std::runtime_error("Vector and map index mismatch! " + std::to_string(index) +
-                                         " != " + std::to_string(setIndex));
+            for (size_t i = layouts.size(); i < setIndex; i++) {
+                layouts.push_back(VK_NULL_HANDLE);
             }
 
-            layouts.push_back(setLayout);
+            if (setIndex < layouts.size()) {
+                layouts[setIndex] = setLayout;
+            } else {
+                layouts.push_back(setLayout);
+            }
         }
 
         VkPushConstantRange range{};

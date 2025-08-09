@@ -183,8 +183,14 @@ namespace fuujin {
 
         s_Data->Context->GetDevice()->GetProperties(s_Data->DeviceProperties);
         Renderer::Submit([]() { LogGraphicsContext(); });
+        Renderer::Wait();
 
         uint32_t frameCount = 3;
+        auto swapchain = s_Data->Context->GetSwapchain();
+
+        if (swapchain.IsPresent()) {
+            frameCount = swapchain->GetImageCount();
+        }
 
         s_Data->API = s_Data->Context->CreateRendererAPI(frameCount);
         s_Data->FrameCount = frameCount;
@@ -253,6 +259,24 @@ namespace fuujin {
         }
 
         return s_Data->DeviceProperties.API;
+    }
+
+    uint32_t Renderer::GetCurrentFrame() {
+        ZoneScoped;
+        if (!s_Data) {
+            return 0;
+        }
+
+        return s_Data->CurrentFrame.value_or(0);
+    }
+
+    uint32_t Renderer::GetFrameCount() {
+        ZoneScoped;
+        if (!s_Data) {
+            return 0;
+        }
+
+        return s_Data->FrameCount;
     }
 
     void Renderer::ProcessEvent(Event& event) {
@@ -757,6 +781,7 @@ namespace fuujin {
         textureSpec.Height = height;
         textureSpec.Depth = 1;
         textureSpec.MipLevels = 1; // todo: mipmaps
+        textureSpec.Samples = 1;
         textureSpec.ImageFormat = format;
         textureSpec.TextureType = Texture::Type::_2D;
 
@@ -847,7 +872,6 @@ namespace fuujin {
 
     static void RT_BeginRenderTarget(std::shared_ptr<ActiveRenderTarget> target) {
         ZoneScoped;
-
         if (target->CmdList != nullptr) {
             return; // nothing to do
         }
@@ -868,7 +892,9 @@ namespace fuujin {
         }
 
         auto fence = target->Target->GetCurrentFence();
-        fence->Reset();
+        if (fence.IsPresent()) {
+            fence->Reset();
+        }
 
         target->CmdList->RT_End();
         s_Data->GraphicsQueue->RT_Submit(*target->CmdList, fence);
@@ -935,7 +961,7 @@ namespace fuujin {
             return;
         }
 
-        const auto& target = s_Data->Targets.top();
+        auto target = s_Data->Targets.top();
         Renderer::Submit([target]() { RT_PopRenderTarget(target); }, "Pop render target");
 
         s_Data->Targets.pop();

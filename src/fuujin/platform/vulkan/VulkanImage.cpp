@@ -254,8 +254,8 @@ namespace fuujin {
                 VulkanImage::RT_TransitionLayout(cmdBuffer, vkImage, layout, stage, safeLayout,
                                                  VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, subresource);
 
-                semaphoreData->Buffer->AddSemaphore(semaphoreData->Image->SignalUsed(),
-                                                    SemaphoreUsage::Signal);
+                auto semaphore = semaphoreData->Image->SignalUsed();
+                semaphoreData->Buffer->AddSemaphore(semaphore, SemaphoreUsage::Signal);
 
                 delete semaphoreData;
             });

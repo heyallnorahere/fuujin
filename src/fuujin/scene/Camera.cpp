@@ -4,68 +4,6 @@
 #include "fuujin/renderer/Renderer.h"
 
 namespace fuujin {
-    template <typename _Ty>
-    inline glm::mat<4, 4, _Ty, glm::defaultp> Perspective(const GraphicsDevice::APISpec& api,
-                                                          _Ty fovy, _Ty aspect, _Ty zNear,
-                                                          _Ty zFar) {
-        ZoneScoped;
-
-        switch (api.Depth) {
-        case GraphicsDevice::DepthRange::NegativeOneToOne:
-            if (api.LeftHanded) {
-                return glm::perspectiveLH_NO(fovy, aspect, zNear, zFar);
-            } else {
-                return glm::perspectiveRH_NO(fovy, aspect, zNear, zFar);
-            }
-        case GraphicsDevice::DepthRange::ZeroToOne:
-            if (api.LeftHanded) {
-                return glm::perspectiveLH_ZO(fovy, aspect, zNear, zFar);
-            } else {
-                return glm::perspectiveRH_ZO(fovy, aspect, zNear, zFar);
-            }
-        }
-
-        return glm::mat<4, 4, _Ty, glm::defaultp>((_Ty)0);
-    }
-
-    template <typename _Ty>
-    inline glm::mat<4, 4, _Ty, glm::defaultp> Orthographic(const GraphicsDevice::APISpec& api,
-                                                           _Ty left, _Ty right, _Ty bottom, _Ty top,
-                                                           _Ty zNear, _Ty zFar) {
-        ZoneScoped;
-
-        switch (api.Depth) {
-        case GraphicsDevice::DepthRange::NegativeOneToOne:
-            if (api.LeftHanded) {
-                return glm::orthoLH_NO(left, right, bottom, top, zNear, zFar);
-            } else {
-                return glm::orthoRH_NO(left, right, bottom, top, zNear, zFar);
-            }
-        case GraphicsDevice::DepthRange::ZeroToOne:
-            if (api.LeftHanded) {
-                return glm::orthoLH_ZO(left, right, bottom, top, zNear, zFar);
-            } else {
-                return glm::orthoRH_ZO(left, right, bottom, top, zNear, zFar);
-            }
-        }
-
-        return glm::mat<4, 4, _Ty, glm::defaultp>((_Ty)0);
-    }
-
-    template <typename _Ty, glm::qualifier Q>
-    inline glm::mat<4, 4, _Ty, Q> LookAt(const GraphicsDevice::APISpec& api,
-                                         const glm::vec<3, _Ty, Q>& eye,
-                                         const glm::vec<3, _Ty, Q>& center,
-                                         const glm::vec<3, _Ty, Q>& up) {
-        ZoneScoped;
-
-        if (api.LeftHanded) {
-            return glm::lookAtLH(eye, center, up);
-        } else {
-            return glm::lookAtRH(eye, center, up);
-        }
-    }
-
     Camera::Camera() {
         ZoneScoped;
 
@@ -75,8 +13,7 @@ namespace fuujin {
         SetZRange(glm::vec2(0.1f, 100.f));
     }
 
-    glm::mat4 Camera::CalculateViewProjection(const glm::vec3& translation,
-                                              const glm::quat& rotation) {
+    glm::mat4 Camera::CalculateViewProjection(const glm::mat4& transform) {
         ZoneScoped;
 
         auto& api = Renderer::GetAPI();
@@ -93,11 +30,13 @@ namespace fuujin {
         static const glm::vec3 defaultDirection = glm::vec3(0.f, 0.f, -1.f);
         static const glm::vec3 defaultUp = glm::vec3(0.f, 1.f, 0.f);
 
-        glm::mat3 rotationMatrix = glm::toMat3(rotation);
+        glm::mat3 rotationMatrix = glm::mat3(transform);
         glm::vec3 direction = glm::normalize(rotationMatrix * defaultDirection);
         glm::vec3 up = glm::normalize(rotationMatrix * defaultUp);
 
+        glm::vec3 translation = glm::vec3(transform * glm::vec4(glm::vec3(0.f), 1.f));
         glm::mat4 view = LookAt(api, translation, translation + direction, up);
+
         return m_Projection * view;
     }
 

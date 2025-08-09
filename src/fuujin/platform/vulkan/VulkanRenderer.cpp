@@ -599,39 +599,6 @@ namespace fuujin {
             allocData->Allocation = allocation;
             allocData->Bindings = allocation->GetBindings(); // intentionally copy
 
-            for (const auto& [setIndex, setBindings] : allocData->Bindings) {
-                for (const auto& [bindingIndex, bindingData] : setBindings) {
-                    if (bindingData.ImageType == VulkanImageType::None) {
-                        continue;
-                    }
-
-                    for (const auto& [descriptorIndex, resource] : bindingData.Descriptors) {
-                        Ref<VulkanImage> image;
-                        switch (bindingData.ImageType) {
-                        case VulkanImageType::Image:
-                            image = resource.Object.As<VulkanImage>();
-                            break;
-                        case VulkanImageType::Texture: {
-                            auto texture = resource.Object.As<VulkanTexture>();
-                            image = texture->GetImage().As<VulkanImage>();
-                        } break;
-                        default:
-                            image = nullptr;
-                            break;
-                        }
-
-                        if (image.IsEmpty()) {
-                            continue;
-                        }
-
-                        auto semaphore = image->GetSignaledSemaphore();
-                        if (semaphore.IsPresent()) {
-                            allocData->ImageSemaphores.push_back(semaphore);
-                        }
-                    }
-                }
-            }
-
             allocation->RT_AllocateDescriptorSets(m_Device, pool.DescriptorPool, allocData->Sets);
         }
 
@@ -656,8 +623,37 @@ namespace fuujin {
                                     (uint32_t)sets.size(), sets.data(), 0, nullptr);
         }
 
-        for (auto semaphore : allocData->ImageSemaphores) {
-            cmdBuffer.AddSemaphore(semaphore, SemaphoreUsage::Wait);
+        for (const auto& [setIndex, setBindings] : allocData->Bindings) {
+            for (const auto& [bindingIndex, bindingData] : setBindings) {
+                if (bindingData.ImageType == VulkanImageType::None) {
+                    continue;
+                }
+
+                for (const auto& [descriptorIndex, resource] : bindingData.Descriptors) {
+                    Ref<VulkanImage> image;
+                    switch (bindingData.ImageType) {
+                    case VulkanImageType::Image:
+                        image = resource.Object.As<VulkanImage>();
+                        break;
+                    case VulkanImageType::Texture: {
+                        auto texture = resource.Object.As<VulkanTexture>();
+                        image = texture->GetImage().As<VulkanImage>();
+                    } break;
+                    default:
+                        image = nullptr;
+                        break;
+                    }
+
+                    if (image.IsEmpty()) {
+                        continue;
+                    }
+
+                    auto semaphore = image->GetSignaledSemaphore();
+                    if (semaphore.IsPresent()) {
+                        cmdBuffer.AddSemaphore(semaphore, SemaphoreUsage::Wait);
+                    }
+                }
+            }
         }
 
         boundSets.insert(currentSets.begin(), currentSets.end());

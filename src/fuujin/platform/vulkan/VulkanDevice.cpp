@@ -195,15 +195,31 @@ namespace fuujin {
 
         bool advancedFeatures = false;
         std::vector<void*> blocks = { next };
+        features.pNext = next;
 
         if (api >= VK_API_VERSION_1_1) {
+            advancedFeatures = true;
+
             auto features11 = (VkPhysicalDeviceVulkan11Features*)allocate(
                 sizeof(VkPhysicalDeviceVulkan11Features));
             blocks.push_back(features11);
 
+            auto pipelineLibraryFeatures =
+                (VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT*)allocate(
+                    sizeof(VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT));
+            blocks.push_back(pipelineLibraryFeatures);
+
             FUUJIN_DEBUG("Enabling Vulkan 1.1 features");
             features11->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+            features11->pNext = features.pNext;
             features.pNext = features11;
+
+            FUUJIN_DEBUG("Enabling pipeline library features");
+            pipelineLibraryFeatures->sType =
+                VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
+
+            pipelineLibraryFeatures->pNext = features.pNext;
+            features.pNext = pipelineLibraryFeatures;
 
             if (api >= VK_API_VERSION_1_2) {
                 auto features12 = (VkPhysicalDeviceVulkan12Features*)allocate(
@@ -212,7 +228,8 @@ namespace fuujin {
 
                 FUUJIN_DEBUG("Enabling Vulkan 1.2 features");
                 features12->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-                features11->pNext = features12;
+                features12->pNext = features.pNext;
+                features.pNext = features12;
 
                 if (api >= VK_API_VERSION_1_3) {
                     auto features13 = (VkPhysicalDeviceVulkan13Features*)allocate(
@@ -221,16 +238,10 @@ namespace fuujin {
 
                     FUUJIN_DEBUG("Enabling Vulkan 1.3 features");
                     features13->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-                    features13->pNext = next;
-                    features12->pNext = features13;
-                } else {
-                    features12->pNext = next;
+                    features13->pNext = features.pNext;
+                    features.pNext = features13;
                 }
-            } else {
-                features11->pNext = next;
             }
-
-            advancedFeatures = true;
         }
 
         RT_GetFeatures(features);

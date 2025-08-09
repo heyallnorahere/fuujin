@@ -60,7 +60,7 @@ namespace fuujin {
             const auto& attachment = spec.Attachments[i];
 
             auto& desc = attachments.emplace_back();
-            desc.format = VulkanTexture::ConvertFormat(attachment.Format);
+            desc.format = VulkanTexture::QueryFormat(attachment.Format).VulkanFormat;
             desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             desc.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // these are textures
             desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -68,7 +68,12 @@ namespace fuujin {
             desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
             if (!resolveAttachmentIndices.contains(i)) {
-                desc.samples = samples;
+                if (attachment.ImageType != Texture::Type::_2D) {
+                    desc.samples = VK_SAMPLE_COUNT_1_BIT;
+                } else {
+                    desc.samples = samples;
+                }
+
                 desc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
             } else {
                 desc.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -159,7 +164,14 @@ namespace fuujin {
             m_VulkanSpec.RenderPass = CreateFramebufferRenderPass(device, m_Spec, samples);
         }
 
-        for (const auto& attachment : m_Spec.Attachments) {
+        std::set<size_t> resolveAttachments;
+        for (const auto& [color, resolve] : m_Spec.ResolveAttachments) {
+            resolveAttachments.insert(resolve);
+        }
+
+        for (size_t i = 0; i < m_Spec.Attachments.size(); i++) {
+            const auto& attachment = m_Spec.Attachments[i];
+
             Texture::Feature attachmentFeature;
             switch (attachment.Type) {
             case AttachmentType::Color:
@@ -176,20 +188,35 @@ namespace fuujin {
             spec.Width = m_Spec.Width;
             spec.Height = m_Spec.Height;
             spec.Depth = 1;
+            spec.MipLevels = 1;
+
             spec.AdditionalFeatures.insert(attachmentFeature);
-            spec.AdditionalFeatures.insert(spec.AdditionalFeatures.begin(),
-                                           spec.AdditionalFeatures.end());
+            spec.AdditionalFeatures.insert(m_Spec.AttachmentFeatures.begin(),
+                                           m_Spec.AttachmentFeatures.end());
 
             spec.ImageFormat = attachment.Format;
             spec.TextureType = attachment.ImageType;
-            spec.MipLevels = 1;
+            spec.TextureSampler = attachment.TextureSampler;
+
+            if (resolveAttachments.contains(i) || attachment.ImageType != Texture::Type::_2D) {
+                spec.Samples = 1;
+            } else {
+                spec.Samples = (uint32_t)samples;
+            }
 
             auto texture = Ref<VulkanTexture>::Create(m_Device, allocator, spec);
             m_Textures.push_back(texture);
-            m_VulkanSpec.Attachments.push_back(texture->GetVulkanImage());
         }
 
-        Renderer::Submit([&]() { RT_Create(); }, "Create framebuffer");
+        Renderer::Submit(
+            [&]() {
+                for (const auto& texture : m_Textures) {
+                    m_VulkanSpec.Attachments.push_back(texture->GetVulkanImage());
+                }
+
+                RT_Create();
+            },
+            "Create framebuffer");
     }
 
     VulkanFramebuffer::VulkanFramebuffer(const Ref<VulkanDevice>& device, const VulkanSpec& spec) {
@@ -220,15 +247,6 @@ namespace fuujin {
 
         auto buffer = (VulkanCommandBuffer*)&cmdList;
         RT_BeginRenderPass(buffer, clearColor);
-
-        for (const auto& texture : m_Textures) {
-            auto semaphore = texture->GetVulkanImage()->GetSignaledSemaphore();
-            if (semaphore.IsEmpty()) {
-                continue;
-            }
-
-            buffer->AddWaitSemaphore(semaphore, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        }
     }
 
     void VulkanFramebuffer::RT_EndRender(CommandList& cmdList) {
@@ -237,8 +255,13 @@ namespace fuujin {
         auto buffer = (VulkanCommandBuffer*)&cmdList;
         RT_EndRenderPass(buffer);
 
-        for (const auto& texture : m_Textures) {
-            auto semaphore = texture->GetVulkanImage()->SignalUsed();
+        for (const auto& image : m_VulkanSpec.Attachments) {
+            auto semaphore = image->GetSignaledSemaphore();
+            if (!semaphore.IsEmpty()) {
+                buffer->AddWaitSemaphore(semaphore, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+            }
+
+            semaphore = image->SignalUsed();
             cmdList.AddSemaphore(semaphore, SemaphoreUsage::Signal);
         }
     }

@@ -31,11 +31,19 @@ namespace fuujin {
 
         VkSemaphore Get() const { return m_Semaphore; }
 
+        void SetSignaled() { m_SignaledCount++; }
+        void SetWaited() { m_WaitedCount++; }
+
+        uint64_t GetSignaledCount() const { return m_SignaledCount; }
+        uint64_t GetWaitedCount() const { return m_WaitedCount; }
+
     private:
         void RT_Create();
 
         Ref<VulkanDevice> m_Device;
         VkSemaphore m_Semaphore;
+
+        uint64_t m_SignaledCount, m_WaitedCount;
     };
 
     class VulkanCommandBuffer : public CommandList {

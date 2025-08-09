@@ -15,6 +15,7 @@ struct LightAttenuation {
 struct Light {
     int Type;
     vec3 Position;
+    vec2 ShadowZRange;
 
     LightColors Colors;
     LightAttenuation Attenuation;
@@ -23,6 +24,7 @@ struct Light {
 struct Camera {
     vec3 Position;
     mat4 ViewProjection;
+    vec2 ZRange;
 };
 
 layout(set = 0, binding = 0, std140) uniform Scene {

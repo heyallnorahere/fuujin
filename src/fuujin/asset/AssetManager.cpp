@@ -110,7 +110,7 @@ namespace fuujin {
         if (s_Data->PathTypeMap.contains(assetPath)) {
             FUUJIN_ERROR("Asset at virtual path {} has already been registered! Skipping register",
                          virtualText.c_str());
-            
+
             return false;
         }
 
@@ -161,7 +161,7 @@ namespace fuujin {
 
             auto type = DetermineAssetType(fullPath);
             if (!type.has_value()) {
-                FUUJIN_WARN("Could not determine asset type of {} - skipping load",
+                FUUJIN_INFO("Could not determine asset type of {} - skipping load",
                             pathText.c_str());
 
                 continue;

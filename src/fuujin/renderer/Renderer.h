@@ -95,6 +95,7 @@ namespace fuujin {
         struct Camera {
             glm::vec3 Position;
             glm::mat4 ViewProjection;
+            glm::vec2 ZRange;
         };
 
         struct RendererLight {
@@ -121,6 +122,9 @@ namespace fuujin {
         static Ref<CommandQueue> GetGraphicsQueue();
         static ShaderLibrary& GetShaderLibrary();
         static const GraphicsDevice::APISpec& GetAPI();
+
+        static uint32_t GetCurrentFrame();
+        static uint32_t GetFrameCount();
 
         static void ProcessEvent(Event& event);
 

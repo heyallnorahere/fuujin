@@ -42,6 +42,7 @@ namespace fuujin {
         virtual Type GetType() const override { return Type::Point; }
 
         const glm::vec3& GetPosition() const { return m_Position; }
+        const glm::vec2& GetShadowZRange() const { return m_ShadowZRange; }
 
         virtual const Attenuation& GetAttenuation() const override { return m_Attenuation; }
 
@@ -50,6 +51,7 @@ namespace fuujin {
         }
 
         void SetPosition(const glm::vec3& position);
+        void SetShadowZRange(const glm::vec2& zRange);
 
         virtual void SetAttenuation(const Attenuation& attenuation) override;
         virtual void SetColor(Color name, const glm::vec3& color) override;
@@ -59,6 +61,7 @@ namespace fuujin {
 
     private:
         glm::vec3 m_Position;
+        glm::vec2 m_ShadowZRange;
 
         Attenuation m_Attenuation;
         std::unordered_map<Color, glm::vec3> m_Colors;

@@ -10,6 +10,7 @@ namespace fuujin {
     public:
         static VkFilter ConvertFilter(SamplerFilter filter);
         static VkSamplerAddressMode ConvertAddressMode(AddressMode mode);
+        static VkBorderColor ConvertBorderColor(BorderColor color);
 
         VulkanSampler(const Ref<VulkanDevice>& device, const Spec& spec);
         virtual ~VulkanSampler() override;
@@ -29,7 +30,12 @@ namespace fuujin {
 
     class VulkanTexture : public Texture {
     public:
-        static VkFormat ConvertFormat(Format format);
+        struct FormatInfo {
+            VkFormat VulkanFormat;
+            VkImageAspectFlags Aspect;
+        };
+
+        static FormatInfo QueryFormat(Format format);
 
         VulkanTexture(const Ref<VulkanDevice>& device, const VmaAllocator& allocator,
                       const Spec& spec);

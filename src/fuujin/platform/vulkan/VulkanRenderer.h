@@ -81,8 +81,6 @@ namespace fuujin {
 
             VulkanRendererAllocation::Bindings Bindings; // we keep references until frame reset
             VulkanRendererAllocation::DescriptorSetArray Sets;
-
-            std::vector<Ref<VulkanSemaphore>> ImageSemaphores;
         };
 
         struct DescriptorPool {

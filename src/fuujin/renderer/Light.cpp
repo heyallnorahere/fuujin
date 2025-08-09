@@ -55,6 +55,7 @@ namespace fuujin {
         ZoneScoped;
 
         m_Position = position;
+        m_ShadowZRange = glm::vec2(0.1f, 100.f);
 
         if (attenuation.has_value()) {
             m_Attenuation = attenuation.value();
@@ -71,6 +72,12 @@ namespace fuujin {
         ZoneScoped;
 
         m_Position = position;
+    }
+
+    void PointLight::SetShadowZRange(const glm::vec2& zRange) {
+        ZoneScoped;
+
+        m_ShadowZRange = zRange;
     }
 
     void PointLight::SetAttenuation(const Attenuation& attenuation) {
@@ -90,5 +97,6 @@ namespace fuujin {
 
         glm::vec4 position = transform * glm::vec4(m_Position, 1.f);
         data.Set("Position", glm::vec3(position));
+        data.Set("ShadowZRange", m_ShadowZRange);
     }
 } // namespace fuujin

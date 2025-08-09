@@ -38,6 +38,7 @@ namespace fuujin {
             Texture::Type ImageType;
             Texture::Format Format;
             AttachmentType Type;
+            Ref<Sampler> TextureSampler;
         };
 
         struct Spec {
