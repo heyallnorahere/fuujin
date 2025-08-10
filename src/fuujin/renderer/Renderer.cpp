@@ -176,10 +176,98 @@ namespace fuujin {
         FUUJIN_INFO("\tLeft handed? {}", api.LeftHanded ? "yes" : "no");
     }
 
-    static void CreateWhiteCubemap() {
+    struct TextureLoadInfo {
+        Ref<DeviceBuffer> StagingBuffer;
+        Ref<Texture> Instance;
+        Buffer ImageData;
+        Scissor CopyRect;
+        uint32_t Layer;
+    };
+
+    static void RT_LoadTextureData(TextureLoadInfo* loadInfo) {
         ZoneScoped;
 
-        // todo: create
+        auto mapped = loadInfo->StagingBuffer->RT_Map();
+        Buffer::Copy(loadInfo->ImageData, mapped);
+        loadInfo->StagingBuffer->RT_Unmap();
+
+        auto transferQueue = s_Data->Context->GetQueue(QueueType::Transfer);
+        auto& cmdlist = transferQueue->RT_Get();
+        cmdlist.RT_Begin();
+
+        ImageCopy copy{};
+        copy.X = loadInfo->CopyRect.X;
+        copy.Y = loadInfo->CopyRect.Y;
+        copy.Width = loadInfo->CopyRect.Width;
+        copy.Height = loadInfo->CopyRect.Height;
+        copy.Depth = 1;
+        copy.ArrayOffset = loadInfo->Layer;
+        copy.ArraySize = 1;
+
+        auto image = loadInfo->Instance->GetImage();
+        loadInfo->StagingBuffer->RT_CopyToImage(cmdlist, image, 0, copy);
+        cmdlist.AddDependency(loadInfo->StagingBuffer);
+
+        if (loadInfo->Instance->GetSpec().MipLevels > 1) {
+            // todo: generate mipmaps
+        }
+
+        cmdlist.RT_End();
+        transferQueue->RT_Submit(cmdlist);
+    }
+
+    struct CubemapData {
+        Ref<Texture> Cubemap;
+        Buffer Data;
+    };
+
+    static void RT_UpdateWhiteCubemap(const CubemapData* data) {
+        ZoneScoped;
+
+        DeviceBuffer::Spec bufferSpec;
+        bufferSpec.BufferUsage = DeviceBuffer::Usage::Staging;
+        bufferSpec.QueueOwnership = { QueueType::Transfer };
+        bufferSpec.Size = data->Data.GetSize();
+
+        TextureLoadInfo loadInfo;
+        loadInfo.Instance = data->Cubemap;
+        loadInfo.ImageData = data->Data;
+        loadInfo.StagingBuffer = s_Data->Context->CreateBuffer(bufferSpec);
+
+        const auto& textureSpec = data->Cubemap->GetSpec();
+        loadInfo.CopyRect.X = 0;
+        loadInfo.CopyRect.Y = 0;
+        loadInfo.CopyRect.Width = textureSpec.Width;
+        loadInfo.CopyRect.Height = textureSpec.Height;
+
+        for (uint32_t i = 0; i < 6; i++) {
+            loadInfo.Layer = i;
+            RT_LoadTextureData(&loadInfo);
+        }
+    }
+
+    static void CreateWhiteCubemap(const Buffer& data) {
+        ZoneScoped;
+
+        Texture::Spec spec;
+        spec.Samples = 1;
+        spec.TextureSampler = s_Data->DefaultSampler;
+        spec.TextureType = Texture::Type::Cube;
+        spec.ImageFormat = Texture::Format::RGBA8;
+        spec.MipLevels = 1;
+        spec.Width = spec.Height = 1;
+        spec.Depth = 1;
+
+        s_Data->WhiteCubemap = s_Data->Context->CreateTexture(spec);
+
+        auto loadData = new CubemapData;
+        loadData->Cubemap = s_Data->WhiteCubemap;
+        loadData->Data = data;
+
+        Renderer::Submit([loadData]() {
+            RT_UpdateWhiteCubemap(loadData);
+            delete loadData;
+        });
     }
 
     void Renderer::CreateDefaultObjects() {
@@ -192,7 +280,7 @@ namespace fuujin {
         std::memset(whiteData.Get(), 0xFF, whiteData.GetSize());
         s_Data->WhiteTexture = CreateTexture(1, 1, Texture::Format::RGBA8, whiteData);
 
-        CreateWhiteCubemap();
+        CreateWhiteCubemap(whiteData);
     }
 
     void Renderer::Init() {
@@ -243,6 +331,8 @@ namespace fuujin {
 
         s_Data->MeshBuffers.clear();
         s_Data->ShaderData.clear();
+
+        s_Data->WhiteCubemap.Reset();
         s_Data->WhiteTexture.Reset();
         s_Data->DefaultSampler.Reset();
 
@@ -512,9 +602,22 @@ namespace fuujin {
 
         auto& allocation = shaderData.Scenes[id];
         if (UpdateObjectAllocation(shader, sceneBufferName, allocation, scene.State, callback)) {
-            for (size_t i = 0; i < scene.Data.ShadowCubeMaps.size(); i++) {
-                auto cubeMap = scene.Data.ShadowCubeMaps[i];
-                allocation.Allocation->Bind("u_ShadowCubeMaps", cubeMap, (uint32_t)i);
+            static const std::string shadowMapsName = "u_ShadowCubeMaps";
+
+            auto resource = shader->GetResourceByName(shadowMapsName);
+            if (resource) {
+                size_t shadowMapCount = resource->GetDimensions()[0];
+
+                for (size_t i = 0; i < shadowMapCount; i++) {
+                    Ref<Texture> cubeMap;
+                    if (i >= scene.Data.ShadowCubeMaps.size()) {
+                        cubeMap = s_Data->WhiteCubemap;
+                    } else {
+                        cubeMap = scene.Data.ShadowCubeMaps[i];
+                    }
+
+                    allocation.Allocation->Bind("u_ShadowCubeMaps", cubeMap, (uint32_t)i);
+                }
             }
         }
 
@@ -754,46 +857,6 @@ namespace fuujin {
         return allocation.Allocation;
     }
 
-    struct TextureLoadInfo {
-        Ref<DeviceBuffer> StagingBuffer;
-        Ref<Texture> Instance;
-        Buffer ImageData;
-        Scissor CopyRect;
-    };
-
-    static void RT_LoadTextureData(TextureLoadInfo* loadInfo) {
-        ZoneScoped;
-
-        auto mapped = loadInfo->StagingBuffer->RT_Map();
-        Buffer::Copy(loadInfo->ImageData, mapped);
-        loadInfo->StagingBuffer->RT_Unmap();
-
-        auto transferQueue = s_Data->Context->GetQueue(QueueType::Transfer);
-        auto& cmdlist = transferQueue->RT_Get();
-        cmdlist.RT_Begin();
-
-        ImageCopy copy{};
-        copy.X = loadInfo->CopyRect.X;
-        copy.Y = loadInfo->CopyRect.Y;
-        copy.Width = loadInfo->CopyRect.Width;
-        copy.Height = loadInfo->CopyRect.Height;
-        copy.Depth = 1;
-        copy.ArraySize = 1;
-
-        auto image = loadInfo->Instance->GetImage();
-        loadInfo->StagingBuffer->RT_CopyToImage(cmdlist, image, 0, copy);
-        cmdlist.AddDependency(loadInfo->StagingBuffer);
-
-        if (loadInfo->Instance->GetSpec().MipLevels > 1) {
-            // todo: generate mipmaps
-        }
-
-        cmdlist.RT_End();
-        transferQueue->RT_Submit(cmdlist);
-
-        delete loadInfo;
-    }
-
     Ref<Texture> Renderer::CreateTexture(uint32_t width, uint32_t height, Texture::Format format,
                                          const Buffer& data, const Ref<Sampler>& sampler,
                                          const fs::path& path) {
@@ -848,8 +911,12 @@ namespace fuujin {
         loadInfo->Instance = texture;
         loadInfo->ImageData = data;
         loadInfo->CopyRect = scissor;
+        loadInfo->Layer = 0;
 
-        Renderer::Submit([=]() { RT_LoadTextureData(loadInfo); });
+        Renderer::Submit([loadInfo]() {
+            RT_LoadTextureData(loadInfo);
+            delete loadInfo;
+        });
     }
 
     void Renderer::Submit(const std::function<void()>& callback,
