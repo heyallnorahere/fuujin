@@ -122,6 +122,8 @@ static bool CompileShader(const shaderc::Compiler& compiler, const shaderc::Comp
         case shaderc_compute_shader:
             stageName = "Compute";
             break;
+        default:
+            throw std::runtime_error("Unknown shader stage");
         }
 
         std::string stageSource = common.str() + source.str();

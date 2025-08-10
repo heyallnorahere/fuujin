@@ -177,7 +177,7 @@ namespace fuujin {
 
         VkPipelineMultisampleStateCreateInfo multisampling{};
         multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisampling.rasterizationSamples = m_Device->RT_GetMaxSampleCount();
+        multisampling.rasterizationSamples = (VkSampleCountFlagBits)m_Spec.Target->GetSamples();
 
         VkPhysicalDeviceFeatures2 features{};
         m_Device->RT_GetFeatures(features);

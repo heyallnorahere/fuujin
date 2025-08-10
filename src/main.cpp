@@ -25,6 +25,11 @@ struct DemoLight {
     glm::vec3 Axis, Coaxis;
 };
 
+static const std::unordered_map<fs::path, fs::path> s_Models = {
+    { "fuujin/models/Cube.gltf", "fuujin/models/Cube.model" },
+    { "fuujin/models/Gunman.gltf", "fuujin/models/Gunman.model" }
+};
+
 static const float s_PI = std::numbers::pi_v<float>;
 class TestLayer : public Layer {
 public:
@@ -49,7 +54,7 @@ public:
         float sinYaw = glm::sin(yaw);
         float cosYaw = glm::cos(yaw);
 
-        float pitch = sinYaw * s_PI / 8.f;
+        float pitch = s_PI / -4.f;
         float sinPitch = glm::sin(pitch);
         float cosPitch = glm::cos(pitch);
 
@@ -88,33 +93,39 @@ private:
     void LoadResources() {
         ZoneScoped;
 
-        static const std::string modelName = "Gunman.model";
-        static const std::string sourceName = "Gunman.gltf";
+        for (const auto& [sourcePath, modelPath] : s_Models) {
+            if (!AssetManager::AssetExists(modelPath)) {
+                auto source = AssetManager::GetAsset<ModelSource>(sourcePath);
+                if (source.IsEmpty()) {
+                    throw std::runtime_error("Failed to find model source to import!");
+                }
 
-        static const fs::path modelDirectory = "fuujin/models";
-        static const fs::path modelPath = modelDirectory / modelName;
-        static const fs::path sourcePath = modelDirectory / sourceName;
-
-        if (!AssetManager::AssetExists(modelPath)) {
-            auto source = AssetManager::GetAsset<ModelSource>(sourcePath);
-            if (source.IsEmpty()) {
-                throw std::runtime_error("Failed to find model source to import!");
-            }
-
-            ModelImporter importer;
-            if (importer.Import(source).value_or("") != modelPath) {
-                throw std::runtime_error("Failed to import model!");
+                ModelImporter importer;
+                if (importer.Import(source).value_or("") != modelPath) {
+                    throw std::runtime_error("Failed to import model!");
+                }
             }
         }
 
-        auto model = AssetManager::GetAsset<Model>(modelPath);
+        auto cubeModel = AssetManager::GetAsset<Model>(s_Models.at("fuujin/models/Cube.gltf"));
+        auto gunmanModel = AssetManager::GetAsset<Model>(s_Models.at("fuujin/models/Gunman.gltf"));
 
         m_Scene = Ref<Scene>::Create();
         m_Renderer = Ref<SceneRenderer>::Create(m_Scene);
 
         auto cube = m_Scene->Create("Cube");
-        cube.AddComponent<TransformComponent>().Data.SetScale(glm::vec3(0.01f));
-        cube.AddComponent<ModelComponent>().RenderedModel = model;
+        cube.AddComponent<ModelComponent>().RenderedModel = cubeModel;
+
+        auto transform = &cube.AddComponent<TransformComponent>().Data;
+        transform->SetTranslation(glm::vec3(0.f, -2.f, 0.f));
+        transform->SetScale(glm::vec3(10.f, 1.f, 10.f));
+
+        auto gunman = m_Scene->Create("Gunman");
+        gunman.AddComponent<ModelComponent>().RenderedModel = gunmanModel;
+
+        transform = &gunman.AddComponent<TransformComponent>().Data;
+        transform->SetTranslation(glm::vec3(0.f, -1.f, 0.f));
+        transform->SetScale(glm::vec3(0.01f));
 
         m_Camera = m_Scene->Create("Camera");
         m_Camera.AddComponent<TransformComponent>();
@@ -136,7 +147,7 @@ private:
             light.Coaxis = coaxis;
             light.Angle = 2.f * s_PI * (float)i / (float)lightCount;
 
-            light.Entity = m_Scene->Create("Entity #" + std::to_string(i + 1));
+            light.Entity = m_Scene->Create("Light #" + std::to_string(i + 1));
             light.Entity.AddComponent<TransformComponent>();
             light.Entity.AddComponent<LightComponent>().SceneLight = pointLight;
         }

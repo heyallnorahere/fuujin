@@ -204,14 +204,14 @@ namespace fuujin {
             vkDestroySwapchainKHR(device, old, &VulkanContext::GetAllocCallbacks());
         }
 
-        auto samples = m_Device->RT_GetMaxSampleCount();
-        RT_CreateColorBuffer(samples);
-        RT_CreateDepthBuffer(samples);
+        m_Samples = m_Device->RT_GetMaxSampleCount();
+        RT_CreateColorBuffer();
+        RT_CreateDepthBuffer();
 
         if (m_RenderPass.IsEmpty()) {
             VkAttachmentDescription colorAttachment{};
             colorAttachment.format = m_ImageFormat;
-            colorAttachment.samples = samples;
+            colorAttachment.samples = m_Samples;
             colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
             colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -221,7 +221,7 @@ namespace fuujin {
 
             VkAttachmentDescription depthAttachment{};
             depthAttachment.format = m_Depth->GetSpec().Format;
-            depthAttachment.samples = samples;
+            depthAttachment.samples = m_Samples;
             depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
             depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -307,6 +307,7 @@ namespace fuujin {
                 VulkanFramebuffer::VulkanSpec framebufferSpec;
                 framebufferSpec.RenderPass = m_RenderPass;
                 framebufferSpec.Extent = m_Extent;
+                framebufferSpec.Samples = m_Samples;
                 framebufferSpec.Attachments = { m_Color, m_Depth,
                                                 Ref<VulkanImage>::Create(m_Device, viewSpec) };
 
@@ -484,13 +485,13 @@ namespace fuujin {
 
     // accesses m_ImageFormat
     // use after RT_Create
-    void VulkanSwapchain::RT_CreateColorBuffer(VkSampleCountFlagBits samples) {
+    void VulkanSwapchain::RT_CreateColorBuffer() {
         ZoneScoped;
 
         VulkanImage::VulkanSpec spec;
         spec.Format = m_ImageFormat;
         spec.Allocator = m_Allocator;
-        spec.Samples = samples;
+        spec.Samples = m_Samples;
         spec.Type = VK_IMAGE_TYPE_2D;
         spec.ViewType = VK_IMAGE_VIEW_TYPE_2D;
         spec.Extent.width = m_Extent.width;
@@ -502,7 +503,7 @@ namespace fuujin {
         m_Color = Ref<VulkanImage>::Create(m_Device, spec);
     }
 
-    void VulkanSwapchain::RT_CreateDepthBuffer(VkSampleCountFlagBits samples) {
+    void VulkanSwapchain::RT_CreateDepthBuffer() {
         ZoneScoped;
 
         static constexpr VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -534,7 +535,7 @@ namespace fuujin {
         spec.ViewType = VK_IMAGE_VIEW_TYPE_2D;
         spec.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         spec.Allocator = m_Allocator;
-        spec.Samples = samples;
+        spec.Samples = m_Samples;
         spec.AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
 
         m_Depth = Ref<VulkanImage>::Create(m_Device, spec);

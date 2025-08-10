@@ -16,6 +16,7 @@ namespace fuujin {
             std::vector<Ref<VulkanImage>> Attachments;
             VkExtent2D Extent;
 
+            VkSampleCountFlagBits Samples;
             uint32_t Layers = 1;
             VkFramebufferCreateFlags Flags = 0;
         };
@@ -32,6 +33,8 @@ namespace fuujin {
 
         virtual uint32_t GetWidth() const override { return m_VulkanSpec.Extent.width; }
         virtual uint32_t GetHeight() const override { return m_VulkanSpec.Extent.height; }
+
+        virtual uint32_t GetSamples() const override { return (uint32_t)m_VulkanSpec.Samples; }
 
         virtual uint32_t GetID() const override { return m_VulkanSpec.RenderPass->GetID(); }
 

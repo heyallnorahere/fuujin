@@ -64,11 +64,17 @@ namespace fuujin {
         std::vector<Ref<RendererAllocation>> AdditionalResources;
     };
 
+    enum class ShaderName : uint32_t {
+        Material = 0,
+        PointLightDepth,
+    };
+
     struct ModelRenderCall {
         Ref<Model> RenderedModel;
         Ref<Animator> ModelAnimator;
 
         uint64_t SceneID;
+        ShaderName RenderShader;
 
         glm::mat4 ModelMatrix;
         size_t FirstCamera, CameraCount;
@@ -100,12 +106,15 @@ namespace fuujin {
 
         struct RendererLight {
             glm::mat4 TransformMatrix;
+            size_t ShadowIndex;
             Ref<Light> LightData;
         };
 
         struct SceneData {
             std::vector<Camera> Cameras;
             std::vector<RendererLight> Lights;
+
+            std::vector<Ref<Texture>> ShadowCubeMaps;
         };
 
         struct MeshBuffers {

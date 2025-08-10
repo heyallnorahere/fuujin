@@ -26,6 +26,8 @@ namespace fuujin {
         virtual uint32_t GetWidth() const override { return m_Extent.width; }
         virtual uint32_t GetHeight() const override { return m_Extent.height; }
 
+        virtual uint32_t GetSamples() const override { return (uint32_t)m_Samples; }
+
         virtual uint32_t GetID() const override { return m_RenderPass->GetID(); }
 
         virtual void RequestResize(const ViewSize& viewSize) override;
@@ -59,8 +61,8 @@ namespace fuujin {
         VkSurfaceFormatKHR RT_FindSurfaceFormat() const;
         VkPresentModeKHR RT_FindPresentMode() const;
 
-        void RT_CreateColorBuffer(VkSampleCountFlagBits samples);
-        void RT_CreateDepthBuffer(VkSampleCountFlagBits samples);
+        void RT_CreateColorBuffer();
+        void RT_CreateDepthBuffer();
 
         Ref<View> m_View;
         Ref<VulkanDevice> m_Device;
@@ -72,6 +74,7 @@ namespace fuujin {
 
         Ref<VulkanImage> m_Color, m_Depth;
         bool m_DepthHasStencil;
+        VkSampleCountFlagBits m_Samples;
 
         std::vector<Ref<VulkanFramebuffer>> m_Framebuffers;
         std::vector<Ref<VulkanSemaphore>> m_ImageSemaphores;

@@ -19,6 +19,26 @@
 using namespace std::chrono_literals;
 
 namespace fuujin {
+    static uint32_t GetShaderHash(ShaderName name, bool skinned) {
+        ZoneScoped;
+
+        uint32_t hash = 0;
+        hash |= (skinned ? 1 : 0);
+        hash |= (uint32_t)name << 1;
+
+        return hash;
+    }
+
+    static const std::unordered_map<uint32_t, std::string> s_RendererShaders = {
+        { GetShaderHash(ShaderName::Material, false), "fuujin/shaders/MaterialStatic.glsl" },
+        { GetShaderHash(ShaderName::Material, true), "fuujin/shaders/MaterialSkinned.glsl" },
+
+        { GetShaderHash(ShaderName::PointLightDepth, false),
+          "fuujin/shaders/PointLightStatic.glsl" },
+        { GetShaderHash(ShaderName::PointLightDepth, true),
+          "fuujin/shaders/PointLightSkinned.glsl" },
+    };
+
     struct QueueCallback {
         std::function<void()> Callback;
         std::string Label;
@@ -63,6 +83,7 @@ namespace fuujin {
 
         Ref<Sampler> DefaultSampler;
         Ref<Texture> WhiteTexture;
+        Ref<Texture> WhiteCubemap;
 
         std::unordered_map<uint64_t, RendererSceneState> SceneState;
         std::unordered_map<uint64_t, RendererShaderData> ShaderData;
@@ -155,6 +176,12 @@ namespace fuujin {
         FUUJIN_INFO("\tLeft handed? {}", api.LeftHanded ? "yes" : "no");
     }
 
+    static void CreateWhiteCubemap() {
+        ZoneScoped;
+
+        // todo: create
+    }
+
     void Renderer::CreateDefaultObjects() {
         ZoneScoped;
 
@@ -164,6 +191,8 @@ namespace fuujin {
         Buffer whiteData(sizeof(uint8_t) * 4);
         std::memset(whiteData.Get(), 0xFF, whiteData.GetSize());
         s_Data->WhiteTexture = CreateTexture(1, 1, Texture::Format::RGBA8, whiteData);
+
+        CreateWhiteCubemap();
     }
 
     void Renderer::Init() {
@@ -460,6 +489,7 @@ namespace fuujin {
 
                 cameraSlice.Set("Position", camera.Position);
                 cameraSlice.Set("ViewProjection", camera.ViewProjection);
+                cameraSlice.Set("ZRange", camera.ZRange);
             }
 
             size_t lightCount = data.Lights.size();
@@ -475,11 +505,18 @@ namespace fuujin {
                 }
 
                 light.LightData->SetUniforms(lightSlice, light.TransformMatrix);
+
+                lightSlice.Set("ShadowIndex", (int32_t)light.ShadowIndex);
             }
         };
 
         auto& allocation = shaderData.Scenes[id];
-        UpdateObjectAllocation(shader, sceneBufferName, allocation, scene.State, callback);
+        if (UpdateObjectAllocation(shader, sceneBufferName, allocation, scene.State, callback)) {
+            for (size_t i = 0; i < scene.Data.ShadowCubeMaps.size(); i++) {
+                auto cubeMap = scene.Data.ShadowCubeMaps[i];
+                allocation.Allocation->Bind("u_ShadowCubeMaps", cubeMap, (uint32_t)i);
+            }
+        }
 
         return allocation.Allocation;
     }
@@ -1067,8 +1104,8 @@ namespace fuujin {
                 const auto& mesh = meshes[meshIndex];
 
                 bool isSkinned = !mesh->GetBones().empty();
-                std::string shaderIdentifier = isSkinned ? "fuujin/shaders/MaterialSkinned.glsl"
-                                                         : "fuujin/shaders/MaterialStatic.glsl";
+                uint32_t shaderHash = GetShaderHash(data.RenderShader, isSkinned);
+                std::string shaderIdentifier = s_RendererShaders.at(shaderHash);
 
                 const auto& buffers = GetMeshBuffers(mesh);
                 const auto& shader = s_Data->Library->Get(shaderIdentifier);

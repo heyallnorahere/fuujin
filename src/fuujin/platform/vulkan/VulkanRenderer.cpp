@@ -120,6 +120,11 @@ namespace fuujin {
             }
         }
 
+        if (layouts.empty()) {
+            // vulkan doesnt like to be called to do nothing
+            return;
+        }
+
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = pool;
@@ -270,7 +275,6 @@ namespace fuujin {
             return;
         }
 
-        FUUJIN_INFO("Bindings changed on renderer allocation {} - recalculating set groups", m_ID);
         CalculateGenericGroups(m_Bindings, m_SetGroups);
 
         for (auto& [setIndex, bindings] : m_Bindings) {
@@ -278,9 +282,6 @@ namespace fuujin {
                 if (!binding.DescriptorsChanged) {
                     continue;
                 }
-
-                FUUJIN_DEBUG("Recalculating binding group for binding {}.{} on allocation {}",
-                             setIndex, bindingIndex, m_ID);
 
                 CalculateGenericGroups(binding.Descriptors, binding.Groups);
 
@@ -547,7 +548,7 @@ namespace fuujin {
 
         VkDescriptorPoolCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        createInfo.maxSets = 10;
+        createInfo.maxSets = 30;
         createInfo.poolSizeCount = (uint32_t)poolSizes.size();
         createInfo.pPoolSizes = poolSizes.data();
 

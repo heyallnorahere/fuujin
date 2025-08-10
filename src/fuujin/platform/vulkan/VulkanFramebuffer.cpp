@@ -68,12 +68,7 @@ namespace fuujin {
             desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
             if (!resolveAttachmentIndices.contains(i)) {
-                if (attachment.ImageType != Texture::Type::_2D) {
-                    desc.samples = VK_SAMPLE_COUNT_1_BIT;
-                } else {
-                    desc.samples = samples;
-                }
-
+                desc.samples = samples;
                 desc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
             } else {
                 desc.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -154,19 +149,26 @@ namespace fuujin {
         m_VulkanSpec.Extent.width = m_Spec.Width;
         m_VulkanSpec.Extent.height = m_Spec.Height;
 
-        VkSampleCountFlagBits samples;
-        Renderer::Submit([&]() { samples = device->RT_GetMaxSampleCount(); });
+        Renderer::Submit([&]() { m_VulkanSpec.Samples = device->RT_GetMaxSampleCount(); });
         Renderer::Wait();
-
-        if (renderPass.IsPresent()) {
-            m_VulkanSpec.RenderPass = renderPass;
-        } else {
-            m_VulkanSpec.RenderPass = CreateFramebufferRenderPass(device, m_Spec, samples);
-        }
 
         std::set<size_t> resolveAttachments;
         for (const auto& [color, resolve] : m_Spec.ResolveAttachments) {
             resolveAttachments.insert(resolve);
+        }
+
+        for (const auto& attachment : m_Spec.Attachments) {
+            if (attachment.ImageType != Texture::Type::_2D) {
+                m_VulkanSpec.Samples = VK_SAMPLE_COUNT_1_BIT;
+                break;
+            }
+        }
+
+        if (renderPass.IsPresent()) {
+            m_VulkanSpec.RenderPass = renderPass;
+        } else {
+            m_VulkanSpec.RenderPass =
+                CreateFramebufferRenderPass(device, m_Spec, m_VulkanSpec.Samples);
         }
 
         for (size_t i = 0; i < m_Spec.Attachments.size(); i++) {
@@ -198,10 +200,11 @@ namespace fuujin {
             spec.TextureType = attachment.ImageType;
             spec.TextureSampler = attachment.TextureSampler;
 
-            if (resolveAttachments.contains(i) || attachment.ImageType != Texture::Type::_2D) {
+            bool multisample = false;
+            if (resolveAttachments.contains(i)) {
                 spec.Samples = 1;
             } else {
-                spec.Samples = (uint32_t)samples;
+                spec.Samples = (uint32_t)m_VulkanSpec.Samples;
             }
 
             auto texture = Ref<VulkanTexture>::Create(m_Device, allocator, spec);

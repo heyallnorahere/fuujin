@@ -37,7 +37,7 @@ namespace fuujin {
     void SceneRenderer::RenderScene() {
         ZoneScoped;
 
-//        RenderShadows();
+        RenderShadows();
         RenderMainScene();
     }
 
@@ -62,8 +62,12 @@ namespace fuujin {
         currentSpec.Resolution = s_ShadowResolution;
 
         Renderer::SceneData sceneData;
+        ShaderName shader;
+
         switch (light->GetType()) {
         case Light::Type::Point: {
+            shader = ShaderName::PointLightDepth;
+
             static const glm::vec3 up = glm::vec3(0.f, -1.f, 0.f);
             static const std::vector<glm::vec3> cubeFaceDirections = {
                 glm::vec3(1.f, 0.f, 0.f),  glm::vec3(-1.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f),
@@ -126,7 +130,7 @@ namespace fuujin {
         auto framebuffer = shadowData.Framebuffers[currentFrame];
 
         Renderer::PushRenderTarget(framebuffer);
-        RenderSceneWithID(shadowData.SceneID, 0, sceneData.Cameras.size());
+        RenderSceneWithID(shadowData.SceneID, 0, sceneData.Cameras.size(), shader);
         Renderer::PopRenderTarget();
     }
 
@@ -184,8 +188,20 @@ namespace fuujin {
                 return;
             }
 
+            if (!m_LightShadowData.contains(entity)) {
+                return;
+            }
+
+            uint32_t currentFrame = Renderer::GetCurrentFrame();
+            auto framebuffer = m_LightShadowData.at(entity).Framebuffers[currentFrame];
+            auto shadowMap = framebuffer->GetTexture(0);
+
+            size_t shadowMapIndex = mainScene.ShadowCubeMaps.size();
+            mainScene.ShadowCubeMaps.push_back(shadowMap);
+
             auto& rendererLight = mainScene.Lights.emplace_back();
             rendererLight.LightData = light.SceneLight;
+            rendererLight.ShadowIndex = shadowMapIndex;
 
             if (entity.HasAll<TransformComponent>()) {
                 const auto& transform = entity.GetComponent<TransformComponent>();
@@ -197,11 +213,12 @@ namespace fuujin {
 
         if (!mainScene.Cameras.empty()) {
             Renderer::UpdateScene(m_MainID, mainScene);
-            RenderSceneWithID(m_MainID, mainCamera, 1);
+            RenderSceneWithID(m_MainID, mainCamera, 1, ShaderName::Material);
         }
     }
 
-    void SceneRenderer::RenderSceneWithID(uint64_t id, size_t firstCamera, size_t cameraCount) {
+    void SceneRenderer::RenderSceneWithID(uint64_t id, size_t firstCamera, size_t cameraCount,
+                                          ShaderName shader) {
         ZoneScoped;
 
         m_Scene->View<TransformComponent, ModelComponent>(
@@ -223,6 +240,7 @@ namespace fuujin {
                 call.FirstCamera = firstCamera;
                 call.CameraCount = cameraCount;
                 call.SceneID = id;
+                call.RenderShader = shader;
 
                 Renderer::RenderModel(call);
             });

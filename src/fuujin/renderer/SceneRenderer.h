@@ -7,6 +7,7 @@
 
 #include "fuujin/renderer/Light.h"
 #include "fuujin/renderer/Framebuffer.h"
+#include "fuujin/renderer/Renderer.h"
 
 namespace fuujin {
     struct ShadowFramebufferSpec {
@@ -35,7 +36,8 @@ namespace fuujin {
         void RenderShadows();
         void RenderMainScene();
 
-        void RenderSceneWithID(uint64_t id, size_t firstCamera, size_t cameraCount);
+        void RenderSceneWithID(uint64_t id, size_t firstCamera, size_t cameraCount,
+                               ShaderName shader);
 
         Ref<Scene> m_Scene;
         uint64_t m_MainID;
