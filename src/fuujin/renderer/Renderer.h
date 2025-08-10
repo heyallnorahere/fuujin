@@ -93,6 +93,9 @@ namespace fuujin {
                                     const std::optional<bool>& flip,
                                     const std::optional<Scissor>& scissor) const = 0;
 
+        virtual void RT_BeginRenderLabel(CommandList& cmdlist, const std::string& label) const = 0;
+        virtual void RT_EndRenderLabel(CommandList& cmdlist) const = 0;
+
         virtual Ref<RendererAllocation> CreateAllocation(const Ref<Shader>& shader) const = 0;
     };
 
@@ -198,6 +201,9 @@ namespace fuujin {
         static void RenderWithMaterial(const MaterialRenderCall& data);
 
         static void RenderModel(const ModelRenderCall& data);
+
+        static bool PushRenderLabel(const std::string& label);
+        static bool PopRenderLabel();
 
     private:
         static void CreateDefaultObjects();

@@ -102,6 +102,11 @@ namespace fuujin {
                                     const std::optional<bool>& flip,
                                     const std::optional<Scissor>& scissor) const override;
 
+        virtual void RT_BeginRenderLabel(CommandList& cmdlist,
+                                         const std::string& label) const override;
+
+        virtual void RT_EndRenderLabel(CommandList& cmdlist) const override;
+
         virtual Ref<RendererAllocation> CreateAllocation(const Ref<Shader>& shader) const override;
 
     private:

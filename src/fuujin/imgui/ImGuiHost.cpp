@@ -6,6 +6,7 @@
 #include "fuujin/renderer/Renderer.h"
 #include "fuujin/renderer/ShaderLibrary.h"
 #include "fuujin/renderer/ShaderBuffer.h"
+#include "fuujin/renderer/RenderLabel.h"
 
 #include "fuujin/core/Application.h"
 #include "fuujin/core/Events.h"
@@ -1248,6 +1249,8 @@ namespace fuujin {
     void ImGuiHost::Renderer_RenderDrawData(ImGuiViewport* viewport,
                                             const Ref<Pipeline>& pipeline) {
         ZoneScoped;
+        RenderLabel viewportLabel("Render ImGui viewport (ID " + std::to_string(viewport->ID) +
+                                  ")");
 
         auto rendererData = (ViewportRendererData*)viewport->RendererUserData;
         auto renderTarget = pipeline->GetSpec().Target;

@@ -54,7 +54,7 @@ public:
         float sinYaw = glm::sin(yaw);
         float cosYaw = glm::cos(yaw);
 
-        float pitch = s_PI / -4.f;
+        float pitch = sinYaw * s_PI / 4.f;
         float sinPitch = glm::sin(pitch);
         float cosPitch = glm::cos(pitch);
 
@@ -113,17 +113,30 @@ private:
         m_Scene = Ref<Scene>::Create();
         m_Renderer = Ref<SceneRenderer>::Create(m_Scene);
 
-        auto cube = m_Scene->Create("Cube");
-        cube.AddComponent<ModelComponent>().RenderedModel = cubeModel;
+        size_t wallCount = 0;
+        for (size_t i = 0; i < 3; i++) {
+            glm::vec3 position(0.f);
+            glm::vec3 scale(10.f);
 
-        auto transform = &cube.AddComponent<TransformComponent>().Data;
-        transform->SetTranslation(glm::vec3(0.f, -2.f, 0.f));
-        transform->SetScale(glm::vec3(10.f, 1.f, 10.f));
+            position[i] = 11.f;
+            scale[i] = 1.f;
+
+            for (size_t j = 0; j < 2; j++) {
+                float positionScale = (j * 2.f) - 1.f;
+
+                auto wall = m_Scene->Create("Wall #" + std::to_string(++wallCount));
+                wall.AddComponent<ModelComponent>().RenderedModel = cubeModel;
+
+                auto& wallTransform = wall.AddComponent<TransformComponent>().Data;
+                wallTransform.SetTranslation(position * positionScale);
+                wallTransform.SetScale(scale);
+            }
+        }
 
         auto gunman = m_Scene->Create("Gunman");
         gunman.AddComponent<ModelComponent>().RenderedModel = gunmanModel;
 
-        transform = &gunman.AddComponent<TransformComponent>().Data;
+        auto transform = &gunman.AddComponent<TransformComponent>().Data;
         transform->SetTranslation(glm::vec3(0.f, -1.f, 0.f));
         transform->SetScale(glm::vec3(0.01f));
 

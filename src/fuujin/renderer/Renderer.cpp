@@ -48,6 +48,7 @@ namespace fuujin {
         Ref<RenderTarget> Target;
         CommandList* CmdList;
         bool ResetViewport;
+        std::stack<std::string> RenderLabels;
     };
 
     struct ObjectAllocation {
@@ -616,7 +617,7 @@ namespace fuujin {
                         cubeMap = scene.Data.ShadowCubeMaps[i];
                     }
 
-                    allocation.Allocation->Bind("u_ShadowCubeMaps", cubeMap, (uint32_t)i);
+                    allocation.Allocation->Bind(shadowMapsName, cubeMap, (uint32_t)i);
                 }
             }
         }
@@ -1018,6 +1019,11 @@ namespace fuujin {
     static void RT_PopRenderTarget(std::shared_ptr<ActiveRenderTarget> target) {
         ZoneScoped;
 
+        if (!target->RenderLabels.empty()) {
+            throw std::runtime_error(
+                "Not all render labels have been pushed from this render target!");
+        }
+
         if (target->CmdList != nullptr) {
             RT_EndRenderTarget(target);
         }
@@ -1226,5 +1232,52 @@ namespace fuujin {
                 RenderWithMaterial(innerCall);
             }
         }
+    }
+
+    static void RT_PushRenderLabel(const std::string& label,
+                                   const std::shared_ptr<ActiveRenderTarget>& target) {
+        ZoneScoped;
+
+        RT_BeginRenderTarget(target);
+
+        target->RenderLabels.push(label);
+        s_Data->API->RT_BeginRenderLabel(*target->CmdList, label);
+    }
+
+    bool Renderer::PushRenderLabel(const std::string& label) {
+        ZoneScoped;
+
+        if (!s_Data || s_Data->Targets.empty()) {
+            return false;
+        }
+
+        auto target = s_Data->Targets.top();
+        Renderer::Submit([label, target]() { RT_PushRenderLabel(label, target); });
+
+        return true;
+    }
+
+    static void RT_PopRenderLabel(const std::shared_ptr<ActiveRenderTarget>& target) {
+        ZoneScoped;
+
+        if (target->RenderLabels.empty()) {
+            throw std::runtime_error("Attempted to pop an empty label stack!");
+        }
+
+        s_Data->API->RT_EndRenderLabel(*target->CmdList);
+        target->RenderLabels.pop();
+    }
+
+    bool Renderer::PopRenderLabel() {
+        ZoneScoped;
+
+        if (!s_Data || s_Data->Targets.empty()) {
+            return false;
+        }
+
+        auto target = s_Data->Targets.top();
+        Renderer::Submit([target]() { RT_PopRenderLabel(target); });
+
+        return true;
     }
 }; // namespace fuujin

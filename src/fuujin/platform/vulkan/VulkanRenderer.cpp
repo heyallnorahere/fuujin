@@ -532,6 +532,34 @@ namespace fuujin {
         vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
     }
 
+    void VulkanRenderer::RT_BeginRenderLabel(CommandList& cmdlist, const std::string& label) const {
+        ZoneScoped;
+
+        if (vkCmdBeginDebugUtilsLabelEXT == nullptr) {
+            // just a debug util anyway. if we cant then we cant
+            return;
+        }
+
+        VkDebugUtilsLabelEXT debugLabel{};
+        debugLabel.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+        debugLabel.pLabelName = label.c_str();
+
+        auto cmdBuffer = (VulkanCommandBuffer*)&cmdlist;
+        vkCmdBeginDebugUtilsLabelEXT(cmdBuffer->Get(), &debugLabel);
+    }
+
+    void VulkanRenderer::RT_EndRenderLabel(CommandList& cmdlist) const {
+        ZoneScoped;
+
+        if (vkCmdEndDebugUtilsLabelEXT == nullptr) {
+            // see above
+            return;
+        }
+
+        auto cmdBuffer = (VulkanCommandBuffer*)&cmdlist;
+        vkCmdEndDebugUtilsLabelEXT(cmdBuffer->Get());
+    }
+
     Ref<RendererAllocation> VulkanRenderer::CreateAllocation(const Ref<Shader>& shader) const {
         ZoneScoped;
 

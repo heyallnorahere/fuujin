@@ -2,6 +2,7 @@
 #include "fuujin/renderer/SceneRenderer.h"
 
 #include "fuujin/renderer/Renderer.h"
+#include "fuujin/renderer/RenderLabel.h"
 
 #include "fuujin/scene/Components.h"
 
@@ -129,8 +130,19 @@ namespace fuujin {
         uint32_t currentFrame = Renderer::GetCurrentFrame();
         auto framebuffer = shadowData.Framebuffers[currentFrame];
 
+        std::string lightTag;
+        if (entity.HasAll<TagComponent>()) {
+            lightTag = entity.GetComponent<TagComponent>().Tag;
+        } else {
+            lightTag = "<untagged light>";
+        }
+
         Renderer::PushRenderTarget(framebuffer);
+        Renderer::PushRenderLabel("Render shadow map for light: " + lightTag);
+
         RenderSceneWithID(shadowData.SceneID, 0, sceneData.Cameras.size(), shader);
+
+        Renderer::PopRenderLabel();
         Renderer::PopRenderTarget();
     }
 
@@ -213,6 +225,8 @@ namespace fuujin {
 
         if (!mainScene.Cameras.empty()) {
             Renderer::UpdateScene(m_MainID, mainScene);
+
+            RenderLabel label("Render scene");
             RenderSceneWithID(m_MainID, mainCamera, 1, ShaderName::Material);
         }
     }
@@ -242,6 +256,14 @@ namespace fuujin {
                 call.SceneID = id;
                 call.RenderShader = shader;
 
+                std::string tag;
+                if (entity.HasAll<TagComponent>()) {
+                    tag = entity.GetComponent<TagComponent>().Tag;
+                } else {
+                    tag = "<untagged entity>";
+                }
+
+                RenderLabel entityLabel("Render entity: " + tag);
                 Renderer::RenderModel(call);
             });
     }
