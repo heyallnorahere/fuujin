@@ -154,7 +154,7 @@ int main(int argc, const char** argv) {
     shaderc::CompileOptions options;
 
     options.SetGenerateDebugInfo();
-    options.SetOptimizationLevel(shaderc_optimization_level_performance);
+    options.SetOptimizationLevel(shaderc_optimization_level_zero);
     options.SetTargetSpirv(shaderc_spirv_version_1_0);
     options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_0);
     options.SetIncluder(std::make_unique<Includer>());

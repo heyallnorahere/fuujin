@@ -7,9 +7,8 @@ struct LightColors {
 };
 
 struct LightAttenuation {
-    float Quadratic;
-    float Linear;
-    float Constant;
+    float InfluenceRadius;
+    float Falloff;
 };
 
 struct Light {

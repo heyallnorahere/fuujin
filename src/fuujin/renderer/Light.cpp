@@ -30,9 +30,8 @@ namespace fuujin {
         if (data.Slice("Attenuation", attenuationSlice)) {
             const auto& attenuation = GetAttenuation();
 
-            attenuationSlice.Set("Quadratic", attenuation.Quadratic);
-            attenuationSlice.Set("Linear", attenuation.Linear);
-            attenuationSlice.Set("Constant", attenuation.Constant);
+            attenuationSlice.Set("InfluenceRadius", attenuation.InfluenceRadius);
+            attenuationSlice.Set("Falloff", attenuation.Falloff);
         }
 
         ShaderBuffer colorSlice;
@@ -62,9 +61,8 @@ namespace fuujin {
         } else {
             // todo: calculate attenuation based on a default distance
 
-            m_Attenuation.Quadratic = 0.f;
-            m_Attenuation.Linear = 0.f;
-            m_Attenuation.Constant = 1.f;
+            m_Attenuation.InfluenceRadius = 10.f;
+            m_Attenuation.Falloff = 8.f;
         }
     }
 

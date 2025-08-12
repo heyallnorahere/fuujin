@@ -46,6 +46,18 @@ float SampleShadowCubeMap(in Light light, in vec3 uvw) {
     return closestDepth;
 }
 
+// https://lisyarus.github.io/blog/posts/point-light-attenuation.html
+float Attenuate(float distance, float radius, float falloff) {
+    float s = distance / radius;
+    if (s >= 1) {
+        return 0;
+    }
+
+    float s2 = s * s;
+    float oneMinusS2 = 1 - s2;
+    return oneMinusS2 * oneMinusS2 / (1 + falloff * s);
+}
+
 float CalculatePointLightShadow(in Light light) {
     vec3 lightToFragment = in_Data.WorldPosition - light.Position;
     float currentDepth = length(lightToFragment);
@@ -98,12 +110,16 @@ vec3 CalculateLightColor(int index, in vec3 normal, in vec3 materialAlbedo,
         return vec3(0);
     }
 
+    // diffuse
     vec3 lightDirection = normalize(lightToFragment);
-    float diffuseStrength = dot(normal, -lightDirection);
+    float diffuseStrength = max(dot(normal, -lightDirection), 0);
 
+    // specular
     vec3 fragmentToCamera = normalize(in_Data.CameraPosition - in_Data.WorldPosition);
-    vec3 reflectedDirection = normalize(reflect(lightDirection, normal));
-    float cameraLightCoincidence = max(dot(fragmentToCamera, reflectedDirection), 0);
+    vec3 reflectedDirection = reflect(lightDirection, normal);
+    vec3 halfwayDirection = normalize(reflectedDirection + fragmentToCamera);
+
+    float cameraLightCoincidence = max(dot(normal, halfwayDirection), 0);
     float specularStrength = pow(cameraLightCoincidence, u_Material.Shininess);
 
     vec3 diffuse = materialAlbedo * light.Colors.Diffuse * diffuseStrength;
@@ -111,12 +127,8 @@ vec3 CalculateLightColor(int index, in vec3 normal, in vec3 materialAlbedo,
     vec3 ambient = materialAmbient * light.Colors.Ambient * 0.05;
 
     float distance = length(lightToFragment);
-    float attenuationQuadratic = light.Attenuation.Quadratic * distance * distance;
-    float attenuationLinear = light.Attenuation.Linear * distance;
-    float attenuationConstant = light.Attenuation.Constant;
-
-    float attenuation = attenuationQuadratic + attenuationLinear + attenuationConstant;
-    float lightIntensity = max(1 - shadow, 0) / attenuation;
+    float attenuation = Attenuate(distance, light.Attenuation.InfluenceRadius, light.Attenuation.Falloff);
+    float lightIntensity = max(1 - shadow, 0) * attenuation;
 
     return lightIntensity * (diffuse + specular + ambient);
 }

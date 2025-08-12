@@ -1,6 +1,6 @@
 {
 	"asset":{
-		"generator":"Khronos glTF Blender I/O v4.2.60",
+		"generator":"Khronos glTF Blender I/O v4.5.47",
 		"version":"2.0"
 	},
 	"scene":0,
@@ -21,13 +21,13 @@
 	"materials":[
 		{
 			"doubleSided":true,
-			"name":"ColorGrid",
+			"name":"Wood",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
 					"index":0
 				},
 				"metallicFactor":0,
-				"roughnessFactor":0.5
+				"roughnessFactor":0.9870129823684692
 			}
 		}
 	],
@@ -56,8 +56,8 @@
 	"images":[
 		{
 			"mimeType":"image/png",
-			"name":"ColorGrid",
-			"uri":"../textures/ColorGrid.png"
+			"name":"wood",
+			"uri":"../textures/wood.png"
 		}
 	],
 	"accessors":[

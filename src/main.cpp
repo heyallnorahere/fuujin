@@ -8,6 +8,7 @@
 #include "fuujin/renderer/SceneRenderer.h"
 
 #include "fuujin/imgui/ImGuiLayer.h"
+#include "fuujin/imgui/ImGuiHost.h"
 
 #include "fuujin/scene/Components.h"
 #include "fuujin/scene/Scene.h"
@@ -85,7 +86,23 @@ public:
 
         static bool demoOpen = true;
         if (demoOpen) {
-            ImGui::ShowDemoWindow(&demoOpen);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
+            ImGui::Begin("Wood", &demoOpen);
+            ImGui::PopStyleVar();
+
+            auto woodMaterial =
+                AssetManager::GetAsset<Material>("fuujin/models/materials/Wood.mat");
+
+            if (woodMaterial.IsPresent()) {
+                const auto& textures = woodMaterial->GetTextures();
+                auto albedo = textures.at(Material::TextureSlot::Albedo);
+
+                auto texID = ImGuiHost::GetTextureID(albedo);
+                auto regionAvailable = ImGui::GetContentRegionAvail();
+                ImGui::Image(texID, regionAvailable);
+            }
+
+            ImGui::End();
         }
     }
 
@@ -113,12 +130,13 @@ private:
         m_Scene = Ref<Scene>::Create();
         m_Renderer = Ref<SceneRenderer>::Create(m_Scene);
 
+        static const float wallSize = 10.f;
         size_t wallCount = 0;
         for (size_t i = 0; i < 3; i++) {
             glm::vec3 position(0.f);
-            glm::vec3 scale(10.f);
+            glm::vec3 scale(wallSize);
 
-            position[i] = 11.f;
+            position[i] = wallSize + 1.f;
             scale[i] = 1.f;
 
             for (size_t j = 0; j < 2; j++) {
@@ -142,7 +160,14 @@ private:
 
         m_Camera = m_Scene->Create("Camera");
         m_Camera.AddComponent<TransformComponent>();
-        m_Camera.AddComponent<CameraComponent>().MainCamera = true;
+
+        auto& camera = m_Camera.AddComponent<CameraComponent>();
+        camera.MainCamera = true;
+        camera.CameraInstance.SetZRange(glm::vec2(0.1f, 1000.f));
+
+        Light::Attenuation attenuation;
+        attenuation.InfluenceRadius = 25.f;
+        attenuation.Falloff = 1.f;
 
         static constexpr size_t lightCount = 3;
         for (size_t i = 0; i < lightCount; i++) {
@@ -153,7 +178,13 @@ private:
             coaxis[(i + 1) % 3] = 1.f;
 
             auto pointLight = Ref<PointLight>::Create();
-            pointLight->SetColor(Light::Color::Diffuse, axis);
+            auto color = axis;
+
+            pointLight->SetColor(Light::Color::Diffuse, color);
+            pointLight->SetColor(Light::Color::Specular, color);
+            pointLight->SetColor(Light::Color::Ambient, color);
+            pointLight->SetShadowZRange(glm::vec2(0.1f, 1000.f));
+            pointLight->SetAttenuation(attenuation);
 
             auto& light = m_Lights.emplace_back();
             light.Axis = axis;

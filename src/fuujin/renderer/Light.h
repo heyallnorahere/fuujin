@@ -13,7 +13,8 @@ namespace fuujin {
         };
 
         struct Attenuation {
-            float Quadratic, Linear, Constant;
+            float InfluenceRadius;
+            float Falloff;
         };
 
         static const std::string& GetColorName(Color color);
