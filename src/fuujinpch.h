@@ -17,6 +17,7 @@
 #include <queue>
 #include <map>
 #include <set>
+#include <stack>
 
 #include <stddef.h>
 #include <cstdint>

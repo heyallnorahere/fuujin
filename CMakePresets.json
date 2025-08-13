@@ -12,6 +12,8 @@
             "cacheVariables": {
                 "TRACY_ENABLE": "OFF",
 
+                "BUILD_SHARED_LIBS": "OFF",
+
                 "SHADERC_ENABLE_SHARED_CRT": "ON",
 
                 "ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT": "OFF",
